@@ -12,7 +12,7 @@
  * If you have defined in your code:
  * ```cpp
  * #ifdef MOCK_STM32
- * #define TEST_HOOK(key) Embys::Stm32::Mock::Base::trigger_test_hook(key)
+ * #define TEST_HOOK(key) Embys::Stm32::Sim::Base::trigger_test_hook(key)
  * #else
  * #define TEST_HOOK(key)
  * #endif
@@ -37,7 +37,7 @@
 
 #include "../core.hpp"
 
-namespace Embys::Stm32::Mock::Uart
+namespace Embys::Stm32::Sim::Uart
 {
 
 /**
@@ -118,4 +118,4 @@ struct Runtime
 
 extern Runtime runtime;
 
-} // namespace Embys::Stm32::Mock::Uart
+} // namespace Embys::Stm32::Sim::Uart

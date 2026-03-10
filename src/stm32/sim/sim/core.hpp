@@ -11,7 +11,7 @@
 
 #include "def.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 /*
@@ -111,4 +111,4 @@ reset();
 
 }; // namespace Core
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

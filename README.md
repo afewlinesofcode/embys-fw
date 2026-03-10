@@ -2,7 +2,7 @@ Here I'm starting to collect and evolve various useful utils related to embedded
 
 I will be extracting it from my existing projects and adding information as modules are added.
 
-## Mock
+## Simulation
 
 ### STM32
 
@@ -12,15 +12,15 @@ This is simply logical simulator, so no real hardware emulation like QEMU should
 
 I tried to simulate the hardware behaviour and sequences as much as possible closer to the real hardware according to my needs and only for those buses that I've used in my projects, probably something is missing, or may be you find the whole thing should be done another way, feel free to open an issue or create a PR.
 
-`Dockerfile` is attached, it has all required dependecies for STM32 for current implementation. If you run `make stm32-mock` right on your Mac host, most likely it will fail due to specifics with clang and CMSIS, so please run `make TARGET=stm32-mock in-docker` instead. This will create a static library `build/stm32/mock/libstm32-mock.a` and also `include` directory in the `build/include/stm32/mock` directory that you can link in your tests.
+`Dockerfile` is attached, it has all required dependecies for STM32 for current implementation. If you run `make stm32-sim` right on your Mac host, most likely it will fail due to specifics with clang and CMSIS, so please run `make TARGET=stm32-sim in-docker` instead. This will create a static library `build/stm32/sim/libstm32-sim.a` and also `include` directory in the `build/include/stm32/sim` directory that you can link in your tests.
 
-`make clean-stm32-mock` will remove all build artifacts.
+`make clean-stm32-sim` will remove all build artifacts.
 
-I added a simple test in `tests/stm32/mock/timer.cpp` for the timer peripheral to demonstrate how the mock works, you can run it with `make TARGET=test-stm32-mock in-docker` and `make clean-test-stm32-mock` will remove all test build artifacts.
+I added a simple test in `tests/stm32/sim/timer.cpp` for the timer peripheral to demonstrate how the sim works, you can run it with `make TARGET=test-stm32-sim in-docker` and `make clean-test-stm32-sim` will remove all test build artifacts.
 
 Will add more test demos as I go.
 
-If adding this feature to your project, you will probably need to replace all includes of `stm32f1xx.h` with conditional includes (`stm32f1xx.h` for real hardware and `stm32f1xx_mock.hpp` for mock) because `stm32f1xx_mock.hpp` is based on `stm32f1xx.h` and redefines pointers and functions to be mock instances and need to avoid conflicts. Also the directory `build/include/stm32/mock` (or where you copy it) should be added to the include path in your tests because the compiler will be looking for `arm_acle.h` required by CMSIS.
+If adding this feature to your project, you will probably need to replace all includes of `stm32f1xx.h` with conditional includes (`stm32f1xx.h` for real hardware and `stm32f1xx_sim.hpp` for simulation) because `stm32f1xx_sim.hpp` is based on `stm32f1xx.h` and redefines pointers and functions to be simulation instances and need to avoid conflicts. Also the directory `build/include/stm32/sim` (or where you copy it) should be added to the include path in your tests because the compiler will be looking for `arm_acle.h` required by CMSIS.
 
 My workflows are mainly based on WFI and interrupts for power efficiency, so the code like this should work just fine:
 
@@ -39,7 +39,7 @@ If you need to check some code without interrupts, then you should call `cycle()
 static volatile bool active = true;
 
 while (active) {
-    Embys::STM32::Mock::cycle();
+    Embys::STM32::Sim::cycle();
     // do stuff
 }
 ```

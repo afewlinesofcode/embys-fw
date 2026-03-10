@@ -2,7 +2,7 @@
 
 #include <cstring> // For memset
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 // Mock hardware register instances
@@ -125,4 +125,4 @@ reset()
 
 }; // namespace Core
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

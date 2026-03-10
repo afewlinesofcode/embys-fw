@@ -5,7 +5,7 @@
 #include "../base.hpp"
 #include "../i2c.hpp"
 
-namespace Embys::Stm32::Mock::I2C
+namespace Embys::Stm32::Sim::I2C
 {
 
 Runtime runtime;
@@ -365,4 +365,4 @@ Runtime::reset()
   Base::add_hook(transmitter_hook);
 }
 
-}; // namespace Embys::Stm32::Mock::I2C
+}; // namespace Embys::Stm32::Sim::I2C

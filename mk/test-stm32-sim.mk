@@ -3,40 +3,40 @@ CXX = g++
 AR = ar
 
 # Project paths
-TESTS_SRC_DIR = tests/stm32/mock
-TESTS_BUILD_DIR = build/tests/stm32/mock
+TESTS_SRC_DIR = tests/stm32/sim
+TESTS_BUILD_DIR = build/tests/stm32/sim
 
-# Include paths (exclude problematic ARM-specific CMSIS headers for mock build)
+# Include paths (exclude problematic ARM-specific CMSIS headers for sim build)
 INCLUDES = -Itests/include \
-           -Ibuild/include/stm32/mock \
+           -Ibuild/include/stm32/sim \
            -Ithird_party/CMSIS_6/CMSIS/Core/Include \
 					 -Ithird_party/cmsis-device-f1/Include
 
-# Preprocessor definitions for mock build
+# Preprocessor definitions for sim build
 DEFINES = -DSTM32F103xB -DTEST
 
 # Mock library dependency
-MOCK_LIBRARY = build/stm32/mock/libstm32-mock.a
+SIM_LIBRARY = build/stm32/sim/libstm32-sim.a
 
-LDFLAGS = -Lbuild/stm32/mock -lstm32-mock
+LDFLAGS = -Lbuild/stm32/sim -lstm32-sim
 
 # Compiler flags
 CXXFLAGS = -Wall -Wextra -Werror -std=c++20 -O0 -g3 -MMD -MP $(INCLUDES) $(DEFINES)
 
-# Find all source files in mock directory and subdirectories
+# Find all source files in sim directory and subdirectories
 TESTS_SOURCES = $(shell find $(TESTS_SRC_DIR) -name "*.cpp")
 TESTS_SOURCES += tests/main.cpp
 TESTS_OBJECTS = $(patsubst $(TESTS_SRC_DIR)/%.cpp,$(TESTS_BUILD_DIR)/%.o,$(TESTS_SOURCES))
 
 # Static library target
-TEST_BIN = $(TESTS_BUILD_DIR)/test-stm32-mock
+TEST_BIN = $(TESTS_BUILD_DIR)/test-stm32-sim
 
-# Build STM32 mock static library tests
-.PHONY: test-stm32-mock
-test-stm32-mock: $(TEST_BIN)
+# Build STM32 sim static library tests
+.PHONY: test-stm32-sim
+test-stm32-sim: $(TEST_BIN)
 	$(TEST_BIN)
 
-$(TEST_BIN): $(TESTS_OBJECTS) $(MOCK_LIBRARY)
+$(TEST_BIN): $(TESTS_OBJECTS) $(SIM_LIBRARY)
 	@mkdir -p $(dir $@)
 	@echo "Creating test binary: $@"
 	$(CXX) $(CXXFLAGS) $(TESTS_OBJECTS) $(LDFLAGS) -o $@

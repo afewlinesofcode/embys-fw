@@ -1,6 +1,6 @@
 #include "base.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 uint32_t core_clock = 72000000; // Default core clock frequency (72 MHz)
@@ -379,4 +379,4 @@ cycle()
   }
 }
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

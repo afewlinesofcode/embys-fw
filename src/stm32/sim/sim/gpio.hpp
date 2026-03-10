@@ -11,7 +11,7 @@
 
 #include "core.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 namespace Gpio
@@ -30,4 +30,4 @@ trigger_pin(GPIO_TypeDef *port, uint8_t pin_index, uint8_t value);
 
 }; // namespace Gpio
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

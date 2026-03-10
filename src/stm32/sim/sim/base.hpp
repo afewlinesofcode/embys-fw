@@ -16,7 +16,7 @@
 
 #include "core.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 /**
@@ -145,7 +145,7 @@ add_test_hook(const std::string &key, Hook hook);
  * Probably you would have in your code a definition like this:
  * ```cpp
  * #ifdef MOCK_STM32
- * #define TEST_HOOK(key) Embys::Stm32::Mock::Base::trigger_test_hook(key)
+ * #define TEST_HOOK(key) Embys::Stm32::Sim::Base::trigger_test_hook(key)
  * #else
  * #define TEST_HOOK(key)
  * #endif
@@ -159,4 +159,4 @@ trigger_test_hook(const std::string &key);
 
 }; // namespace Base
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

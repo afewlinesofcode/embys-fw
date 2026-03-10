@@ -2,7 +2,7 @@
 
 #include "base.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 namespace I2C
@@ -25,4 +25,4 @@ simulate_busy()
 
 }; // namespace I2C
 
-}; // namespace Embys::Stm32::Mock
+}; // namespace Embys::Stm32::Sim

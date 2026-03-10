@@ -12,7 +12,7 @@
 #include "core.hpp"
 #include "uart/runtime.hpp"
 
-namespace Embys::Stm32::Mock::Uart
+namespace Embys::Stm32::Sim::Uart
 {
 
 /**
@@ -29,4 +29,4 @@ extern USART_TypeDef *usart;
 void
 reset();
 
-} // namespace Embys::Stm32::Mock::Uart
+} // namespace Embys::Stm32::Sim::Uart

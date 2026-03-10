@@ -3,7 +3,7 @@
 #include "../base.hpp"
 #include "../uart.hpp"
 
-namespace Embys::Stm32::Mock::Uart
+namespace Embys::Stm32::Sim::Uart
 {
 
 Runtime runtime;
@@ -202,4 +202,4 @@ Runtime::reset()
   Base::add_hook(transmitter_hook);
 }
 
-} // namespace Embys::Stm32::Mock::Uart
+} // namespace Embys::Stm32::Sim::Uart

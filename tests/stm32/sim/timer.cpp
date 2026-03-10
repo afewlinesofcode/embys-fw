@@ -1,13 +1,13 @@
-#include "stm32f1xx_mock.hpp"
+#include "stm32f1xx_sim.hpp"
 #include "test.hpp"
 
-namespace Mock = Embys::Stm32::Mock;
+namespace Sim = Embys::Stm32::Sim;
 
 struct Tim2MockTestFixture
 {
   Tim2MockTestFixture()
   {
-    Mock::reset();
+    Sim::reset();
   }
 };
 
@@ -26,7 +26,7 @@ TEST_CASE_FIXTURE(Tim2MockTestFixture, "TIM2 mock test")
 
   // Check that 5 microseconds have passed
   // Since core_clock is 72 MHz, 5 microseconds corresponds to 360 cycles
-  CHECK(DWT->CYCCNT == 5 * Mock::core_clock / 1000000);
+  CHECK(DWT->CYCCNT == 5 * Sim::core_clock / 1000000);
 
   // Check that update interrupt flag is set
   CHECK((TIM2->SR & TIM_SR_UIF) != 0);

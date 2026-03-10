@@ -2,7 +2,7 @@
 
 #include "base.hpp"
 
-namespace Embys::Stm32::Mock
+namespace Embys::Stm32::Sim
 {
 
 namespace Uart
@@ -19,4 +19,4 @@ reset()
 
 } // namespace Uart
 
-} // namespace Embys::Stm32::Mock
+} // namespace Embys::Stm32::Sim
