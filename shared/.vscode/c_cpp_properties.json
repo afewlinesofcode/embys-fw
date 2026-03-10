@@ -1,0 +1,29 @@
+{
+  "configurations": [
+    {
+      "name": "Mac",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/build/include",
+        "${workspaceFolder}/tests/include",
+        "${workspaceFolder}/third_party/CMSIS_6/CMSIS/Core/Include",
+        "${workspaceFolder}/third_party/cmsis-device-f1/Include"
+      ],
+      "defines": [
+        "CONFIG_PATH=apps/test/config.hpp",
+        "STM32F10X_MD",
+        "STM32F103xB",
+        "__ARM_ARC_PROFILE=\"M\""
+      ],
+      "macFrameworkPath": [
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
+      ],
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c17",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "macos-clang-x64"
+    }
+  ],
+  "version": 4
+}

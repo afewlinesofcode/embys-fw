@@ -1,0 +1,60 @@
+# Enhanced clang-format config for embedded C++
+BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 80
+
+# Brace style (matches your current code)
+BreakBeforeBraces: Allman
+IndentCaseLabels: true
+
+# Function formatting (matches your current style)
+AlwaysBreakAfterReturnType: All # or TopLevel for just free functions
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Class/struct formatting
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerIndentWidth: 2
+AccessModifierOffset: -2
+
+# Pointer and reference alignment
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+# Namespace formatting
+NamespaceIndentation: None
+CompactNamespaces: false
+
+# Include sorting (optimized for your project structure)
+SortIncludes: CaseInsensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: "^<[[:alnum:]_]+>"
+    Priority: 1
+  - Regex: '^<.*\.h>'
+    Priority: 2
+  - Regex: "^<.*>"
+    Priority: 3
+  - Regex: '^"config/.*"'
+    Priority: 4
+  - Regex: '^"ys/.*"'
+    Priority: 5
+  - Regex: ".*"
+    Priority: 6
+
+# Spacing
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+
+# Template formatting
+AlwaysBreakTemplateDeclarations: Yes
+
+# Other formatting
+AlignTrailingComments: true
+MaxEmptyLinesToKeep: 2
+ReflowComments: true
