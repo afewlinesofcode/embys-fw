@@ -2,6 +2,9 @@
  * @file def.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
  * @brief Mock STM32 defs.
+ *
+ * Need to redefine pointers to hardware registers and some CMSIS functions to
+ * point to our simulated instances instead of the actual hardware addresses.
  * @version 0.1
  * @date 2026-03-09
  * @copyright Copyright (c) 2026

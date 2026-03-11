@@ -26,11 +26,20 @@ docker: .docker
 in-docker: .docker
 	@echo "Running 'make $(TARGET)' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
-	docker run --rm \
+	docker run --rm -t \
 		-v $(PROJECT_ROOT):/work \
 		-w /work \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
 		make $(TARGET)
+
+%-in-docker: .docker
+	@echo "Running 'make $*' in Docker container"
+	@echo "Project root: $(PROJECT_ROOT)"
+	docker run --rm -t \
+		-v $(PROJECT_ROOT):/work \
+		-w /work \
+		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
+		make $*
 
 docker-shell:
 	@echo "Starting interactive shell in Docker container"
