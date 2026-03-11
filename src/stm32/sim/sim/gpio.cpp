@@ -37,7 +37,7 @@ trigger_pin(GPIO_TypeDef *port, uint8_t pin_index, uint8_t value)
 
     if (trigger_interrupt)
     {
-      CLEAR_BIT_V(exti_instance.PR, pin_bit);
+      SET_BIT_V(exti_instance.PR, pin_bit);
     }
   }
 }
