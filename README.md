@@ -24,6 +24,8 @@ The long-term vision of this project is to create a software simulator that beha
 
 I added a simple test in `tests/stm32/sim/timer.cpp` for the timer peripheral to demonstrate how the simulator works. You can run it with `make test-stm32-sim-in-docker`, and `make clean-test-stm32-sim` will remove all test build artifacts.
 
+Make sure to run `make stm32-sim-in-docker` first, targets aren't linked.
+
 I'll add more test demos as I go.
 
 #### Link
@@ -52,6 +54,7 @@ static volatile bool active = true;
 
 while (active) {
     Embys::STM32::Sim::cycle();
+    // __NOP(); // also works, but cycle() is more explicit
     // do stuff
 }
 ```

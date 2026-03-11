@@ -3,15 +3,15 @@
 
 namespace Sim = Embys::Stm32::Sim;
 
-struct Tim2MockTestFixture
+struct SimTimerFixture
 {
-  Tim2MockTestFixture()
+  SimTimerFixture()
   {
     Sim::reset();
   }
 };
 
-TEST_CASE_FIXTURE(Tim2MockTestFixture, "TIM2 mock test")
+TEST_CASE_FIXTURE(SimTimerFixture, "Basic simulation with TIM2")
 {
   CHECK(DWT->CYCCNT == 0);
 
