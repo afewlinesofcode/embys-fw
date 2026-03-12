@@ -4,9 +4,9 @@ A small firmware experimentation framework for exploring interrupt-driven archit
 
 Features:
 
-• STM32 peripheral simulation on x86
-• interrupt-driven firmware loop
-• UART / I2C / ... interrupt-based drivers
+- STM32 peripheral simulation on x86
+- interrupt-driven firmware loop
+- UART / I2C / ... interrupt-based drivers
 
 I'll be extracting them from my existing projects and adding information as modules are added.
 
