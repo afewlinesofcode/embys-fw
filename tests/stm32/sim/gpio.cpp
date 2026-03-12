@@ -7,24 +7,23 @@ namespace Sim = Embys::Stm32::Sim;
 
 struct SimGpioFixture
 {
-  static bool exti_interrupt_triggered;
+  static int exti_interrupt_called_count;
 
   static void
   EXTI0_IRQHandler()
   {
-    // Just set a flag to indicate the interrupt was triggered
-    exti_interrupt_triggered = true;
+    ++exti_interrupt_called_count;
   }
 
   SimGpioFixture()
   {
-    exti_interrupt_triggered = false;
+    exti_interrupt_called_count = 0;
     Sim::reset();
     Embys::Stm32::Sim::EXTI0_IRQHandler_ptr = EXTI0_IRQHandler;
   }
 };
 
-bool SimGpioFixture::exti_interrupt_triggered = false;
+int SimGpioFixture::exti_interrupt_called_count = 0;
 
 TEST_CASE_FIXTURE(SimGpioFixture, "Basic GPIO pin trigger simulation")
 {
@@ -45,22 +44,22 @@ TEST_CASE_FIXTURE(SimGpioFixture, "Basic GPIO pin trigger simulation")
   // Simulate triggering the pin high
   // set
   Sim::Gpio::trigger_pin(GPIOA, 0, 1);
-  CHECK(exti_interrupt_triggered == false);
+  CHECK(exti_interrupt_called_count == 0);
 
   for (int i = 0; i < 10; ++i) // should be enough to get IRQ handler called
     __NOP();
 
-  CHECK(exti_interrupt_triggered == true);
+  CHECK(exti_interrupt_called_count == 1);
 
-  exti_interrupt_triggered = false;
+  exti_interrupt_called_count = 0;
 
   // Simulate triggering the pin low (should trigger again since we enabled both
   // edges)
   Sim::Gpio::trigger_pin(GPIOA, 0, 0);
-  CHECK(exti_interrupt_triggered == false);
+  CHECK(exti_interrupt_called_count == 0);
 
   for (int i = 0; i < 10; ++i)
     __NOP();
 
-  CHECK(exti_interrupt_triggered == true);
+  CHECK(exti_interrupt_called_count == 1);
 }
