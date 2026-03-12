@@ -1,4 +1,12 @@
-Here I'm collecting and evolving various useful utilities related to embedded stuff like RPi or STM32 bare metal development.
+# Embys FW
+
+A small firmware experimentation framework for exploring interrupt-driven architectures, peripheral behaviour simulation and deterministic firmware loops.
+
+Features:
+
+• STM32 peripheral simulation on x86
+• interrupt-driven firmware loop
+• UART / I2C / ... interrupt-based drivers
 
 I'll be extracting them from my existing projects and adding information as modules are added.
 
