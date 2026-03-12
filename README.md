@@ -30,7 +30,7 @@ The long-term vision of this project is to create a software simulator that beha
 
 #### Test
 
-I added a simple test in `tests/stm32/sim/timer.cpp` for the timer peripheral to demonstrate how the simulator works. You can run it with `make test-stm32-sim-in-docker`, and `make clean-test-stm32-sim` will remove all test build artifacts.
+I've added a few simple tests in `tests/stm32/sim/` folder to demonstrate how the simulator works with the timer peripheral, gpio, uart. You can run them with `make test-stm32-sim-in-docker`, and `make clean-test-stm32-sim` will remove all test build artifacts.
 
 Make sure to run `make stm32-sim-in-docker` first, targets aren't linked.
 
@@ -89,5 +89,5 @@ Currently supported:
 
 - Interrupts for TIM, SysTick, EXTI, USART, I2C, SPI, PendSV
 - GPIO with triggering EXTI interrupts
-- UART sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/uart/runtime.hpp`)
-- I2C sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/i2c/runtime.hpp`)
+- UART sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/uart.hpp`)
+- I2C sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/i2c.hpp`)
