@@ -13,7 +13,7 @@ clean-tests:
 
 all:
 	cd libs/stm32/common && $(MAKE) TC=$(TC) all
-	cd libs/stm32/sim && $(MAKE) TC=$(TC) all
+	$(if $(filter sim,$(TC)),cd libs/stm32/sim && $(MAKE) TC=$(TC) all)
 	cd libs/stm32/base && $(MAKE) TC=$(TC) all
 
 examples:

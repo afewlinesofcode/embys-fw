@@ -41,5 +41,5 @@
 *.dwo
 
 /.vscode
-/build
+build
 /.docker
