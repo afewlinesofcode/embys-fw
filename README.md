@@ -45,7 +45,7 @@ Base path: `libs/stm32/sim/`
 
 This allows you to run tests and apps in a Linux container without needing actual STM32 hardware. I needed to develop applications for the STM32F103C8T6, so the implementation may be somewhat biased toward that chip.
 
-This is a logical simulator, so no real hardware emulation like QEMU should be expected, but it is very lightweight and allows easy testing of application logic. I'm not sure about code based on HAL.
+This is a logical simulator, so no real hardware emulation like QEMU should be expected, but it is very lightweight and allows easy testing of application logic.
 
 I tried to simulate the hardware behavior and sequences as closely as possible to the real hardware according to my needs, covering only the buses that I've used in my projects. Some features may be missing, and you may think things should be done differently - feel free to open an issue or create a PR.
 
