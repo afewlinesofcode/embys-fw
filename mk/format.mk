@@ -1,5 +1,6 @@
 CLANG_FORMAT = clang-format
 CLANG_TIDY = clang-tidy
+SRC_DIR = src
 
 # Code formatting targets
 .PHONY: format
