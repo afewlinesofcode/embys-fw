@@ -91,3 +91,7 @@ Currently supported:
 - GPIO with triggering EXTI interrupts
 - UART sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/uart.hpp`)
 - I2C sequences for transmitting and receiving data (if your implementation satisfies the requirements listed in `src/stm32/sim/sim/i2c.hpp`)
+
+Systems engineer with 20+ years of experience building distributed, real-time, and high-load software systems.
+My work spans distributed platforms, event-driven architectures, telemetry processing systems, and embedded control software. I have architected large-scale web platforms, mission-critical systems for emergency response, and real-time operational infrastructure.
+I focus on building reliable systems with clear architecture, predictable behavior, and long-term maintainability.

@@ -1,6 +1,7 @@
 #include <vector>
 
-#include "stm32f1xx_sim.hpp"
+#include <embys/stm32/sim/sim.hpp>
+
 #include "test.hpp"
 
 #define TEST_HOOK(key) Embys::Stm32::Sim::Base::trigger_test_hook(key)
