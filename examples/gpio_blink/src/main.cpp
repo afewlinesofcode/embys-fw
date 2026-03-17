@@ -14,6 +14,10 @@
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 
+#ifdef STM32_SIM
+#include <embys/stm32/sim/sim.hpp>
+#endif
+
 /**
  * @brief Global pointer to the timer instance for use in the interrupt handler
  */
