@@ -75,9 +75,6 @@ Timer::init_peripheral()
     // Reset TIM2 peripheral to ensure it's in a known state
     SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM2RST);
     CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM2RST);
-    // Set TIM2 interrupt priority and enable it
-    __NVIC_SetPriority(TIM2_IRQn, 0x00);
-    __NVIC_EnableIRQ(TIM2_IRQn);
   }
   else if (timer == TIM3)
   {
@@ -86,9 +83,6 @@ Timer::init_peripheral()
     // Reset TIM3 peripheral to ensure it's in a known state
     SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM3RST);
     CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM3RST);
-    // Set TIM3 interrupt priority and enable it
-    __NVIC_SetPriority(TIM3_IRQn, 0x00);
-    __NVIC_EnableIRQ(TIM3_IRQn);
   }
   else if (timer == TIM4)
   {
@@ -97,9 +91,6 @@ Timer::init_peripheral()
     // Reset TIM4 peripheral to ensure it's in a known state
     SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM4RST);
     CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM4RST);
-    // Set TIM4 interrupt priority and enable it
-    __NVIC_SetPriority(TIM4_IRQn, 0x00);
-    __NVIC_EnableIRQ(TIM4_IRQn);
   }
 }
 
@@ -108,22 +99,16 @@ Timer::deinit_peripheral()
 {
   if (timer == TIM2)
   {
-    // Disable TIM2 interrupt
-    __NVIC_DisableIRQ(TIM2_IRQn);
     // Disable TIM2 clock
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM2EN);
   }
   else if (timer == TIM3)
   {
-    // Disable TIM3 interrupt
-    __NVIC_DisableIRQ(TIM3_IRQn);
     // Disable TIM3 clock
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM3EN);
   }
   else if (timer == TIM4)
   {
-    // Disable TIM4 interrupt
-    __NVIC_DisableIRQ(TIM4_IRQn);
     // Disable TIM4 clock
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM4EN);
   }

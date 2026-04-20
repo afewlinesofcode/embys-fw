@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "core.hpp"
+#include "input_pipe.hpp"
 
 namespace Embys::Stm32::Sim
 {
@@ -29,6 +30,8 @@ extern uint32_t core_clock;
  * @brief Cycles per microsecond, calculated based on the core clock frequency.
  */
 extern uint32_t cyc_per_us;
+
+extern InputPipe input_pipe;
 
 /**
  * @brief Get the current mock PRIMASK value.

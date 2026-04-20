@@ -8,18 +8,21 @@
  * microsecond precision.
  * The timer peripheral will be automatically enabled and reset by the Timer
  * class.
- * But the interrupt handler must be implemented by the user, and should
- * clear the interrupt flag and call the Timer's callback.
+ * But the interrupt handler must be implemented by the user, and interrupt must
+ * be enabled in NVIC, and priority set.
  *
  * Example:
  * ```
  * Timer timer(TIM2);
  * timer.set_callback({on_timer, context});
  *
+ * __NVIC_SetPriority(TIM2_IRQn, 0x00);
+ * __NVIC_EnableIRQ(TIM2_IRQn);
+ *
  * // Interrupt handler
  * TIM2_IRQHandler() {
  *   CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
- *   timer(); // Will call on_timer(context) in IRQ context
+ *   timer.handle_irq(); // Will call on_timer(context) in IRQ context
  * }
  * ```
  *
@@ -32,6 +35,7 @@
 
 #include <stdint.h>
 
+#include <embys/stm32/def.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "stm32f1xx.hpp"
@@ -66,8 +70,9 @@ public:
    * @brief Invoke the timer callback
    */
   inline void
-  operator()() const
+  handle_irq()
   {
+    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
     cb();
   }
 

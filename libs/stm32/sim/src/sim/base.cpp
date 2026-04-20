@@ -15,6 +15,7 @@ namespace Embys::Stm32::Sim
 
 uint32_t core_clock = 72000000; // Default core clock frequency (72 MHz)
 uint32_t cyc_per_us = 1;
+InputPipe input_pipe("/tmp/embys_stm32_sim_pipe");
 
 static uint32_t cyc_within_us = 0;
 static uint32_t mock_primask = 0; // 0 = interrupts enabled, 1 = disabled
@@ -233,6 +234,7 @@ wfi(void)
 
   do
   {
+    input_pipe.process();
     cycle();
   } while (!interrupted);
 }

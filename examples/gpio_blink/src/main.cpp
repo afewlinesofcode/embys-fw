@@ -27,16 +27,15 @@ void
 toggle_led(void *context);
 
 /**
- * @brief Timer interrupt handler for TIM2, clears interrupt flag,
- * and calls the timer's callback function.
+ * @brief Timer interrupt handler for TIM2.
  */
 extern "C" void
 TIM2_IRQHandler()
 {
-  CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
-
   if (timer_ptr)
-    (*timer_ptr)(); // Call the timer's callback
+    timer_ptr->handle_irq(); // Call the timer's callback
+  else
+    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
 }
 
 /**
@@ -137,7 +136,9 @@ main()
   // Enable the LED toggle event before starting the loop
   toggle_led_event.enable(toggle_interval_us);
 
-  // Start the main loop, it will run indefinitely until stopped
+  // Enable interrupts and start main loop
+  __NVIC_EnableIRQ(TIM2_IRQn);
+  __NVIC_SetPriority(TIM2_IRQn, 0x00);
   loop.run();
 
   return 0;
