@@ -197,6 +197,44 @@ Embys::Stm32::Base::Event event2(&loop, EV_PERSIST, {event_callback, &ev2_ctx});
 event2.enable(200000); // to run every 200ms
 ```
 
+#### GPIO
+
+The GPIO library provides an interface for configuring and using GPIO pins on the STM32 microcontroller. It allows you to set pin modes, read and write pin states, and configure EXTI interrupts for input pins to receive state change in callbacks.
+
+##### Example
+
+```cpp
+// The GPIO library doesn't allocate any memory for pin instances,
+// so you need to provide it yourself
+// If not all pins are enabled at the same time during the application lifecycle,
+// then you should provide only as many slots as the maximum number of simultaneously enabled pins,
+// slots will be reused when pins are disabled
+constexpr size_t gpio_pins_capacity = 2;
+Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
+// create gpio bus instance
+Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+
+// create a pin instance for the LED on PC13
+// as output 2MHz, push-pull without extra pin configuration
+Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
+                                  GpioCnf::OUT_PP, PinCfg::NONE);
+
+// create a pin instance for the button on PA0
+// as input, floating with EXTI interrupt on both edges
+Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
+                                     GpioCnf::IN_FL, PinCfg::IRQ);
+
+// set a callback for the button pin,
+// which will be called when the button state changes (pressed or released)
+button_pin.set_callback({toggle_btn, &context});
+
+// the bus must be enabled to connect it with the main loop
+gpio_bus.enable();
+// the pins must be enabled to connect them with the bus and receive events
+led_pin.enable();
+button_pin.enable();
+```
+
 ### Tests
 
 Tests are located in the `tests/` directory and are worth exploring. They cover most of the functionality provided by the library. Tests are written using the Doctest library.
@@ -213,3 +251,15 @@ If you have a Blue Pill, build it with `make`, then flash the binary to your STM
 
 For simulation, you can run the example in the simulator `make TC=sim run` and see the output in the console.
 Press Ctrl+C to terminate.
+
+#### GPIO button blink
+
+Located in the `examples/gpio_btn_blink/` directory, this example demonstrates how to use the loop, timer, and GPIO to toggle blinking of an LED on the PC13 pin when a button connected to the PA0 pin is pressed. It also shows how to use the simulator to run the example without actual hardware.
+
+All libraries must be built for the target architecture (ARM or simulation) to run the example.
+
+Build the example with `make`, then flash the binary to your STM32 microcontroller connected via ST-Link with `make flash` and see the LED blinking, toggling every 500ms when you press the button. Press button once to start blinking, press again to stop.
+For simulation, you can run the example in the simulator `make TC=sim run` and see the output in the console. Press Ctrl+C to terminate.
+Since there's no hardware button connected, simulator can accept commands through named pipe to trigger the button press event.
+You can run `make btn-toggle` in the example directory to simulate a button press and release.
+Run this command multiple times to see the effect.

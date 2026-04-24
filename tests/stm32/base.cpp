@@ -26,7 +26,7 @@ struct Stm32BaseFixture
   {
     CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
     if (timer_ptr)
-      (*timer_ptr)(); // Call the timer's callback
+      timer_ptr->handle_irq(); // Call the timer's callback
   }
 };
 

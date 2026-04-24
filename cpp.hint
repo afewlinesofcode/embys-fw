@@ -1,0 +1,2 @@
+// TRY macro definition for IntelliSense
+#define TRY(x) do { auto __res = (x); if (__res != 0) return __res; } while(0)

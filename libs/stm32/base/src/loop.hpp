@@ -220,11 +220,6 @@ private:
   volatile bool active;
 
   /**
-   * @brief Accumulated jitter in clock cycles
-   */
-  uint32_t jitter_cyc_accum = 0;
-
-  /**
    * @brief Activate expired events, run real-time events, update schedule
    */
   void

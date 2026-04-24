@@ -4,6 +4,7 @@
 
 DOCKER_IMAGE_NAME = embys-fw-dev
 DOCKER_TAG ?= latest
+DOCKER_NAME ?= embys-fw-dev-container
 PROJECT_ROOT ?= $(shell pwd)
 WORK_DIR ?= /work
 
@@ -29,7 +30,7 @@ in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Running 'make $(TARGET)' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
 	cd $(PROJECT_ROOT) && \
-	docker run --rm -it \
+	docker run --name $(DOCKER_NAME) --rm -it \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -39,7 +40,7 @@ in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Running 'make $*' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
 	cd $(PROJECT_ROOT) && \
-	docker run --rm -it \
+	docker run --name $(DOCKER_NAME) --rm -it \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -48,7 +49,7 @@ in-docker: $(PROJECT_ROOT)/.docker
 docker-shell:
 	@echo "Starting interactive shell in Docker container"
 	cd $(PROJECT_ROOT) && \
-	docker run --rm -it \
+	docker run --name $(DOCKER_NAME) --rm -it \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -57,7 +58,7 @@ docker-shell:
 docker-cmd:
 	@echo "Running command in Docker container: $(CMD)"
 	cd $(PROJECT_ROOT) && \
-	docker run --rm \
+	docker run --rm -it \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \

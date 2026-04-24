@@ -181,10 +181,6 @@ Loop::count_events()
 void
 Loop::tick()
 {
-  // Capture current cycle count at the start of tick processing to calculate
-  // jitter later and ensure consistent timing adjustments
-  uint32_t tick_cyc = DWT->CYCCNT;
-
   // Reset active events processing
   if (active_event_idx == active_events_count)
   {
@@ -235,17 +231,7 @@ Loop::tick()
     }
   }
 
-  // Schedule next timer event with jitter compensation
-
-  uint32_t cyc_per_us = timer->get_cyc_per_us();
-  // Probably need to add a few more cycles to compensate call to the `tick`
-  // method and scheduling in the following code, but it needs more
-  // experiments, so this should be good enough for now
-  uint32_t jitter_cyc = DWT->CYCCNT - tick_cyc + jitter_cyc_accum;
-  uint32_t jitter_us = jitter_cyc / cyc_per_us;
-  jitter_cyc_accum = jitter_cyc % cyc_per_us;
-
-  timer->schedule_us(soonest_us, jitter_us, true);
+  timer->schedule_us(soonest_us, 0, true);
 }
 
 void

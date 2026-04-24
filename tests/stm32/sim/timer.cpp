@@ -18,7 +18,10 @@ TEST_CASE_FIXTURE(SimTimerFixture, "Basic simulation with TIM2")
 
   // Configure TIM2 for a simple test
   // Enable timer, one-pulse mode
+  // Set prescaler to match 1 us per tick (same as the Timer class)
   // Set auto-reload value to 5 microseconds
+  TIM2->DIER = TIM_DIER_UIE;
+  TIM2->PSC = Sim::cyc_per_us - 1;
   TIM2->CR1 = TIM_CR1_CEN | TIM_CR1_OPM;
   TIM2->ARR = 5;
 

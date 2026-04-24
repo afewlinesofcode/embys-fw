@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "core.hpp"
+#include "input_pipe.hpp"
 
 namespace Embys::Stm32::Sim
 {
@@ -29,6 +30,8 @@ extern uint32_t core_clock;
  * @brief Cycles per microsecond, calculated based on the core clock frequency.
  */
 extern uint32_t cyc_per_us;
+
+extern InputPipe input_pipe;
 
 /**
  * @brief Get the current mock PRIMASK value.
@@ -55,6 +58,35 @@ disable_irq();
  */
 void
 enable_irq();
+
+/**
+ * @brief Simulate enabling an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to enable.
+ */
+void
+nvic_enable_irq(uint32_t irq_no);
+
+/**
+ * @brief Simulate disabling an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to disable.
+ */
+void
+nvic_disable_irq(uint32_t irq_no);
+
+/**
+ * @brief Simulate setting the priority of an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to set the priority for.
+ * @param priority The priority level to set for the specified IRQ.
+ */
+void
+nvic_set_priority(uint32_t irq_no, uint32_t priority);
+
+/**
+ * @brief Configure the SysTick timer with the specified number of ticks.
+ * @param ticks The number of ticks to configure the SysTick timer with.
+ */
+void
+systick_config(uint32_t ticks);
 
 /**
  * @brief Simulate a WFI (Wait For Interrupt) instruction. This function will
@@ -156,6 +188,12 @@ add_test_hook(const std::string &key, Hook hook);
  */
 void
 trigger_test_hook(const std::string &key);
+
+/**
+ * @brief Maximum number of cycles wfi() will spin before aborting with a
+ * deadlock diagnostic. Set to 0 to disable the guard.
+ */
+extern uint32_t wfi_max_cycles;
 
 }; // namespace Base
 
