@@ -206,13 +206,13 @@ private:
   /**
    * @brief Indicates if a stop event is scheduled
    */
-  bool stop_scheduled = false;
+  volatile bool stop_scheduled = false;
 
   /**
    * @brief Count of modules that have been interrupted and require processing
    * in the main loop
    */
-  size_t interrupted_modules_count = 0;
+  volatile size_t interrupted_modules_count = 0;
 
   /**
    * @brief Indicates if the main loop is currently active

@@ -45,7 +45,7 @@ Timer::schedule_us(uint32_t us, uint32_t jitter_us, bool start)
 
   // Start timer with range-limited timeout value
   // Set auto-reload value with range limit
-  timer->ARR = us > arr_max ? arr_max : us;
+  set_scheduled_us(us);
   timer->CNT = jitter_us;
 
   if (start)

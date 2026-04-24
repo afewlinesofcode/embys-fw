@@ -72,7 +72,7 @@ public:
   inline void
   handle_irq()
   {
-    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
+    CLEAR_BIT_V(timer->SR, TIM_SR_UIF); // Clear interrupt flag
     cb();
   }
 
@@ -143,7 +143,7 @@ public:
    * @return uint32_t Remaining time in microseconds
    */
   inline uint32_t
-  get_remaining_us()
+  get_remaining_us() const
   {
     return (timer->CR1 & TIM_CR1_CEN) ? (timer->ARR - timer->CNT) : 0;
   }
@@ -155,7 +155,7 @@ public:
   inline void
   set_scheduled_us(uint32_t us)
   {
-    timer->ARR = us;
+    timer->ARR = us > arr_max ? arr_max : us;
   }
 
   /**
