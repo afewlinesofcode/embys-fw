@@ -9,6 +9,8 @@
 
 #include "uart.hpp"
 
+#include <optional>
+
 #include "base.hpp"
 
 namespace Embys::Stm32::Sim::Uart
@@ -19,24 +21,39 @@ USART_TypeDef *usart = &usart1_instance; // Default to usart1
 std::vector<std::vector<uint8_t>> tx_buffers;
 
 /**
- * @brief Shift register for simulating data reception and transmission.
+ * @brief RX shift register: holds a byte being transferred from rx_buffer to
+ * DR.
  */
-static uint8_t sr = 0;
+static uint8_t rx_sr = 0;
 
 /**
- * @brief Flag indicating shift register is currently receiving data.
+ * @brief Flag indicating RX shift register is currently loaded with a byte
+ * being moved into DR.
  */
-static bool sr_receiving = false;
+static bool rx_sr_full = false;
 
 /**
- * @brief Flag indicating shift register is currently sending data.
+ * @brief Flag indicating the RX shift register is receiving its next byte from
+ * the rx_buffer (i.e., the byte has been loaded and is waiting to be moved).
  */
-static bool sr_sending = false;
+static bool rx_sr_receiving = false;
 
 /**
- * @brief Flag indicating shift register is full.
+ * @brief TX shift register: holds a byte copied from DR being transmitted.
  */
-static bool sr_full = false;
+static uint8_t tx_sr = 0;
+
+/**
+ * @brief Flag indicating the TX shift register is full and awaiting
+ * transmission to the tx_buffer.
+ */
+static bool tx_sr_full = false;
+
+/**
+ * @brief Flag indicating the TX shift register is actively sending its byte
+ * to the tx_buffer this cycle.
+ */
+static bool tx_sr_sending = false;
 
 /**
  * @brief Flag indicating a transmission is currently active (data has been
@@ -51,10 +68,10 @@ static bool tx_active = false;
 static bool wait_clear = false;
 
 /**
- * @brief Number of cycles until TC flag is set.
- *
+ * @brief Absolute cycle count at which TC should be set after transmission.
+ * std::nullopt when no TC is pending.
  */
-static uint32_t tc_cyc = 0;
+static std::optional<uint32_t> tc_cyc;
 
 /**
  * @brief Buffer for simulating data reception. Data in this buffer will be
@@ -94,7 +111,7 @@ simulate_rx(std::vector<uint8_t> data)
 void
 transfer_sr_to_dr()
 {
-  if (!sr_full)
+  if (!rx_sr_full)
   {
     return;
   }
@@ -106,10 +123,10 @@ transfer_sr_to_dr()
   }
   else
   {
-    usart->DR = sr;
+    usart->DR = rx_sr;
     SET_BIT_V(usart->SR, USART_SR_RXNE);
-    sr_full = false;
-    sr_receiving = true;
+    rx_sr_full = false;
+    rx_sr_receiving = true;
     rx_buffer_pos++;
   }
 }
@@ -141,7 +158,7 @@ write_dr_hook(uint32_t)
 {
   CLEAR_BIT_V(usart->SR, USART_SR_TXE | USART_SR_TC);
   tx_active = true;
-  tc_cyc = 0;
+  tc_cyc = std::nullopt;
 }
 
 /**
@@ -164,35 +181,30 @@ read_sr_hook(uint32_t)
 void
 receiver_hook(uint32_t)
 {
-  if (tx_active)
-  {
-    return;
-  }
-
-  if (sr_receiving)
+  if (rx_sr_receiving)
   {
     if (rx_buffer.empty())
     {
-      sr_receiving = false;
+      rx_sr_receiving = false;
     }
     else if (rx_buffer_pos >= rx_buffer.size())
     {
       // No more bytes in read buffer, reception complete
 
-      sr_receiving = false;
+      rx_sr_receiving = false;
       rx_buffer.clear();
       rx_buffer_pos = 0;
     }
     else
     {
-      // Byte received in shift register, move it to SR and mark SR as full
+      // Byte received in shift register, move it to rx_sr and mark as full
 
-      sr = rx_buffer[rx_buffer_pos];
-      sr_full = true;
-      sr_receiving = false;
+      rx_sr = rx_buffer[rx_buffer_pos];
+      rx_sr_full = true;
+      rx_sr_receiving = false;
     }
   }
-  else if (sr_full)
+  else if (rx_sr_full)
   {
     // Shift register fully received
 
@@ -202,7 +214,7 @@ receiver_hook(uint32_t)
   {
     // Start receiving new byte in shift register
 
-    sr_receiving = true;
+    rx_sr_receiving = true;
   }
 }
 
@@ -219,7 +231,7 @@ transmitter_hook(uint32_t cyc)
     return;
   }
 
-  if (sr_sending)
+  if (tx_sr_sending)
   {
     if (current_tx_buffer == nullptr)
     {
@@ -227,29 +239,29 @@ transmitter_hook(uint32_t cyc)
       current_tx_buffer = &tx_buffers.back();
     }
 
-    current_tx_buffer->push_back(sr);
-    sr_full = false;
-    sr_sending = false;
-    // Set TC to trigger after 10 cycles to simulate transmission time
+    current_tx_buffer->push_back(tx_sr);
+    tx_sr_full = false;
+    tx_sr_sending = false;
+    // Schedule TC after a short delay to simulate transmission time
     tc_cyc = cyc + 20;
   }
-  else if (sr_full)
+  else if (tx_sr_full)
   {
-    sr_sending = true;
+    tx_sr_sending = true;
   }
   else if ((usart->SR & USART_SR_TXE) == 0)
   {
-    sr = usart->DR;
-    sr_full = true;
+    tx_sr = usart->DR;
+    tx_sr_full = true;
     SET_BIT_V(usart->SR, USART_SR_TXE);
   }
   else
   {
-    if (tc_cyc && cyc >= tc_cyc)
+    if (tc_cyc.has_value() && cyc >= *tc_cyc)
     {
       current_tx_buffer = nullptr;
       tx_active = false;
-      tc_cyc = 0;
+      tc_cyc = std::nullopt;
       SET_BIT_V(usart->SR, USART_SR_TC);
     }
   }
@@ -259,13 +271,15 @@ void
 reset()
 {
   usart = &usart1_instance;
-  sr = 0;
-  sr_receiving = false;
-  sr_sending = false;
-  sr_full = false;
+  rx_sr = 0;
+  rx_sr_full = false;
+  rx_sr_receiving = false;
+  tx_sr = 0;
+  tx_sr_full = false;
+  tx_sr_sending = false;
   tx_active = false;
   wait_clear = false;
-  tc_cyc = 0;
+  tc_cyc = std::nullopt;
   rx_buffer.clear();
   tx_buffers.clear();
   current_tx_buffer = nullptr;

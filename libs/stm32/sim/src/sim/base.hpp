@@ -189,6 +189,12 @@ add_test_hook(const std::string &key, Hook hook);
 void
 trigger_test_hook(const std::string &key);
 
+/**
+ * @brief Maximum number of cycles wfi() will spin before aborting with a
+ * deadlock diagnostic. Set to 0 to disable the guard.
+ */
+extern uint32_t wfi_max_cycles;
+
 }; // namespace Base
 
 }; // namespace Embys::Stm32::Sim

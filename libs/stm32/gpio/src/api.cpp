@@ -2,6 +2,8 @@
 
 #include <embys/stm32/def.hpp>
 
+#include "diag.hpp"
+
 namespace Embys::Stm32::Gpio
 {
 
@@ -28,7 +30,7 @@ enable_gpio(GPIO_TypeDef *port)
   }
   else
   {
-    return -1; // Invalid port
+    return INVALID_PORT; // Invalid port
   }
 
   if (RCC->APB2ENR & en_mask)
@@ -64,7 +66,7 @@ disable_gpio(GPIO_TypeDef *port)
   }
   else
   {
-    return -1; // Invalid port
+    return INVALID_PORT; // Invalid port
   }
 
   (void)RCC->APB2ENR; // Read back for completion
@@ -111,7 +113,7 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, uint32_t gpio_cfg)
   SET_BIT_V(*cr, gpio_cfg << shift);
 
   if (((*cr >> shift) & 0xF) != (gpio_cfg & 0xF))
-    return -1; // Configuration failed
+    return PIN_CONFIG_FAILED;
 
   return 0;
 }
@@ -121,7 +123,7 @@ configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index)
 {
   SET_BIT_V(port->ODR, (1 << index));
   if ((port->ODR & (1 << index)) == 0)
-    return -1; // Pull-up configuration failed
+    return PIN_PULLUP_CONFIG_FAILED;
   return 0;
 }
 
@@ -130,7 +132,7 @@ configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index)
 {
   CLEAR_BIT_V(port->ODR, (1 << index));
   if ((port->ODR & (1 << index)) != 0)
-    return -1; // Pull-down configuration failed
+    return PIN_PULLDOWN_CONFIG_FAILED;
   return 0;
 }
 
@@ -169,7 +171,7 @@ enable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index)
   uint8_t port_num = get_port_num(port);
 
   if (port_num == 0xFF)
-    return -1; // Invalid port
+    return INVALID_PORT; // Invalid port
 
   uint32_t exti_cfg = port_num << exticr_shift;
 
@@ -177,7 +179,7 @@ enable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index)
   SET_BIT_V(AFIO->EXTICR[exticr_index], exti_cfg);
 
   if ((AFIO->EXTICR[exticr_index] & exti_cfg) != exti_cfg)
-    return -1; // Exit line configuration failed
+    return EXTI_CONFIG_FAILED; // Exit line configuration failed
 
   uint32_t pin_bit = (1 << pin_index);
 

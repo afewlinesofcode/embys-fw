@@ -2,6 +2,7 @@
 
 #include <embys/stm32/def.hpp>
 
+#include "diag.hpp"
 #include "stm32f1xx.hpp"
 
 namespace Embys::Stm32::Gpio
@@ -30,7 +31,7 @@ Bus::enable()
     return 0;
   }
 
-  enable_afio();
+  TRY(enable_afio());
   module = base->add_module({Bus::module_handler, this});
 
   enabled = true;
@@ -47,7 +48,7 @@ Bus::disable()
     return 0;
   }
 
-  disable_afio();
+  TRY(disable_afio());
   base->remove_module(module);
   module = nullptr;
 
@@ -58,24 +59,27 @@ Bus::disable()
 int
 Bus::add(Pin *pin)
 {
+  TRY(check_enabled());
+
   // Find available slot in registry
   for (size_t i = 0; i < pins_capacity; ++i)
   {
     if (!pins[i])
     {
-      enable_gpio(pin->get_port());
       pins[i] = pin;
       return 0;
     }
   }
 
   // No available slots
-  return -1;
+  return BUS_FULL;
 }
 
 int
 Bus::remove(Pin *pin)
 {
+  TRY(check_enabled());
+
   auto port = pin->get_port();
   bool port_in_use = false;
 
@@ -89,7 +93,7 @@ Bus::remove(Pin *pin)
   }
 
   if (!port_in_use)
-    disable_gpio(port);
+    TRY(disable_gpio(port));
 
   return 0;
 }
@@ -98,8 +102,6 @@ void
 Bus::activate_pin(uint32_t pin_bit)
 {
   SET_BIT_V(activated_exti_lines, pin_bit);
-  // Notify main loop of pending GPIO event
-  module_notify();
 }
 
 int
@@ -113,7 +115,7 @@ Bus::trigger_activated_pins()
     if (!pin_ptr)
       continue;
 
-    uint16_t pin_bit = (1 << pin_ptr->get_index());
+    uint32_t pin_bit = (1 << pin_ptr->get_index());
 
     if ((activated_exti_lines & pin_bit) &&
         (pin_ptr->get_pin_cfg() & PinCfg::IRQ))
@@ -124,6 +126,15 @@ Bus::trigger_activated_pins()
       pin_ptr->trigger();
     }
   }
+
+  return 0;
+}
+
+int
+Bus::check_enabled()
+{
+  if (!enabled)
+    return BUS_NOT_ENABLED; // GPIO bus is not enabled
 
   return 0;
 }

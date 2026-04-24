@@ -79,7 +79,7 @@ static std::vector<std::vector<uint8_t>> read_buffers;
 /**
  * @brief Position within the current read buffer.
  */
-static uint8_t read_buffer_pos = 0;
+static size_t read_buffer_pos = 0;
 
 /**
  * @brief Buffers for storing data written by the I2C peripheral.

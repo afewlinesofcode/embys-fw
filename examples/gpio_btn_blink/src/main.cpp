@@ -2,6 +2,7 @@
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
+#include <embys/stm32/def.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 
@@ -185,23 +186,9 @@ main()
   context.led = &led_pin;
 
   // Enable peripherals before starting main loop
-  if (gpio_bus.enable() < 0)
-  {
-    SIM_LOG("Failed to enable GPIO bus");
-    return -1;
-  }
-
-  if (button_pin.enable() < 0)
-  {
-    SIM_LOG("Failed to enable button pin");
-    return -1;
-  }
-
-  if (led_pin.enable() < 0)
-  {
-    SIM_LOG("Failed to enable LED pin");
-    return -1;
-  }
+  TRY(gpio_bus.enable());
+  TRY(button_pin.enable());
+  TRY(led_pin.enable());
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

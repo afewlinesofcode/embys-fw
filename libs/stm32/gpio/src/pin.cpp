@@ -1,7 +1,10 @@
 #include "pin.hpp"
 
+#include <embys/stm32/def.hpp>
+
 #include "api.hpp"
 #include "bus.hpp"
+#include "diag.hpp"
 
 namespace Embys::Stm32::Gpio
 {
@@ -22,34 +25,31 @@ Pin::enable()
     return 0;
   }
 
-  if (validate_config() < 0)
-    return -1; // Invalid configuration
+  TRY(validate_config());
+
+  // Enable GPIO port clock
+  TRY(enable_gpio(port));
 
   // Configure GPIO pin mode and CNF
-  if (configure_pin(port, index, gpio_cfg) < 0)
-    return -1; // Pin configuration failed
+  TRY(configure_pin(port, index, gpio_cfg));
 
   // Configure pull resistors via ODR
   if (pin_cfg & PinCfg::PULL_UP)
   {
-    if (configure_pin_pull_up(port, index) < 0)
-      return -1; // Failed to configure pull-up
+    TRY(configure_pin_pull_up(port, index));
   }
   else if (pin_cfg & PinCfg::PULL_DOWN)
   {
-    if (configure_pin_pull_down(port, index) < 0)
-      return -1; // Failed to configure pull-down
+    TRY(configure_pin_pull_down(port, index));
   }
 
   // Initialize interrupt if requested
   if (pin_cfg & PinCfg::IRQ)
   {
-    if (enable_pin_irq(port, index) < 0)
-      return -1; // Failed to configure pin IRQ
+    TRY(enable_pin_irq(port, index));
   }
 
-  if (bus->add(this) < 0)
-    return -1; // Failed to register pin with bus
+  TRY(bus->add(this));
 
   enabled = true;
 
@@ -65,14 +65,12 @@ Pin::disable()
     return 0;
   }
 
-  if (bus->remove(this) < 0)
-    return -1; // Failed to unregister pin from bus
+  TRY(bus->remove(this));
 
   enabled = false;
 
   // Clear interrupt callback
-  if (clear_callback() < 0)
-    return -1; // Failed to clear callback
+  TRY(clear_callback());
 
   // Clean up interrupt configuration
   if (pin_cfg & PinCfg::IRQ)
@@ -134,18 +132,18 @@ Pin::validate_config()
   if (mode == Mode::IN)
   {
     if (cnf > Cnf::IN_PU)
-      return -1; // Invalid input CNF
+      return PIN_CNF_CONFIG_FAILED; // Invalid input CNF
 
     // Check pull configuration compatibility
     // Pull-up/pull-down only valid with GPIO_CNF_IN_PU
     if (cnf != Cnf::IN_PU &&
         (pin_cfg & (PinCfg::PULL_UP | PinCfg::PULL_DOWN)) != 0)
-      return -1; // Conflicting input pull configuration
+      return PIN_CONFIG_CONFLICT; // Conflicting input pull configuration
   }
 
   // Check for conflicting pull settings
   if ((pin_cfg & PinCfg::PULL_UP) && (pin_cfg & PinCfg::PULL_DOWN))
-    return -1; // Conflicting pull configuration
+    return PIN_CONFIG_CONFLICT; // Conflicting pull configuration
 
   return 0;
 }

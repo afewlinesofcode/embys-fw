@@ -5,14 +5,6 @@
 #include "api.hpp"
 #include "pin.hpp"
 
-
-/**
- * @brief EXTI IRQ handler template for pins start to end (inclusive)
- *
- */
-#define EMBYS_EXTI_IRQ_HANDLER(bus_ptr, start, end)
-
-
 namespace Embys::Stm32::Gpio
 {
 
@@ -67,7 +59,7 @@ public:
       }
     }
 
-    base->interrupted(module);
+    module_notify();
   }
 
 private:
@@ -140,6 +132,9 @@ private:
    */
   int
   trigger_activated_pins();
+
+  int
+  check_enabled();
 
   /**
    * @brief Notify main loop of pending GPIO event. This should be called from
