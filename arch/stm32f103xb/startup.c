@@ -1,5 +1,6 @@
 #include "isr_vector.h"
 #include "clock_init.h"
+#include "panic.h"
 
 // Now define the vector table in .isr_vector
 __attribute__((section(".isr_vector"), used))
@@ -141,7 +142,11 @@ void Reset_Handler(void) {
   for (p = __preinit_array_start; p < __preinit_array_end; p++) (*p)();
   for (p = __init_array_start; p < __init_array_end; p++) (*p)();
 
-  (void)main();
+  int ret_code = main();
 
+  // If main returns, it's an error - panic with the return code
+  panic(ret_code);
+
+  // Additional guard
   for (;;) __asm volatile("wfi");
 }

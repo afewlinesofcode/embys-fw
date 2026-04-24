@@ -185,9 +185,23 @@ main()
   context.led = &led_pin;
 
   // Enable peripherals before starting main loop
-  gpio_bus.enable();
-  button_pin.enable();
-  led_pin.enable();
+  if (gpio_bus.enable() < 0)
+  {
+    SIM_LOG("Failed to enable GPIO bus");
+    return -1;
+  }
+
+  if (button_pin.enable() < 0)
+  {
+    SIM_LOG("Failed to enable button pin");
+    return -1;
+  }
+
+  if (led_pin.enable() < 0)
+  {
+    SIM_LOG("Failed to enable LED pin");
+    return -1;
+  }
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

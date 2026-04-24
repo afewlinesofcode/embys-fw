@@ -107,6 +107,11 @@ reset()
   memset(&tim2_instance, 0, sizeof(tim2_instance));
   memset(&tim3_instance, 0, sizeof(tim3_instance));
   memset(&tim4_instance, 0, sizeof(tim4_instance));
+  // Suppress -Wclass-memaccess warning
+  memset(static_cast<void *>(&systick_instance), 0, sizeof(systick_instance));
+  memset(&nvic_instance, 0, sizeof(nvic_instance));
+  // Suppress -Wclass-memaccess warning
+  memset(static_cast<void *>(&scb_instance), 0, sizeof(scb_instance));
   memset(&rcc_instance, 0, sizeof(rcc_instance));
   memset(&exti_instance, 0, sizeof(exti_instance));
   memset(&afio_instance, 0, sizeof(afio_instance));
@@ -117,6 +122,9 @@ reset()
   memset(&i2c2_instance, 0, sizeof(i2c2_instance));
   memset(&spi1_instance, 0, sizeof(spi1_instance));
   memset(&spi2_instance, 0, sizeof(spi2_instance));
+  memset(&usart1_instance, 0, sizeof(usart1_instance));
+  memset(&usart2_instance, 0, sizeof(usart2_instance));
+  memset(&usart3_instance, 0, sizeof(usart3_instance));
   memset(&coredebug_instance, 0, sizeof(coredebug_instance));
   // Suppress -Wclass-memaccess warning
   memset(static_cast<void *>(&dwt_instance), 0, sizeof(dwt_instance));

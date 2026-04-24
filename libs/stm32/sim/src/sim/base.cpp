@@ -35,13 +35,12 @@ static void (**irq_handler_lookup[])() = {
 /**
  * @brief Check for timer interrupts and call the corresponding handler if
  * conditions are met.
+ * `interrupted` is set to true if a timer interrupt was handled.
  * @param tim_instance Pointer to the timer instance to check.
  * @param TIM_IRQHandler_ptr Pointer to the timer's interrupt handler function
  * pointer.
- * @return True if an interrupt was triggered and the handler was called, false
- * otherwise.
  */
-bool
+void
 check_irq_tim(TIM_TypeDef *tim_instance, void (**TIM_IRQHandler_ptr)())
 {
   if ((tim_instance->CR1 & TIM_CR1_CEN) &&
@@ -63,24 +62,20 @@ check_irq_tim(TIM_TypeDef *tim_instance, void (**TIM_IRQHandler_ptr)())
     if (*TIM_IRQHandler_ptr)
       (*TIM_IRQHandler_ptr)();
 
-    return true;
+    interrupted = true;
   }
-
-  return false;
 }
 
 /**
  * @brief Check for EXTI interrupts and call the corresponding handler if
  * conditions are met.
- * @return True if an interrupt was triggered and the handler was called, false
- * otherwise.
+ * `interrupted` is set to true if any EXTI interrupt was handled.
  */
-bool
+void
 check_irq_exti()
 {
   // Check for EXTI interrupts
   uint32_t pin_bit = 1;
-  bool interrupted = false;
 
   for (uint8_t pin_index = 0; pin_index < 16; ++pin_index, pin_bit <<= 1)
   {
@@ -102,28 +97,26 @@ check_irq_exti()
   // Assuming all handlers have cleared their bits correctly
   // This is pure trust, may behave unexpectedly on the hardware if handlers
   // don't clear the bits!
+  // Unfortunately here we're unable to check whether the bit was written to PR
+  // by a consumer handler when this bit is already `1` indicating pending
+  // interrupt
   exti_instance.PR = 0;
-
-  return interrupted;
 }
 
 /**
  * @brief Check for I2C event and error interrupts and call the corresponding
  * handlers if conditions are met.
+ * `interrupted` is set to true if any I2C interrupt was handled.
  * @param i2c_instance Pointer to the I2C instance to check.
  * @param I2C_EV_IRQHandler_ptr Pointer to the I2C event interrupt handler
  * function pointer.
  * @param I2C_ER_IRQHandler_ptr Pointer to the I2C error interrupt handler
  * function pointer.
- * @return True if an interrupt was triggered and a handler was called, false
- * otherwise.
  */
-bool
+void
 check_irq_i2c(I2C_TypeDef *i2c_instance, void (**I2C_EV_IRQHandler_ptr)(),
               void (**I2C_ER_IRQHandler_ptr)())
 {
-  bool interrupted = false;
-
   // Check for I2C event interrupts
   if (*I2C_EV_IRQHandler_ptr)
   {
@@ -145,25 +138,22 @@ check_irq_i2c(I2C_TypeDef *i2c_instance, void (**I2C_EV_IRQHandler_ptr)(),
       interrupted = true;
     }
   }
-
-  return interrupted;
 }
 
 /**
  * @brief Check for USART interrupts and call the corresponding handler if
  * conditions are met.
+ * `interrupted` is set to true if any USART interrupt was handled.
  * @param usart_instance Pointer to the USART instance to check.
  * @param USART_IRQHandler_ptr Pointer to the USART interrupt handler function
  * pointer.
- * @return True if an interrupt was triggered and the handler was called, false
- * otherwise.
  */
-bool
+void
 check_irq_usart(USART_TypeDef *usart_instance, void (**USART_IRQHandler_ptr)())
 {
   if (!*USART_IRQHandler_ptr)
   {
-    return false;
+    return;
   }
 
   const uint32_t sr = usart_instance->SR;
@@ -176,19 +166,16 @@ check_irq_usart(USART_TypeDef *usart_instance, void (**USART_IRQHandler_ptr)())
   if (rxne_irq || txe_irq || tc_irq)
   {
     (*USART_IRQHandler_ptr)();
-    return true;
+    interrupted = true;
   }
-
-  return false;
 }
 
 /**
  * @brief Check for PendSV interrupt and call the corresponding handler if
  * conditions are met.
- * @return True if an interrupt was triggered and the handler was called, false
- * otherwise.
+ * `interrupted` is set to true if the PendSV interrupt was handled.
  */
-bool
+void
 check_irq_pendsv()
 {
   if (scb_instance.ICSR & SCB_ICSR_PENDSVSET_Msk)
@@ -197,10 +184,8 @@ check_irq_pendsv()
       PendSV_Handler_ptr();
 
     CLEAR_BIT_V(scb_instance.ICSR, SCB_ICSR_PENDSVSET_Msk);
-    return true;
+    interrupted = true;
   }
-
-  return false;
 }
 
 uint32_t
@@ -228,13 +213,36 @@ enable_irq()
 }
 
 void
+nvic_enable_irq(uint32_t irq_no)
+{
+  // Simulate enabling an interrupt in the mock NVIC
+}
+
+void
+nvic_disable_irq(uint32_t irq_no)
+{
+  // Simulate disabling an interrupt in the mock NVIC
+}
+
+void
+nvic_set_priority(uint32_t irq_no, uint32_t priority)
+{
+  // Simulate setting the priority of an interrupt in the mock NVIC
+}
+
+void
+systick_config(uint32_t ticks)
+{
+  // Simulate configuring the SysTick timer with the specified number of ticks
+}
+
+void
 wfi(void)
 {
   interrupted = false;
 
   do
   {
-    input_pipe.process();
     cycle();
   } while (!interrupted);
 }
@@ -317,6 +325,8 @@ trigger_test_hook(const std::string &key)
 void
 cycle()
 {
+  input_pipe.process();
+
   // Increment cycle count
 
   dwt_instance.CYCCNT = dwt_instance.CYCCNT + 1;
@@ -340,32 +350,22 @@ cycle()
 
   // Check for interrupts and call handlers
 
-  if (check_irq_tim(&tim2_instance, &TIM2_IRQHandler_ptr))
-    interrupted = true;
-  if (check_irq_tim(&tim3_instance, &TIM3_IRQHandler_ptr))
-    interrupted = true;
-  if (check_irq_tim(&tim4_instance, &TIM4_IRQHandler_ptr))
-    interrupted = true;
+  check_irq_tim(&tim2_instance, &TIM2_IRQHandler_ptr);
+  check_irq_tim(&tim3_instance, &TIM3_IRQHandler_ptr);
+  check_irq_tim(&tim4_instance, &TIM4_IRQHandler_ptr);
 
-  if (check_irq_exti())
-    interrupted = true;
+  check_irq_exti();
 
-  if (check_irq_i2c(&i2c1_instance, &I2C1_EV_IRQHandler_ptr,
-                    &I2C1_ER_IRQHandler_ptr))
-    interrupted = true;
-  if (check_irq_i2c(&i2c2_instance, &I2C2_EV_IRQHandler_ptr,
-                    &I2C2_ER_IRQHandler_ptr))
-    interrupted = true;
+  check_irq_i2c(&i2c1_instance, &I2C1_EV_IRQHandler_ptr,
+                &I2C1_ER_IRQHandler_ptr);
+  check_irq_i2c(&i2c2_instance, &I2C2_EV_IRQHandler_ptr,
+                &I2C2_ER_IRQHandler_ptr);
 
-  if (check_irq_usart(&usart1_instance, &USART1_IRQHandler_ptr))
-    interrupted = true;
-  if (check_irq_usart(&usart2_instance, &USART2_IRQHandler_ptr))
-    interrupted = true;
-  if (check_irq_usart(&usart3_instance, &USART3_IRQHandler_ptr))
-    interrupted = true;
+  check_irq_usart(&usart1_instance, &USART1_IRQHandler_ptr);
+  check_irq_usart(&usart2_instance, &USART2_IRQHandler_ptr);
+  check_irq_usart(&usart3_instance, &USART3_IRQHandler_ptr);
 
-  if (check_irq_pendsv())
-    interrupted = true;
+  check_irq_pendsv();
 
   // Trigger persistent hooks
 

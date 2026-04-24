@@ -60,6 +60,35 @@ void
 enable_irq();
 
 /**
+ * @brief Simulate enabling an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to enable.
+ */
+void
+nvic_enable_irq(uint32_t irq_no);
+
+/**
+ * @brief Simulate disabling an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to disable.
+ */
+void
+nvic_disable_irq(uint32_t irq_no);
+
+/**
+ * @brief Simulate setting the priority of an interrupt in the mock NVIC.
+ * @param irq_no The IRQ number to set the priority for.
+ * @param priority The priority level to set for the specified IRQ.
+ */
+void
+nvic_set_priority(uint32_t irq_no, uint32_t priority);
+
+/**
+ * @brief Configure the SysTick timer with the specified number of ticks.
+ * @param ticks The number of ticks to configure the SysTick timer with.
+ */
+void
+systick_config(uint32_t ticks);
+
+/**
  * @brief Simulate a WFI (Wait For Interrupt) instruction. This function will
  * block until an interrupt is simulated, allowing the test to verify that the
  * firmware correctly handles low-power states and wakes up on interrupts.
