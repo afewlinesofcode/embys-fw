@@ -5,7 +5,7 @@ WORK_DIR := /work/tests
 
 SRC_DIR := .
 
-LDLIBS = -lstm32-base -lstm32-sim
+LDLIBS = -lstm32-gpio -lstm32-base -lstm32-sim
 INCLUDES = -Iinclude -I$(PROJECT_ROOT)/build/include_sim
 
 include $(PROJECT_ROOT)/mk/toolchain/$(TC).mk

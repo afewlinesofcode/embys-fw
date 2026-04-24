@@ -276,8 +276,10 @@ Loop::run_modules()
   {
     if (modules[i].interrupted)
     {
+      cs_begin();
       modules[i].interrupted = false;
       DEC_V(interrupted_modules_count);
+      cs_end();
       modules[i].cb();
     }
   }
