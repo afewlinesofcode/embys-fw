@@ -17,6 +17,7 @@ all:
 	cd libs/stm32/base && $(MAKE) TC=$(TC) all
 	cd libs/stm32/gpio && $(MAKE) TC=$(TC) all
 	cd libs/stm32/uart && $(MAKE) TC=$(TC) all
+	cd libs/stm32/i2c && $(MAKE) TC=$(TC) all
 
 examples:
 	cd examples/gpio_blink && $(MAKE) TC=$(TC) all
@@ -30,6 +31,7 @@ clean:
 	cd libs/stm32/base && $(MAKE) TC=$(TC) clean
 	cd libs/stm32/gpio && $(MAKE) TC=$(TC) clean
 	cd libs/stm32/uart && $(MAKE) TC=$(TC) clean
+	cd libs/stm32/i2c && $(MAKE) TC=$(TC) clean
 	cd examples/gpio_blink && $(MAKE) TC=$(TC) clean
 	cd examples/gpio_btn_blink && $(MAKE) TC=$(TC) clean
 	cd examples/uart_print && $(MAKE) TC=$(TC) clean
