@@ -347,9 +347,8 @@ Sm::handle_read_data_n()
 void
 Sm::done()
 {
+  __DSB();
   disable_buf_irq(i2c);
-  ack(i2c);
-  pos_disable(i2c);
   result = 0;
   result_ready = true;
 }
@@ -360,8 +359,7 @@ Sm::error(int result_code)
   disable_buf_irq(i2c);
   CLEAR_BIT_V(i2c->SR1, err_mask);
   stop_condition(i2c);
-  ack(i2c);
-  pos_disable(i2c);
+  __DSB();
   result = result_code;
   result_ready = true;
 }

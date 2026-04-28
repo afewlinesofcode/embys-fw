@@ -1,5 +1,7 @@
 #include "write.hpp"
 
+#include <embys/stm32/debug.hpp>
+
 namespace Embys::Stm32::I2c::Dev
 {
 
@@ -12,6 +14,7 @@ Write::exec(uint8_t addr, const uint8_t *buf, uint16_t len, Cb cb)
 {
   this->cb = cb;
   int rc = bus->write(addr, buf, len, {i2c_callback, this});
+
   if (rc != 0)
     cb(rc);
 }

@@ -1,12 +1,14 @@
 #include "pulse_enable.hpp"
 
+#include <embys/stm32/debug.hpp>
+
 #include "write.hpp"
 
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-PulseEnable::PulseEnable(Write *write, I2c::Dev::Delay *timeout)
-  : write(write), timeout(timeout)
+PulseEnable::PulseEnable(Write *write, I2c::Dev::Delay *delay)
+  : write(write), delay(delay)
 {
 }
 
@@ -23,7 +25,7 @@ void
 PulseEnable::timeout_us(uint32_t us, Stage st)
 {
   stage = st;
-  timeout->exec(us, {command_callback, this});
+  delay->exec(us, {command_callback, this});
 }
 
 void

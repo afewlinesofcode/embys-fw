@@ -14,7 +14,7 @@ class Write;
 class PulseEnable
 {
 public:
-  PulseEnable(Write *write, I2c::Dev::Delay *timeout);
+  PulseEnable(Write *write, I2c::Dev::Delay *delay);
 
   inline Write *
   get_write()
@@ -27,7 +27,7 @@ public:
 
 private:
   Write *write;
-  I2c::Dev::Delay *timeout;
+  I2c::Dev::Delay *delay;
   uint8_t high = 0;
   uint8_t low = 0;
   Cb cb;

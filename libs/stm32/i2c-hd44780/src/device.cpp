@@ -4,15 +4,15 @@ namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
 Device::Device(Base::Loop *loop, I2c::Bus *bus, uint8_t addr7)
-  : cmd_timeout(loop), cmd_write(bus, addr7),
-    cmd_pulse_enable(&cmd_write, &cmd_timeout),
+  : cmd_delay(loop), cmd_write(bus, addr7),
+    cmd_pulse_enable(&cmd_write, &cmd_delay),
     cmd_write_bits(&state, &cmd_pulse_enable), cmd_send(&cmd_write_bits),
     cmd_set_cursor(&state, &cmd_send),
-    cmd_clear(&cmd_send, &cmd_set_cursor, &cmd_timeout),
-    cmd_home(&state, &cmd_send, &cmd_timeout),
+    cmd_clear(&cmd_send, &cmd_set_cursor, &cmd_delay),
+    cmd_home(&state, &cmd_send, &cmd_delay),
     cmd_print(&state, &cmd_send, &cmd_clear, &cmd_set_cursor),
     cmd_create_char(&cmd_send), cmd_init(&state, &cmd_write, &cmd_write_bits,
-                                         &cmd_send, &cmd_clear, &cmd_timeout)
+                                         &cmd_send, &cmd_clear, &cmd_delay)
 {
 }
 

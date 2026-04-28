@@ -9,13 +9,17 @@ namespace Embys::Stm32::I2c
 // ─────────────────────────────────────────────────────────────
 
 static void
-busy_wait_us([[maybe_unused]] uint32_t us)
+busy_wait_us(uint32_t us)
 {
-#ifndef STM32_SIM
-  uint32_t count = (us * (SystemCoreClock / 1'000'000u)) / 4u;
-  for (uint32_t i = 0u; i < count; i++)
-    __NOP();
+  uint32_t start_cyc = DWT->CYCCNT;
+  uint32_t wait_cyc = us * (SystemCoreClock / 1'000'000);
+
+#ifdef STM32_SIM
+  wait_cyc /= 100;
 #endif
+
+  while ((DWT->CYCCNT - start_cyc) < wait_cyc)
+    __NOP();
 }
 
 static void
@@ -32,11 +36,12 @@ static void
 peripheral_reset(I2C_TypeDef *i2c)
 {
   stop_condition(i2c);
-  busy_wait_us(5000u); // tBUF min
+  busy_wait_us(5u); // tBUF min
   CLEAR_BIT_V(i2c->CR1, I2C_CR1_PE);
-  busy_wait_us(500u);
+  busy_wait_us(1u);
   SET_BIT_V(i2c->CR1, I2C_CR1_PE);
-  busy_wait_us(500u);
+  busy_wait_us(1u);
+
   ack(i2c);
   pos_disable(i2c);
 }
@@ -45,9 +50,9 @@ static void
 soft_reset(I2C_TypeDef *i2c)
 {
   SET_BIT_V(i2c->CR1, I2C_CR1_SWRST);
-  busy_wait_us(5u);
+  busy_wait_us(2u);
   CLEAR_BIT_V(i2c->CR1, I2C_CR1_SWRST);
-  busy_wait_us(5u);
+  busy_wait_us(2u);
   ack(i2c);
   pos_disable(i2c);
 }
@@ -67,7 +72,7 @@ hard_reset(I2C_TypeDef *i2c)
     busy_wait_us(1u);
     CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_I2C2RST);
   }
-  busy_wait_us(500u);
+  busy_wait_us(3u);
   ack(i2c);
   pos_disable(i2c);
 }
@@ -78,6 +83,16 @@ clear_errors(I2C_TypeDef *i2c)
   CLEAR_BIT_V(i2c->SR1, err_mask);
   if (addr_latched(i2c))
     clear_addr(i2c);
+}
+
+static void
+wait_not_busy(I2C_TypeDef *i2c)
+{
+  uint32_t start_cyc = DWT->CYCCNT;
+  uint32_t timeout_cyc = 5000u * (SystemCoreClock / 1'000'000); // 5 ms
+
+  while (is_busy(i2c) && (DWT->CYCCNT - start_cyc) < timeout_cyc)
+    __NOP();
 }
 
 // ── public functions
@@ -183,18 +198,21 @@ reset_i2c(I2C_TypeDef *i2c)
 
   peripheral_reset(i2c);
   clear_errors(i2c);
+  wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
     return 0;
 
   soft_reset(i2c);
   restore_timing(i2c, cr2_save, ccr_save, trise_save);
   clear_errors(i2c);
+  wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
     return 0;
 
   hard_reset(i2c);
   restore_timing(i2c, cr2_save, ccr_save, trise_save);
   clear_errors(i2c);
+  wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
     return 0;
 

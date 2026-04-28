@@ -11,7 +11,10 @@ void
 Delay::exec(uint32_t us, Cb cb)
 {
   this->cb = cb;
-  (void)ev.enable(us);
+  int rc = ev.enable(us);
+
+  if (rc != 0)
+    cb(rc);
 }
 
 void

@@ -12,6 +12,7 @@ Read::exec(uint8_t addr, uint8_t *buf, uint16_t len, Cb cb)
 {
   this->cb = cb;
   int rc = bus->read(addr, buf, len, {i2c_callback, this});
+
   if (rc != 0)
     cb(rc);
 }
@@ -21,6 +22,7 @@ Read::exec(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len, Cb cb)
 {
   this->cb = cb;
   int rc = bus->read(addr, reg, buf, len, {i2c_callback, this});
+
   if (rc != 0)
     cb(rc);
 }

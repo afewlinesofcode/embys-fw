@@ -1,5 +1,7 @@
 #include "init.hpp"
 
+#include <embys/stm32/debug.hpp>
+
 #include "clear.hpp"
 #include "send.hpp"
 #include "state.hpp"
@@ -10,9 +12,9 @@ namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
 Init::Init(State *state, Write *write, WriteBits *write_bits, Send *send,
-           Clear *clear, I2c::Dev::Delay *timeout)
+           Clear *clear, I2c::Dev::Delay *delay)
   : state(state), write(write), write_bits(write_bits), send(send),
-    clear(clear), timeout(timeout)
+    clear(clear), delay(delay)
 {
 }
 
@@ -21,14 +23,14 @@ Init::exec(Cb cb)
 {
   this->cb = cb;
   state->backlight = false;
-  timeout_us(50000, Timeout1);
+  delay_us(50000, Delay1);
 }
 
 void
-Init::timeout_us(uint32_t us, Stage st)
+Init::delay_us(uint32_t us, Stage st)
 {
   stage = st;
-  timeout->exec(us, {command_callback, this});
+  delay->exec(us, {command_callback, this});
 }
 
 void
@@ -72,37 +74,37 @@ Init::command_callback(void *ctx, int result)
 
   switch (cmd->stage)
   {
-    case Timeout1:
+    case Delay1:
       cmd->write_cmd(0x00, InitStateMode);
       break;
     case InitStateMode:
-      cmd->timeout_us(1000, Timeout2);
+      cmd->delay_us(1000, Delay2);
       break;
-    case Timeout2:
+    case Delay2:
       cmd->write_bits_cmd(0x03, Mode8Bit1);
       break;
     case Mode8Bit1:
-      cmd->timeout_us(5000, Timeout3);
+      cmd->delay_us(5000, Delay3);
       break;
-    case Timeout3:
+    case Delay3:
       cmd->write_bits_cmd(0x03, Mode8Bit2);
       break;
     case Mode8Bit2:
-      cmd->timeout_us(5000, Timeout4);
+      cmd->delay_us(5000, Delay4);
       break;
-    case Timeout4:
+    case Delay4:
       cmd->write_bits_cmd(0x03, Mode8Bit3);
       break;
     case Mode8Bit3:
-      cmd->timeout_us(150, Timeout5);
+      cmd->delay_us(150, Delay5);
       break;
-    case Timeout5:
+    case Delay5:
       cmd->write_bits_cmd(0x02, Mode4Bit);
       break;
     case Mode4Bit:
-      cmd->timeout_us(150, Timeout6);
+      cmd->delay_us(150, Delay6);
       break;
-    case Timeout6:
+    case Delay6:
       cmd->send_cmd(LCD_FUNCTION_SET | LCD_4BIT_MODE | LCD_2LINE | LCD_5x8DOTS,
                     FunctionSet);
       break;

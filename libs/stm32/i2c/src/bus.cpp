@@ -9,21 +9,12 @@ Bus::Bus(I2C_TypeDef *i2c_, Base::Loop *base_)
   : i2c(i2c_), base(base_), sm(i2c_),
     timeout_event(base_, Base::EV_RT, {Bus::timeout_handler, this})
 {
-  if (i2c == I2C1 && !instances[0])
-    instances[0] = this;
-  else if (i2c == I2C2 && !instances[1])
-    instances[1] = this;
 }
 
 Bus::~Bus()
 {
   if (enabled)
     (void)disable();
-
-  if (i2c == I2C1 && instances[0] == this)
-    instances[0] = nullptr;
-  else if (i2c == I2C2 && instances[1] == this)
-    instances[1] = nullptr;
 }
 
 int
@@ -34,8 +25,8 @@ Bus::enable(uint32_t scl_hz_)
 
   TRY(enable_i2c(i2c, scl_hz_));
 
-  if (is_busy(i2c))
-    (void)reset_i2c(i2c);
+  if (is_busy())
+    TRY(reset_i2c(i2c));
 
   module = base->add_module({Bus::module_handler, this});
   if (!module)
@@ -56,7 +47,7 @@ Bus::disable()
   if (!enabled)
     return 0;
 
-  (void)timeout_event.disable();
+  TRY(timeout_event.disable());
   base->remove_module(module);
   module = nullptr;
 
@@ -73,11 +64,8 @@ Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb)
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  int rc = sm.start_read(cb, addr7, buf, len);
-  if (rc == INVALID_STATE)
-    return BUSY;
-  TRY(rc);
-  (void)timeout_event.enable(calc_timeout_us(len));
+  TRY(sm.start_read(cb, addr7, buf, len));
+  TRY(timeout_event.enable(calc_timeout_us(len)));
 
   return 0;
 }
@@ -89,11 +77,8 @@ Bus::read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  int rc = sm.start_read(cb, addr7, reg, buf, len);
-  if (rc == INVALID_STATE)
-    return BUSY;
-  TRY(rc);
-  (void)timeout_event.enable(calc_timeout_us(static_cast<uint16_t>(len + 1u)));
+  TRY(sm.start_read(cb, addr7, reg, buf, len));
+  TRY(timeout_event.enable(calc_timeout_us(len + 1)));
 
   return 0;
 }
@@ -104,11 +89,8 @@ Bus::write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callable<int> cb)
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  int rc = sm.start_write(cb, addr7, buf, len);
-  if (rc == INVALID_STATE)
-    return BUSY;
-  TRY(rc);
-  (void)timeout_event.enable(calc_timeout_us(len));
+  TRY(sm.start_write(cb, addr7, buf, len));
+  TRY(timeout_event.enable(calc_timeout_us(len)));
 
   return 0;
 }
@@ -127,6 +109,7 @@ Bus::handle_er_irq()
   sm.handle_error();
   if (sm.is_result_ready())
     module_notify();
+  i2c->SR1 = 0; // Clear error flags to avoid repeated interrupts
 }
 
 // ── private
@@ -163,28 +146,6 @@ Bus::timeout_handler(void *context)
   auto *self = static_cast<Bus *>(context);
   self->sm.force_timeout();
   self->module_notify();
-}
-
-Bus *instances[2] = {nullptr, nullptr};
-
-void
-ev_irq_handler(uint8_t index)
-{
-  auto *bus = instances[index];
-  if (bus)
-    bus->handle_ev_irq();
-}
-
-void
-er_irq_handler(uint8_t index)
-{
-  auto *bus = instances[index];
-  if (bus)
-    bus->handle_er_irq();
-  else if (index == 0u)
-    I2C1->SR1 = 0u; // clear flags to prevent IRQ storm
-  else
-    I2C2->SR1 = 0u;
 }
 
 }; // namespace Embys::Stm32::I2c

@@ -13,12 +13,6 @@
 namespace Embys::Stm32::I2c
 {
 
-void
-ev_irq_handler(uint8_t index);
-
-void
-er_irq_handler(uint8_t index);
-
 /**
  * @class Bus
  * @brief Interrupt-driven I2C master for STM32F1.
@@ -32,8 +26,8 @@ er_irq_handler(uint8_t index);
  * The caller is responsible for:
  * - Configuring SCL/SDA GPIO pins
  * - Enabling NVIC for I2Cx_EV_IRQn and I2Cx_ER_IRQn
- * - Wiring I2Cx_EV_IRQHandler → ev_irq_handler(n)
- * - Wiring I2Cx_ER_IRQHandler → er_irq_handler(n)
+ * - Wiring I2Cx_EV_IRQHandler → bus.handle_ev_irq()
+ * - Wiring I2Cx_ER_IRQHandler → bus.handle_er_irq()
  * - Provisioning one extra event slot in the Loop for the timeout event
  *
  * Example:
@@ -41,8 +35,8 @@ er_irq_handler(uint8_t index);
  * I2c::Bus bus(I2C1, &loop);
  * bus.enable(400000);
  *
- * void I2C1_EV_IRQHandler() { I2c::ev_irq_handler(0); }
- * void I2C1_ER_IRQHandler() { I2c::er_irq_handler(0); }
+ * void I2C1_EV_IRQHandler() { bus.handle_ev_irq(); }
+ * void I2C1_ER_IRQHandler() { bus.handle_er_irq(); }
  * ```
  */
 class Bus
@@ -68,6 +62,12 @@ public:
   is_enabled() const
   {
     return enabled;
+  }
+
+  inline bool
+  is_busy() const
+  {
+    return I2c::is_busy(i2c);
   }
 
   /**
@@ -148,7 +148,5 @@ private:
   static void
   timeout_handler(void *context);
 };
-
-extern Bus *instances[2];
 
 }; // namespace Embys::Stm32::I2c

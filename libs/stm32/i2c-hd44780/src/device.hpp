@@ -117,7 +117,7 @@ public:
   }
 
 private:
-  I2c::Dev::Delay cmd_timeout;
+  I2c::Dev::Delay cmd_delay;
   Write cmd_write;
   PulseEnable cmd_pulse_enable;
   WriteBits cmd_write_bits;
