@@ -21,6 +21,8 @@ all:
 examples:
 	cd examples/gpio_blink && $(MAKE) TC=$(TC) all
 	cd examples/gpio_btn_blink && $(MAKE) TC=$(TC) all
+	cd examples/uart_print && $(MAKE) TC=$(TC) all
+	cd examples/uart_echo && $(MAKE) TC=$(TC) all
 
 clean:
 	cd libs/stm32/common && $(MAKE) TC=$(TC) clean
@@ -30,5 +32,7 @@ clean:
 	cd libs/stm32/uart && $(MAKE) TC=$(TC) clean
 	cd examples/gpio_blink && $(MAKE) TC=$(TC) clean
 	cd examples/gpio_btn_blink && $(MAKE) TC=$(TC) clean
+	cd examples/uart_print && $(MAKE) TC=$(TC) clean
+	cd examples/uart_echo && $(MAKE) TC=$(TC) clean
 
 .PHONY: all test clean-tests examples clean
