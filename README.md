@@ -1,6 +1,8 @@
 # Embys FW
 
-A small firmware experimentation framework for exploring interrupt-driven architectures, peripheral behaviour simulation and deterministic firmware loops. Currently focused on STM32 microcontrollers. I have a Blue Pill, so I build and test on it.
+Embys FW is a modular C++ firmware foundation for STM32-based systems, built around an interrupt-driven event loop, deterministic scheduling, peripheral drivers, and lightweight simulation for testing firmware logic on x86.
+
+It is tested on the STM32F103C8T6 "Blue Pill" board, but should be portable to other STM32F1 chips with minimal adjustments. The simulation is designed to run in a Linux container and provides a way to test application logic without needing physical hardware.
 
 Features:
 
