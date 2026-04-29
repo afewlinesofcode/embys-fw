@@ -79,6 +79,7 @@ send_message(void *context)
 
   tx_busy = true;
   bus->write(reinterpret_cast<const uint8_t *>(message), sizeof(message) - 1);
+  SIM_LOG(message);
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
@@ -89,7 +90,6 @@ main()
   SIM_RESET();
 
 
-  // ── timer + loop ─────────────────────────────────────────────────────
   // events: print event + internal UART timeout event + loop stop event
   constexpr size_t events_capacity = 3;
   Base::Event *event_slots[events_capacity];
@@ -100,12 +100,10 @@ main()
   Base::Module module_slots[modules_capacity];
 
   Base::Timer timer(TIM2);
-  timer_ptr = &timer;
 
   Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
                   module_slots, modules_capacity);
 
-  // ── configure USART1 GPIO ────────────────────────────────────
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
   Gpio::Pin *gpio_pin_slots[2];
@@ -115,28 +113,33 @@ main()
   Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
                    Gpio::PinCfg::NONE);
 
+
+  uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)
+  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  uart.set_tx_callback({on_tx_done, nullptr});
+
+  Base::Event print_event(&loop, Base::EV_PERSIST, {send_message, &uart});
+
+  // Set global pointers for IRQ handlers (not strictly necessary in this
+  // example since handlers are simple, but included for demonstration and
+  // future extensibility)
+  timer_ptr = &timer;
+  uart_ptr = &uart;
+
+  // Enable peripherals
   gpio_bus.enable();
   pin_tx.enable();
   pin_rx.enable();
-
-  // ── UART bus ──────────────────────────────────────────────────────────
-  uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
-  uart_ptr = &uart;
-  uart.set_tx_callback({on_tx_done, nullptr});
-
   uart.enable(UART_BAUD);
-
-  // ── print event ───────────────────────────────────────────────────────
-  Base::Event print_event(&loop, Base::EV_PERSIST, {send_message, &uart});
   print_event.enable(PRINT_INTERVAL_US);
 
-  // ── enable NVIC ───────────────────────────────────────────────────────
+  // Enable IRQs
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0);
   __NVIC_EnableIRQ(USART1_IRQn);
   __NVIC_SetPriority(USART1_IRQn, 1);
 
+  // Run the main loop
   loop.run();
 
   return 0;

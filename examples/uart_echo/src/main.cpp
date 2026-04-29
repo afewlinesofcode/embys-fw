@@ -136,8 +136,8 @@ main()
 {
   SIM_RESET();
 
+  AppContext ctx;
 
-  // ── timer + loop ─────────────────────────────────────────────────────
   // events: UART timeout event + loop stop event
   constexpr size_t events_capacity = 2;
   Base::Event *event_slots[events_capacity];
@@ -148,12 +148,10 @@ main()
   Base::Module module_slots[modules_capacity];
 
   Base::Timer timer(TIM2);
-  timer_ptr = &timer;
 
   Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
                   module_slots, modules_capacity);
 
-  // ── configure USART1 GPIO ────────────────────────────────────
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
   Gpio::Pin *gpio_pin_slots[2];
@@ -163,25 +161,23 @@ main()
   Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
                    Gpio::PinCfg::NONE);
 
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
-
-  // ── UART bus ──────────────────────────────────────────────────────────
   uint8_t rx_buf[64];
   Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  uart.set_rx_callback({on_rx_byte, &ctx});
+  uart.set_tx_callback({on_tx_done, &ctx});
+
+  timer_ptr = &timer;
   uart_ptr = &uart;
 
-  AppContext ctx;
   ctx.uart = &uart;
   ctx.line_len = 0;
   ctx.tx_busy = false;
 
-  uart.set_rx_callback({on_rx_byte, &ctx});
-  uart.set_tx_callback({on_tx_done, &ctx});
+  gpio_bus.enable();
+  pin_tx.enable();
+  pin_rx.enable();
   uart.enable(UART_BAUD);
 
-  // ── enable NVIC ───────────────────────────────────────────────────────
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0);
   __NVIC_EnableIRQ(USART1_IRQn);
