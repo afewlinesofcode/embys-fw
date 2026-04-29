@@ -13,5 +13,15 @@ include $(PROJECT_ROOT)/mk/docker.mk
 
 all: .run-in-docker
 
+.only: $(TARGET)
+	$(TARGET) --test-case="ONLY*"
+
+only: .only-in-docker
+
+.only-suite: $(TARGET)
+	$(TARGET) --test-suite="ONLY*"
+
+only-suite: .only-suite-in-docker
+
 clean:
 	rm -rf $(TARGET) $(OBJ_DIR)

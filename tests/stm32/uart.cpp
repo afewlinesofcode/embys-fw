@@ -95,240 +95,250 @@ struct UartRedeFixture : UartLoopFixture
 
 // ── calc_frame_bits ───────────────────────────────────────────────────────
 
-TEST_CASE("calc_frame_bits: W8 + 1 stop bit = 10 total bits")
+TEST_SUITE("uart")
 {
-  CHECK(Uart::calc_frame_bits(Uart::WordLength::W8, Uart::StopBits::One) == 10);
-}
 
-TEST_CASE("calc_frame_bits: W9 + 2 stop bits = 12 total bits")
-{
-  CHECK(Uart::calc_frame_bits(Uart::WordLength::W9, Uart::StopBits::Two) == 12);
-}
+  TEST_CASE("calc_frame_bits: W8 + 1 stop bit = 10 total bits")
+  {
+    CHECK(Uart::calc_frame_bits(Uart::WordLength::W8, Uart::StopBits::One) ==
+          10);
+  }
 
-// ── enable_uart / disable_uart ────────────────────────────────────────────
+  TEST_CASE("calc_frame_bits: W9 + 2 stop bits = 12 total bits")
+  {
+    CHECK(Uart::calc_frame_bits(Uart::WordLength::W9, Uart::StopBits::Two) ==
+          12);
+  }
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "enable_uart: enables APB1 clock and sets UE, TE, RE, RXNEIE")
-{
-  Uart::enable_uart(USART2, 115200, Uart::WordLength::W8, Uart::StopBits::One,
-                    Uart::Parity::None);
+  // ── enable_uart / disable_uart ────────────────────────────────────────────
 
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) != 0);
-  CHECK((USART2->CR1 & USART_CR1_UE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_TE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_RE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_RXNEIE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_TXEIE) == 0);
-  CHECK((USART2->CR1 & USART_CR1_TCIE) == 0);
-}
+  TEST_CASE_FIXTURE(
+      UartBaseFixture,
+      "enable_uart: enables APB1 clock and sets UE, TE, RE, RXNEIE")
+  {
+    Uart::enable_uart(USART2, 115200, Uart::WordLength::W8, Uart::StopBits::One,
+                      Uart::Parity::None);
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "enable_uart: BRR matches APB1 clock divided by baud rate")
-{
-  constexpr uint32_t baud = 115200;
-  Uart::enable_uart(USART2, baud, Uart::WordLength::W8, Uart::StopBits::One,
-                    Uart::Parity::None);
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) != 0);
+    CHECK((USART2->CR1 & USART_CR1_UE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_TE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_RE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_RXNEIE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_TXEIE) == 0);
+    CHECK((USART2->CR1 & USART_CR1_TCIE) == 0);
+  }
 
-  CHECK(USART2->BRR == SystemCoreClock / 2 / baud);
-}
+  TEST_CASE_FIXTURE(UartBaseFixture,
+                    "enable_uart: BRR matches APB1 clock divided by baud rate")
+  {
+    constexpr uint32_t baud = 115200;
+    Uart::enable_uart(USART2, baud, Uart::WordLength::W8, Uart::StopBits::One,
+                      Uart::Parity::None);
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "enable_uart: two stop bits configures CR2.STOP")
-{
-  Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::Two,
-                    Uart::Parity::None);
+    CHECK(USART2->BRR == SystemCoreClock / 2 / baud);
+  }
 
-  CHECK((USART2->CR2 & USART_CR2_STOP) ==
-        (static_cast<uint32_t>(Uart::StopBits::Two) << USART_CR2_STOP_Pos));
-}
+  TEST_CASE_FIXTURE(UartBaseFixture,
+                    "enable_uart: two stop bits configures CR2.STOP")
+  {
+    Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::Two,
+                      Uart::Parity::None);
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "enable_uart: even parity sets PCE, clears PS")
-{
-  Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::One,
-                    Uart::Parity::Even);
+    CHECK((USART2->CR2 & USART_CR2_STOP) ==
+          (static_cast<uint32_t>(Uart::StopBits::Two) << USART_CR2_STOP_Pos));
+  }
 
-  CHECK((USART2->CR1 & USART_CR1_PCE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_PS) == 0);
-}
+  TEST_CASE_FIXTURE(UartBaseFixture,
+                    "enable_uart: even parity sets PCE, clears PS")
+  {
+    Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::One,
+                      Uart::Parity::Even);
 
-TEST_CASE_FIXTURE(UartBaseFixture, "enable_uart: odd parity sets PCE and PS")
-{
-  Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::One,
-                    Uart::Parity::Odd);
+    CHECK((USART2->CR1 & USART_CR1_PCE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_PS) == 0);
+  }
 
-  CHECK((USART2->CR1 & USART_CR1_PCE) != 0);
-  CHECK((USART2->CR1 & USART_CR1_PS) != 0);
-}
+  TEST_CASE_FIXTURE(UartBaseFixture, "enable_uart: odd parity sets PCE and PS")
+  {
+    Uart::enable_uart(USART2, 9600, Uart::WordLength::W8, Uart::StopBits::One,
+                      Uart::Parity::Odd);
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "enable_uart: returns INVALID_USART for unknown peripheral")
-{
-  CHECK(Uart::enable_uart(nullptr, 9600, Uart::WordLength::W8,
-                          Uart::StopBits::One,
-                          Uart::Parity::None) == Uart::INVALID_USART);
-}
+    CHECK((USART2->CR1 & USART_CR1_PCE) != 0);
+    CHECK((USART2->CR1 & USART_CR1_PS) != 0);
+  }
 
-TEST_CASE_FIXTURE(UartBaseFixture,
-                  "disable_uart: clears UE and disables APB1 clock")
-{
-  Uart::enable_uart(USART2, 115200, Uart::WordLength::W8, Uart::StopBits::One,
-                    Uart::Parity::None);
-  Uart::disable_uart(USART2);
+  TEST_CASE_FIXTURE(UartBaseFixture,
+                    "enable_uart: returns INVALID_USART for unknown peripheral")
+  {
+    CHECK(Uart::enable_uart(nullptr, 9600, Uart::WordLength::W8,
+                            Uart::StopBits::One,
+                            Uart::Parity::None) == Uart::INVALID_USART);
+  }
 
-  CHECK((USART2->CR1 & USART_CR1_UE) == 0);
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) == 0);
-}
+  TEST_CASE_FIXTURE(UartBaseFixture,
+                    "disable_uart: clears UE and disables APB1 clock")
+  {
+    Uart::enable_uart(USART2, 115200, Uart::WordLength::W8, Uart::StopBits::One,
+                      Uart::Parity::None);
+    Uart::disable_uart(USART2);
 
-// ── Bus::enable / disable ─────────────────────────────────────────────────
+    CHECK((USART2->CR1 & USART_CR1_UE) == 0);
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) == 0);
+  }
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus::enable registers module and reports is_enabled")
-{
-  CHECK(!bus.is_enabled());
-  CHECK(bus.enable(115200) == 0);
-  CHECK(bus.is_enabled());
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) != 0);
-  CHECK((USART2->CR1 & USART_CR1_UE) != 0);
-}
+  // ── Bus::enable / disable ─────────────────────────────────────────────────
 
-TEST_CASE_FIXTURE(UartLoopFixture, "Bus::enable is idempotent")
-{
-  bus.enable(115200);
-  uint32_t cr1 = USART2->CR1;
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::enable registers module and reports is_enabled")
+  {
+    CHECK(!bus.is_enabled());
+    CHECK(bus.enable(115200) == 0);
+    CHECK(bus.is_enabled());
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) != 0);
+    CHECK((USART2->CR1 & USART_CR1_UE) != 0);
+  }
 
-  bus.enable(9600); // second call with different rate — no-op
-  CHECK(USART2->CR1 == cr1);
-}
+  TEST_CASE_FIXTURE(UartLoopFixture, "Bus::enable is idempotent")
+  {
+    bus.enable(115200);
+    uint32_t cr1 = USART2->CR1;
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus::disable deregisters module and disables peripheral")
-{
-  bus.enable(115200);
-  CHECK(bus.disable() == 0);
-  CHECK(!bus.is_enabled());
-  CHECK((USART2->CR1 & USART_CR1_UE) == 0);
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) == 0);
-}
+    bus.enable(9600); // second call with different rate — no-op
+    CHECK(USART2->CR1 == cr1);
+  }
 
-// ── TX ────────────────────────────────────────────────────────────────────
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::disable deregisters module and disables peripheral")
+  {
+    bus.enable(115200);
+    CHECK(bus.disable() == 0);
+    CHECK(!bus.is_enabled());
+    CHECK((USART2->CR1 & USART_CR1_UE) == 0);
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_USART2EN) == 0);
+  }
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus::write returns BUS_NOT_ENABLED when not enabled")
-{
-  const uint8_t data[] = {0x01};
-  CHECK(bus.write(data, sizeof(data)) == Uart::BUS_NOT_ENABLED);
-}
+  // ── TX ────────────────────────────────────────────────────────────────────
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus::write enables TXEIE and reports is_tx_busy")
-{
-  bus.enable(115200);
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::write returns BUS_NOT_ENABLED when not enabled")
+  {
+    const uint8_t data[] = {0x01};
+    CHECK(bus.write(data, sizeof(data)) == Uart::BUS_NOT_ENABLED);
+  }
 
-  const uint8_t data[] = {0xAB};
-  CHECK(bus.write(data, sizeof(data)) == 0);
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::write enables TXEIE and reports is_tx_busy")
+  {
+    bus.enable(115200);
 
-  CHECK(bus.is_tx_busy());
-  CHECK((USART2->CR1 & USART_CR1_TXEIE) != 0);
-}
+    const uint8_t data[] = {0xAB};
+    CHECK(bus.write(data, sizeof(data)) == 0);
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus::write returns TX_BUSY while transmit is in progress")
-{
-  bus.enable(115200);
+    CHECK(bus.is_tx_busy());
+    CHECK((USART2->CR1 & USART_CR1_TXEIE) != 0);
+  }
 
-  const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
-  CHECK(bus.write(data, sizeof(data)) == 0);
-  CHECK(bus.write(data, sizeof(data)) == Uart::TX_BUSY);
-}
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::write returns TX_BUSY while transmit is in progress")
+  {
+    bus.enable(115200);
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus: transmitted bytes appear in sim tx_buffers, "
-                  "callback receives zero result")
-{
-  bus.enable(115200);
+    const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
+    CHECK(bus.write(data, sizeof(data)) == 0);
+    CHECK(bus.write(data, sizeof(data)) == Uart::TX_BUSY);
+  }
 
-  int tx_result = -1;
-  bus.set_tx_callback(
-      {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus: transmitted bytes appear in sim tx_buffers, "
+                    "callback receives zero result")
+  {
+    bus.enable(115200);
 
-  const uint8_t data[] = {0xDE, 0xAD};
-  bus.write(data, sizeof(data));
+    int tx_result = -1;
+    bus.set_tx_callback(
+        {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
 
-  loop.stop(5000);
-  loop.run();
+    const uint8_t data[] = {0xDE, 0xAD};
+    bus.write(data, sizeof(data));
 
-  CHECK(tx_result == 0);
-  CHECK(!bus.is_tx_busy());
-  REQUIRE(!Sim::Uart::tx_buffers.empty());
-  CHECK(Sim::Uart::tx_buffers.back() == std::vector<uint8_t>({0xDE, 0xAD}));
-}
+    loop.stop(5000);
+    loop.run();
 
-// ── RX ────────────────────────────────────────────────────────────────────
+    CHECK(tx_result == 0);
+    CHECK(!bus.is_tx_busy());
+    REQUIRE(!Sim::Uart::tx_buffers.empty());
+    CHECK(Sim::Uart::tx_buffers.back() == std::vector<uint8_t>({0xDE, 0xAD}));
+  }
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus: single received byte delivered to RX callback")
-{
-  bus.enable(115200);
+  // ── RX ────────────────────────────────────────────────────────────────────
 
-  std::vector<uint8_t> received;
-  bus.set_rx_callback(
-      {[](void *ctx, uint8_t b)
-       { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); }, &received});
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus: single received byte delivered to RX callback")
+  {
+    bus.enable(115200);
 
-  Sim::Uart::simulate_rx({'A'});
+    std::vector<uint8_t> received;
+    bus.set_rx_callback(
+        {[](void *ctx, uint8_t b)
+         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); },
+         &received});
 
-  loop.stop(5000);
-  loop.run();
+    Sim::Uart::simulate_rx({'A'});
 
-  REQUIRE(received.size() == 1);
-  CHECK(received[0] == 'A');
-}
+    loop.stop(5000);
+    loop.run();
 
-TEST_CASE_FIXTURE(UartLoopFixture,
-                  "Bus: multiple received bytes delivered in order")
-{
-  bus.enable(115200);
+    REQUIRE(received.size() == 1);
+    CHECK(received[0] == 'A');
+  }
 
-  std::vector<uint8_t> received;
-  bus.set_rx_callback(
-      {[](void *ctx, uint8_t b)
-       { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); }, &received});
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus: multiple received bytes delivered in order")
+  {
+    bus.enable(115200);
 
-  Sim::Uart::simulate_rx({0x11, 0x22, 0x33});
+    std::vector<uint8_t> received;
+    bus.set_rx_callback(
+        {[](void *ctx, uint8_t b)
+         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); },
+         &received});
 
-  loop.stop(5000);
-  loop.run();
+    Sim::Uart::simulate_rx({0x11, 0x22, 0x33});
 
-  REQUIRE(received.size() == 3);
-  CHECK(received[0] == 0x11);
-  CHECK(received[1] == 0x22);
-  CHECK(received[2] == 0x33);
-}
+    loop.stop(5000);
+    loop.run();
 
-// ── REDE pin ──────────────────────────────────────────────────────────────
+    REQUIRE(received.size() == 3);
+    CHECK(received[0] == 0x11);
+    CHECK(received[1] == 0x22);
+    CHECK(received[2] == 0x33);
+  }
 
-TEST_CASE_FIXTURE(UartRedeFixture,
-                  "Bus: REDE pin driven high on write, low after TC")
-{
-  bus.enable(115200);
-  bus.set_rede_pin(&rede);
+  // ── REDE pin ──────────────────────────────────────────────────────────────
 
-  int tx_result = -1;
-  bus.set_tx_callback(
-      {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
+  TEST_CASE_FIXTURE(UartRedeFixture,
+                    "Bus: REDE pin driven high on write, low after TC")
+  {
+    bus.enable(115200);
+    bus.set_rede_pin(&rede);
 
-  const uint8_t data[] = {0xCC};
-  GPIOA->BSRR = 0;
-  bus.write(data, sizeof(data));
+    int tx_result = -1;
+    bus.set_tx_callback(
+        {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
 
-  // REDE must be asserted immediately when write() is called
-  CHECK((GPIOA->BSRR & (1u << 5)) != 0);
+    const uint8_t data[] = {0xCC};
+    GPIOA->BSRR = 0;
+    bus.write(data, sizeof(data));
 
-  loop.stop(5000);
-  loop.run();
+    // REDE must be asserted immediately when write() is called
+    CHECK((GPIOA->BSRR & (1u << 5)) != 0);
 
-  // REDE must be de-asserted after the TC interrupt fires
-  CHECK(tx_result == 0);
-  CHECK((GPIOA->BSRR & (1u << (5 + 16))) != 0);
-}
+    loop.stop(5000);
+    loop.run();
+
+    // REDE must be de-asserted after the TC interrupt fires
+    CHECK(tx_result == 0);
+    CHECK((GPIOA->BSRR & (1u << (5 + 16))) != 0);
+  }
+
+} // TEST_SUITE("uart")

@@ -8,6 +8,12 @@ include mk/format.mk
 test:
 	$(MAKE) TC=sim all && cd tests && $(MAKE) all
 
+test-only:
+	$(MAKE) TC=sim all && cd tests && $(MAKE) only
+
+test-only-suite:
+	$(MAKE) TC=sim all && cd tests && $(MAKE) only-suite
+
 clean-tests:
 	cd tests && $(MAKE) clean
 

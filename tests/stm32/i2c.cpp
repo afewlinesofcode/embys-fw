@@ -78,271 +78,278 @@ struct I2cLoopFixture : I2cBaseFixture
 
 // ── enable_i2c ────────────────────────────────────────────────────────────
 
-TEST_CASE_FIXTURE(
-    I2cBaseFixture,
-    "enable_i2c: enables APB1 clock and sets PE, ITEVTEN, ITERREN")
+TEST_SUITE("i2c")
 {
-  CHECK(I2c::enable_i2c(I2C1, 100000u) == 0);
 
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) != 0);
-  CHECK((I2C1->CR1 & I2C_CR1_PE) != 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) != 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITERREN) != 0);
-  // ITBUFEN must be off — enabled on demand by the state machine
-  CHECK((I2C1->CR2 & I2C_CR2_ITBUFEN) == 0);
-}
+  TEST_CASE_FIXTURE(
+      I2cBaseFixture,
+      "enable_i2c: enables APB1 clock and sets PE, ITEVTEN, ITERREN")
+  {
+    CHECK(I2c::enable_i2c(I2C1, 100000u) == 0);
 
-TEST_CASE_FIXTURE(I2cBaseFixture,
-                  "enable_i2c: returns INVALID_I2C for unknown peripheral")
-{
-  CHECK(I2c::enable_i2c(nullptr, 100000u) == I2c::INVALID_I2C);
-}
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) != 0);
+    CHECK((I2C1->CR1 & I2C_CR1_PE) != 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) != 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITERREN) != 0);
+    // ITBUFEN must be off — enabled on demand by the state machine
+    CHECK((I2C1->CR2 & I2C_CR2_ITBUFEN) == 0);
+  }
 
-TEST_CASE_FIXTURE(I2cBaseFixture,
-                  "enable_i2c: standard mode CCR matches ceil(pclk / (2*scl))")
-{
-  constexpr uint32_t scl_hz = 100000u;
-  I2c::enable_i2c(I2C1, scl_hz);
+  TEST_CASE_FIXTURE(I2cBaseFixture,
+                    "enable_i2c: returns INVALID_I2C for unknown peripheral")
+  {
+    CHECK(I2c::enable_i2c(nullptr, 100000u) == I2c::INVALID_I2C);
+  }
 
-  uint32_t pclk_hz = SystemCoreClock / 2u;
-  uint32_t expected_ccr = (pclk_hz + (2u * scl_hz - 1u)) / (2u * scl_hz);
-  CHECK((I2C1->CCR & ~I2C_CCR_FS) == expected_ccr);
-  CHECK((I2C1->CCR & I2C_CCR_FS) == 0); // standard mode
-}
+  TEST_CASE_FIXTURE(
+      I2cBaseFixture,
+      "enable_i2c: standard mode CCR matches ceil(pclk / (2*scl))")
+  {
+    constexpr uint32_t scl_hz = 100000u;
+    I2c::enable_i2c(I2C1, scl_hz);
 
-TEST_CASE_FIXTURE(I2cBaseFixture, "enable_i2c: fast mode sets FS bit in CCR")
-{
-  I2c::enable_i2c(I2C1, 400000u);
+    uint32_t pclk_hz = SystemCoreClock / 2u;
+    uint32_t expected_ccr = (pclk_hz + (2u * scl_hz - 1u)) / (2u * scl_hz);
+    CHECK((I2C1->CCR & ~I2C_CCR_FS) == expected_ccr);
+    CHECK((I2C1->CCR & I2C_CCR_FS) == 0); // standard mode
+  }
 
-  CHECK((I2C1->CCR & I2C_CCR_FS) != 0);
-}
+  TEST_CASE_FIXTURE(I2cBaseFixture, "enable_i2c: fast mode sets FS bit in CCR")
+  {
+    I2c::enable_i2c(I2C1, 400000u);
 
-// ── disable_i2c ───────────────────────────────────────────────────────────
+    CHECK((I2C1->CCR & I2C_CCR_FS) != 0);
+  }
 
-TEST_CASE_FIXTURE(I2cBaseFixture,
-                  "disable_i2c: clears APB1 clock and disables interrupts")
-{
-  I2c::enable_i2c(I2C1, 100000u);
-  CHECK(I2c::disable_i2c(I2C1) == 0);
+  // ── disable_i2c ───────────────────────────────────────────────────────────
 
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) == 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) == 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITERREN) == 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITBUFEN) == 0);
-}
+  TEST_CASE_FIXTURE(I2cBaseFixture,
+                    "disable_i2c: clears APB1 clock and disables interrupts")
+  {
+    I2c::enable_i2c(I2C1, 100000u);
+    CHECK(I2c::disable_i2c(I2C1) == 0);
 
-// ── Bus::enable / disable ─────────────────────────────────────────────────
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) == 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) == 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITERREN) == 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITBUFEN) == 0);
+  }
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus::enable registers module and reports is_enabled")
-{
-  CHECK(!bus.is_enabled());
-  CHECK(bus.enable(100000u) == 0);
-  CHECK(bus.is_enabled());
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) != 0);
-  CHECK((I2C1->CR1 & I2C_CR1_PE) != 0);
-}
+  // ── Bus::enable / disable ─────────────────────────────────────────────────
 
-TEST_CASE_FIXTURE(I2cLoopFixture, "Bus::enable is idempotent")
-{
-  bus.enable(100000u);
-  uint32_t ccr = I2C1->CCR;
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus::enable registers module and reports is_enabled")
+  {
+    CHECK(!bus.is_enabled());
+    CHECK(bus.enable(100000u) == 0);
+    CHECK(bus.is_enabled());
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) != 0);
+    CHECK((I2C1->CR1 & I2C_CR1_PE) != 0);
+  }
 
-  bus.enable(400000u); // second call — no-op
-  CHECK(I2C1->CCR == ccr);
-}
+  TEST_CASE_FIXTURE(I2cLoopFixture, "Bus::enable is idempotent")
+  {
+    bus.enable(100000u);
+    uint32_t ccr = I2C1->CCR;
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus::disable deregisters module and disables peripheral")
-{
-  bus.enable(100000u);
-  CHECK(bus.disable() == 0);
-  CHECK(!bus.is_enabled());
-  CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) == 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) == 0);
-  CHECK((I2C1->CR2 & I2C_CR2_ITERREN) == 0);
-}
+    bus.enable(400000u); // second call — no-op
+    CHECK(I2C1->CCR == ccr);
+  }
 
-// ── write ─────────────────────────────────────────────────────────────────
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus::disable deregisters module and disables peripheral")
+  {
+    bus.enable(100000u);
+    CHECK(bus.disable() == 0);
+    CHECK(!bus.is_enabled());
+    CHECK((RCC->APB1ENR & RCC_APB1ENR_I2C1EN) == 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITEVTEN) == 0);
+    CHECK((I2C1->CR2 & I2C_CR2_ITERREN) == 0);
+  }
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus::write returns BUS_NOT_ENABLED when not enabled")
-{
-  const uint8_t data[] = {0x01};
-  int result = -1;
-  CHECK(bus.write(0x50u, data, 1u,
-                  {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; },
-                   &result}) == I2c::BUS_NOT_ENABLED);
-}
+  // ── write ─────────────────────────────────────────────────────────────────
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: write completes successfully, callback receives zero")
-{
-  bus.enable(100000u);
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus::write returns BUS_NOT_ENABLED when not enabled")
+  {
+    const uint8_t data[] = {0x01};
+    int result = -1;
+    CHECK(bus.write(0x50u, data, 1u,
+                    {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; },
+                     &result}) == I2c::BUS_NOT_ENABLED);
+  }
 
-  int result = -1;
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: write completes successfully, callback receives zero")
+  {
+    bus.enable(100000u);
 
-  const uint8_t data[] = {0xDE, 0xAD};
-  CHECK(bus.write(0x50u, data, 2u, cb) == 0);
+    int result = -1;
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    const uint8_t data[] = {0xDE, 0xAD};
+    CHECK(bus.write(0x50u, data, 2u, cb) == 0);
 
-  CHECK(result == 0);
-}
+    loop.stop(500u);
+    loop.run();
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus::write returns BUSY while a transaction is in progress")
-{
-  bus.enable(100000u);
+    CHECK(result == 0);
+  }
 
-  int r1 = -1, r2 = -1;
-  auto cb1 = Callable<int>{[](void *ctx, int r)
-                           { *static_cast<int *>(ctx) = r; }, &r1};
-  auto cb2 = Callable<int>{[](void *ctx, int r)
-                           { *static_cast<int *>(ctx) = r; }, &r2};
+  TEST_CASE_FIXTURE(
+      I2cLoopFixture,
+      "Bus::write returns INVALID_STATE while a transaction is in progress")
+  {
+    bus.enable(100000u);
 
-  const uint8_t data[] = {0x01};
-  CHECK(bus.write(0x50u, data, 1u, cb1) == 0);
-  CHECK(bus.write(0x50u, data, 1u, cb2) == I2c::BUSY);
-}
+    int r1 = -1, r2 = -1;
+    auto cb1 = Callable<int>{[](void *ctx, int r)
+                             { *static_cast<int *>(ctx) = r; }, &r1};
+    auto cb2 = Callable<int>{[](void *ctx, int r)
+                             { *static_cast<int *>(ctx) = r; }, &r2};
 
-// ── read ──────────────────────────────────────────────────────────────────
+    const uint8_t data[] = {0x01};
+    CHECK(bus.write(0x50u, data, 1u, cb1) == 0);
+    CHECK(bus.write(0x50u, data, 1u, cb2) == I2c::INVALID_STATE);
+  }
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: single byte read delivers correct value, "
-                  "callback receives zero result")
-{
-  bus.enable(100000u);
+  // ── read ──────────────────────────────────────────────────────────────────
 
-  Sim::I2C::simulate_recv({0xAB});
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: single byte read delivers correct value, "
+                    "callback receives zero result")
+  {
+    bus.enable(100000u);
 
-  int result = -1;
-  uint8_t buf[1] = {};
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+    Sim::I2C::simulate_recv({0xAB});
 
-  CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
+    int result = -1;
+    uint8_t buf[1] = {};
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
 
-  CHECK(result == 0);
-  CHECK(buf[0] == 0xABu);
-}
+    loop.stop(500u);
+    loop.run();
 
-// 2-byte path: POS flag set before address, NACK applied to both bytes
-// via POS, STOP issued only after BTF (both bytes sit in DR+SR together).
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: two-byte read (POS+BTF path) delivers both bytes")
-{
-  bus.enable(100000u);
+    CHECK(result == 0);
+    CHECK(buf[0] == 0xABu);
+  }
 
-  Sim::I2C::simulate_recv({0xCA, 0xFE});
+  // 2-byte path: POS flag set before address, NACK applied to both bytes
+  // via POS, STOP issued only after BTF (both bytes sit in DR+SR together).
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: two-byte read (POS+BTF path) delivers both bytes")
+  {
+    bus.enable(100000u);
 
-  int result = -1;
-  uint8_t buf[2] = {};
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+    Sim::I2C::simulate_recv({0xCA, 0xFE});
 
-  CHECK(bus.read(0x50u, buf, 2u, cb) == 0);
+    int result = -1;
+    uint8_t buf[2] = {};
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    CHECK(bus.read(0x50u, buf, 2u, cb) == 0);
 
-  CHECK(result == 0);
-  CHECK(buf[0] == 0xCAu);
-  CHECK(buf[1] == 0xFEu);
-}
+    loop.stop(500u);
+    loop.run();
 
-// 3-byte path: ACK through address, at byte N-3 (index 0) wait BTF,
-// then NACK+read+STOP+read, last byte arrives via RXNE.
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: three-byte read (BTF at N-3 path) delivers all bytes")
-{
-  bus.enable(100000u);
+    CHECK(result == 0);
+    CHECK(buf[0] == 0xCAu);
+    CHECK(buf[1] == 0xFEu);
+  }
 
-  Sim::I2C::simulate_recv({0xA1, 0xB2, 0xC3});
+  // 3-byte path: ACK through address, at byte N-3 (index 0) wait BTF,
+  // then NACK+read+STOP+read, last byte arrives via RXNE.
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: three-byte read (BTF at N-3 path) delivers all bytes")
+  {
+    bus.enable(100000u);
 
-  int result = -1;
-  uint8_t buf[3] = {};
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+    Sim::I2C::simulate_recv({0xA1, 0xB2, 0xC3});
 
-  CHECK(bus.read(0x50u, buf, 3u, cb) == 0);
+    int result = -1;
+    uint8_t buf[3] = {};
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    CHECK(bus.read(0x50u, buf, 3u, cb) == 0);
 
-  CHECK(result == 0);
-  CHECK(buf[0] == 0xA1u);
-  CHECK(buf[1] == 0xB2u);
-  CHECK(buf[2] == 0xC3u);
-}
+    loop.stop(500u);
+    loop.run();
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: multi-byte read delivers bytes in order")
-{
-  bus.enable(100000u);
+    CHECK(result == 0);
+    CHECK(buf[0] == 0xA1u);
+    CHECK(buf[1] == 0xB2u);
+    CHECK(buf[2] == 0xC3u);
+  }
 
-  Sim::I2C::simulate_recv({0x11, 0x22, 0x33, 0x44});
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: multi-byte read delivers bytes in order")
+  {
+    bus.enable(100000u);
 
-  int result = -1;
-  uint8_t buf[4] = {};
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+    Sim::I2C::simulate_recv({0x11, 0x22, 0x33, 0x44});
 
-  CHECK(bus.read(0x50u, buf, 4u, cb) == 0);
+    int result = -1;
+    uint8_t buf[4] = {};
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    CHECK(bus.read(0x50u, buf, 4u, cb) == 0);
 
-  CHECK(result == 0);
-  CHECK(buf[0] == 0x11u);
-  CHECK(buf[1] == 0x22u);
-  CHECK(buf[2] == 0x33u);
-  CHECK(buf[3] == 0x44u);
-}
+    loop.stop(500u);
+    loop.run();
 
-// ── register-addressed read ───────────────────────────────────────────────
+    CHECK(result == 0);
+    CHECK(buf[0] == 0x11u);
+    CHECK(buf[1] == 0x22u);
+    CHECK(buf[2] == 0x33u);
+    CHECK(buf[3] == 0x44u);
+  }
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: register-addressed read writes reg then reads bytes")
-{
-  bus.enable(100000u);
+  // ── register-addressed read ───────────────────────────────────────────────
 
-  Sim::I2C::simulate_recv({0x55, 0x66});
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: register-addressed read writes reg then reads bytes")
+  {
+    bus.enable(100000u);
 
-  int result = -1;
-  uint8_t buf[2] = {};
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &result};
+    Sim::I2C::simulate_recv({0x55, 0x66});
 
-  CHECK(bus.read(0x50u, 0x10u, buf, 2u, cb) == 0);
+    int result = -1;
+    uint8_t buf[2] = {};
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-  loop.stop(50000u);
-  loop.run();
+    CHECK(bus.read(0x50u, 0x10u, buf, 2u, cb) == 0);
 
-  CHECK(result == 0);
-  CHECK(buf[0] == 0x55u);
-  CHECK(buf[1] == 0x66u);
-}
+    loop.stop(500u);
+    loop.run();
 
-// ── error handling ───────────────────────────────────────────────────────
+    CHECK(result == 0);
+    CHECK(buf[0] == 0x55u);
+    CHECK(buf[1] == 0x66u);
+  }
 
-TEST_CASE_FIXTURE(I2cLoopFixture,
-                  "Bus: read returns BUS_BUSY when I2C bus is already busy")
-{
-  bus.enable(100000u);
+  // ── error handling ───────────────────────────────────────────────────────
 
-  Sim::I2C::simulate_busy();
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus: read returns BUS_BUSY when I2C bus is already busy")
+  {
+    bus.enable(100000u);
 
-  uint8_t buf[1] = {};
-  int dummy = 0;
-  auto cb = Callable<int>{[](void *ctx, int r)
-                          { *static_cast<int *>(ctx) = r; }, &dummy};
+    Sim::I2C::simulate_busy();
 
-  CHECK(bus.read(0x50u, buf, 1u, cb) == I2c::BUS_BUSY);
-}
+    uint8_t buf[1] = {};
+    int dummy = 0;
+    auto cb = Callable<int>{[](void *ctx, int r)
+                            { *static_cast<int *>(ctx) = r; }, &dummy};
+
+    CHECK(bus.read(0x50u, buf, 1u, cb) == I2c::BUS_BUSY);
+  }
+
+} // TEST_SUITE("i2c")
