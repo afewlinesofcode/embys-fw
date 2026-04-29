@@ -1,3 +1,17 @@
+/**
+ * @file bus.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief GPIO Bus managing a set of GPIO pins on a port
+ *
+ * The Bus class acts as a Module registered with the main Loop. It configures
+ * GPIO MODE/CNF/EXTI for each registered pin and dispatches pin-level
+ * callbacks from EXTI IRQ handlers.
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <embys/stm32/base/loop.hpp>

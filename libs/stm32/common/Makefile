@@ -1,20 +1,33 @@
-DEFAULT_GOAL := all
+TC ?= arm
+.DEFAULT_GOAL := all
+
+APP_NAME     := stm32-common
 PROJECT_ROOT := $(realpath $(shell pwd)/../../..)
+WORK_DIR     := /work/libs/stm32/common
+BUILD_DIR    := $(PROJECT_ROOT)/build
+BIN_DIR      := $(BUILD_DIR)/$(TC)
+INCLUDE_DIR  := $(BUILD_DIR)/include/embys/stm32
+INCLUDES     += -Iinclude -I$(PROJECT_ROOT)/build/include
 
-INCLUDE_DIR := include
-BUILD_DIR   := $(PROJECT_ROOT)/build/include/embys/stm32
+ifeq ($(TC),sim)
+	LDLIBS = -lstm32-sim
+	INCLUDES += -I$(PROJECT_ROOT)/build/include_sim
+endif
 
-HEADERS            := $(shell find $(INCLUDE_DIR) -name "*.hpp")
-INSTALLED_HEADERS  := $(patsubst $(INCLUDE_DIR)/%,$(BUILD_DIR)/%,$(HEADERS))
+include $(PROJECT_ROOT)/mk/toolchain/$(TC).mk
+include $(PROJECT_ROOT)/mk/docker.mk
 
-$(BUILD_DIR)/%.hpp: $(INCLUDE_DIR)/%.hpp
+APP_HEADERS = $(shell find include -name "*.hpp")
+APP_INSTALLED_HEADERS = $(patsubst include/%,$(INCLUDE_DIR)/%,$(APP_HEADERS))
+
+$(INCLUDE_DIR)/%.hpp: include/%.hpp
 	@mkdir -p $(dir $@)
 	@echo "Installing header: $@"
 	@cp $< $@
 
 .PHONY: all clean
 
-all: $(INSTALLED_HEADERS)
+all: .lib-in-docker $(APP_INSTALLED_HEADERS)
 
 clean:
-	rm -rf $(INSTALLED_HEADERS)
+	rm -rf $(TARGET_LIB) $(OBJ_DIR) $(APP_INSTALLED_HEADERS)

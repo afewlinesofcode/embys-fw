@@ -1,3 +1,13 @@
+/**
+ * @file diag.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief UART diagnostics and error codes
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 namespace Embys::Stm32::Uart

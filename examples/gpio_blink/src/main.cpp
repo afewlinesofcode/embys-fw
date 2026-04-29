@@ -50,6 +50,7 @@ configure_led()
   CLEAR_BIT_V(GPIOC->CRH, GPIO_CRH_MODE13 | GPIO_CRH_CNF13);
   // Output mode, max speed 2 MHz, push-pull
   SET_BIT_V(GPIOC->CRH, GPIO_CRH_MODE13_1);
+  SET_BIT_V(GPIOC->BSRR, GPIO_BSRR_BS13);
 }
 
 /**

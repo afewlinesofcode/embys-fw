@@ -33,6 +33,9 @@ Pin::enable()
   // Configure GPIO pin mode and CNF
   TRY(configure_pin(port, index, gpio_cfg));
 
+  if ((gpio_cfg & 0b11) != Mode::IN)
+    TRY(write_pin(port, index, init_value));
+
   // Configure pull resistors via ODR
   if (pin_cfg & PinCfg::PULL_UP)
   {
