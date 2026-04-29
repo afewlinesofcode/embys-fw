@@ -44,3 +44,4 @@
 build
 /.docker
 CLAUDE.md
+/.old

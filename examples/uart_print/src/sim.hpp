@@ -3,6 +3,8 @@
 #ifdef STM32_SIM
 #include <embys/stm32/sim/sim.hpp>
 
+#define SIM_LOG(str) std::cout << str << std::endl
+
 // Forward-declare the handlers so the sim can call them
 extern "C"
 {

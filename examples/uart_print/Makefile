@@ -20,11 +20,5 @@ all: .bin-in-docker
 
 run: .run-in-docker
 
-flash:
-	st-flash write $(BIN) 0x8000000
-
-chipinfo:
-	st-info --chipinfo
-
 clean:
 	rm -rf $(TARGET) $(HEX) $(BIN) $(MAP) $(OBJ_DIR)

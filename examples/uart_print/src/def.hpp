@@ -13,5 +13,5 @@ constexpr uint32_t PRINT_INTERVAL_US = 2000000;
 #else
 // Simulation: collapse timing so the loop finishes quickly
 constexpr uint32_t UART_BAUD = 115200;
-constexpr uint32_t PRINT_INTERVAL_US = 500;
+constexpr uint32_t PRINT_INTERVAL_US = 20000;
 #endif

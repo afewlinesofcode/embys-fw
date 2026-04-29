@@ -274,6 +274,52 @@ led_pin.enable();
 button_pin.enable();
 ```
 
+### UART
+
+Base path: `libs/stm32/uart/`
+
+Provides an interrupt-driven UART transceiver for STM32F1. The central class is `Embys::Stm32::Uart::Bus`, which integrates with `Base::Loop` as a `Module` (RX/TX callbacks are dispatched in loop context) and registers an internal TX timeout event.
+
+TX is fully asynchronous — `write()` returns immediately and signals completion (or timeout) via the TX callback. RX bytes are accumulated into a caller-provided buffer and the RX callback is invoked per received byte in loop context.
+
+**Caller responsibilities:**
+
+- Configure TX pin as alternate-function push-pull output and RX pin as floating input before calling `enable()`
+- Enable `USARTx_IRQn` in NVIC
+- Route `USARTx_IRQHandler → bus.handle_irq()`
+- Provide a receive buffer at construction time
+- Reserve one extra event slot in the Loop (used for the TX timeout)
+
+**Link**: add `libstm32-uart.a` to `LDLIBS` and include `<embys/stm32/uart/bus.hpp>`.
+
+Configuration enums (from `def.hpp`):
+
+| Enum         | Values                |
+| ------------ | --------------------- |
+| `Parity`     | `None`, `Even`, `Odd` |
+| `StopBits`   | `One`, `Two`          |
+| `WordLength` | `W8`, `W9`            |
+
+Error codes are defined in `Embys::Stm32::Uart::Diag` (e.g. `TX_BUSY`, `TX_TIMEOUT`, `RX_OVERFLOW`).
+
+```cpp
+static uint8_t rx_buf[64];
+Embys::Stm32::Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+
+uart.set_rx_callback({on_rx, &context});
+uart.set_tx_callback({on_tx_done, &context});
+
+// Wire the IRQ handler
+extern "C" void USART1_IRQHandler() { uart.handle_irq(); }
+
+// Enable at 115200 8N1 (defaults)
+uart.enable(115200);
+
+// Asynchronous transmit
+const uint8_t msg[] = "hello\r\n";
+uart.write(msg, sizeof(msg) - 1);
+```
+
 ### I2C
 
 Base path: `libs/stm32/i2c/`
@@ -337,6 +383,44 @@ For simulation, you can run the example in the simulator `make TC=sim run` and s
 Since there's no hardware button connected, simulator can accept commands through named pipe to trigger the button press event.
 You can run `make btn-toggle` in the example directory to simulate a button press and release.
 Run this command multiple times to see the effect.
+
+#### UART print
+
+Located in the `examples/uart_print/` directory, this example demonstrates basic UART TX using the interrupt-driven `Uart::Bus` driver. It sends `"Hello from Blue Pill!\r\n"` over USART1 every 2 seconds using a periodic loop event.
+
+All libraries must be built for the target architecture (ARM or simulation) to run the example.
+
+Build with `make`, flash with `make flash`.
+
+Wire up (Blue Pill / STM32F103C8):
+
+- PA9 → TX
+- PA10 → RX
+- 3.3V → 3.3V
+- GND → GND
+
+Swap PA9/PA10 connections if using a USB-to-UART adapter with TX/RX reversed.
+
+Open a serial terminal at **115200 8N1**. You should see the message printed every 2 seconds.
+
+For simulation, run `make TC=sim run` — the message is printed to stdout at an accelerated interval. Press Ctrl+C to terminate.
+
+#### UART echo
+
+Located in the `examples/uart_echo/` directory, this example demonstrates full-duplex UART using `Uart::Bus`. It reads incoming bytes over USART1 and echoes each complete line back (terminated by `\r` or `\n`) followed by `\r\n`. Received bytes are accumulated in a 64-byte line buffer; if TX is busy the buffer continues to fill until the current transmission completes.
+
+All libraries must be built for the target architecture (ARM or simulation) to run the example.
+
+Wire up (Blue Pill / STM32F103C8):
+
+- PA9 → TX (connect to RX of a USB-UART adapter)
+- PA10 → RX (connect to TX of a USB-UART adapter)
+- 3.3V → 3.3V
+- GND → GND
+
+Open a serial terminal at **115200 8N1**. Build with `make`, flash with `make flash`. Type a line and press Enter — the device echoes the whole line back.
+
+For simulation, run `make TC=sim run`. Press Ctrl+C to terminate.
 
 #### I2C button blink
 
