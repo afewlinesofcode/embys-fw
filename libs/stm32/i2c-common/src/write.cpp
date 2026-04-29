@@ -1,7 +1,5 @@
 #include "write.hpp"
 
-#include <embys/stm32/debug.hpp>
-
 namespace Embys::Stm32::I2c::Dev
 {
 

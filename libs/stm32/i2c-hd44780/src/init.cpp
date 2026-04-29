@@ -1,7 +1,5 @@
 #include "init.hpp"
 
-#include <embys/stm32/debug.hpp>
-
 #include "clear.hpp"
 #include "send.hpp"
 #include "state.hpp"

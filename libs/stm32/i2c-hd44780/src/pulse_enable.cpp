@@ -1,7 +1,5 @@
 #include "pulse_enable.hpp"
 
-#include <embys/stm32/debug.hpp>
-
 #include "write.hpp"
 
 namespace Embys::Stm32::I2c::Dev::Hd44780

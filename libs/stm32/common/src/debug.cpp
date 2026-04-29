@@ -1,4 +1,4 @@
-#include "include/debug.hpp"
+#include "../include/debug.hpp"
 
 namespace Embys
 {

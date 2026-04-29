@@ -1,3 +1,13 @@
+/**
+ * @file home.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief HD44780 LCD cursor home operation
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <stdint.h>

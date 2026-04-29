@@ -140,7 +140,6 @@ main()
 
   // Initialize timer and set global pointer for interrupt handler
   Embys::Stm32::Base::Timer timer(TIM2);
-  timer_ptr = &timer;
 
   // Allocate memory for events:
   // - Blink event
@@ -170,7 +169,6 @@ main()
 
   // Initialize GPIO bus instance
   Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
-  gpio_ptr = &gpio_bus;
 
   // Initialize button pin at PA0 (Input floating with IRQ)
   Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
@@ -180,6 +178,11 @@ main()
   // Initialize LED pin at PC13 (Output push-pull, 2 MHz)
   Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
                                   GpioCnf::OUT_PP, PinCfg::NONE);
+  led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
+
+  // Set global pointers for interrupt handlers
+  gpio_ptr = &gpio_bus;
+  timer_ptr = &timer;
 
   // Set up context
   context.blink_event = &blink_event;

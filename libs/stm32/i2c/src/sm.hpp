@@ -1,3 +1,17 @@
+/**
+ * @file sm.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief Interrupt-driven I2C state machine
+ *
+ * Implements the I2C protocol state machine driven by EV and ER interrupt
+ * handlers. Supports single-byte, two-byte, and N-byte read sequences with
+ * register address and repeated-start, plus write operations.
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <stdint.h>

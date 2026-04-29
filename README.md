@@ -112,128 +112,202 @@ Currently supported:
 
 Base path: `libs/stm32/base/`
 
-Library provides basic building blocks for STM32 firmware development, such as:
+Provides the core firmware primitives: a hardware timer, a WFI-driven main loop with event scheduling, module (peripheral IRQ) integration, and nestable critical sections.
 
-- Interrupt-driven firmware loop
-- Timer with callback support
-- Critical section management
+**Link**: add `libstm32-base.a` to `LDLIBS` and include the headers you need from `<embys/stm32/base/>`.
 
 #### Timer
 
-The timer implementation allows you to create timers with callback functions that will be called when the timer expires.
+`Embys::Stm32::Base::Timer` wraps a general-purpose TIM peripheral in one-pulse mode and provides microsecond-precision scheduling. The library handles all peripheral initialisation; you are responsible for enabling the NVIC interrupt and writing the IRQ handler.
 
-All necessary initialization and configuration of the hardware timer is handled by the library; however, you need to provide the implementation of the timer interrupt handler to clear the interrupt flag and call the timer instance in it to trigger the callbacks. For example:
+**Caller responsibilities:**
+
+- Enable and prioritise `TIMx_IRQn` in NVIC
+- Call `timer.handle_irq()` from the handler (it clears `TIM_SR_UIF` internally)
 
 ```cpp
-// your timer instance
-Embys::STM32::Base::Timer *timer_ptr = nullptr;
+Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 
-// your interrupt handler
-extern "C"
-void TIM2_IRQHandler() {
-    if (timer_ptr) {
-        (*timer_ptr)();
-    }
+extern "C" void TIM2_IRQHandler()
+{
+  if (timer_ptr)
+    timer_ptr->handle_irq();
+  else
+    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF);
 }
 
-// your timer callback
-void timer_callback(void *context) {
-  // do stuff
-}
-
-// somewhere in the initialization code
-Embys::STM32::Base::Timer timer(TIM2);
+// In main:
+Embys::Stm32::Base::Timer timer(TIM2);
 timer_ptr = &timer;
-timer.set_callback({timer_callback, &ctx});
+
+__NVIC_SetPriority(TIM2_IRQn, 0x00);
+__NVIC_EnableIRQ(TIM2_IRQn);
 ```
 
-The timer always starts in one-pulse mode and doesn't restart automatically. It allows:
+The `Timer` is used internally by `Loop` — you normally do not call `schedule_us()` directly.
 
-- reset() - to restart the timer with the same duration if it is still enabled
-- restart() - to restart the timer with the same duration even if it is already expired
-- schedule_us() - to schedule the timer with a new duration and jitter in microseconds
+#### Loop and Events
 
-The timer is initialized with the highest interrupt priority.
+`Embys::Stm32::Base::Loop` is the application main loop. It sleeps with WFI and wakes on timer or module interrupts to run scheduled events and deferred module callbacks.
 
-#### Loop
-
-The loop is the heart of the firmware application. It is based on WFI and Timer.
-It is designed to be simple and efficient, allowing events to run according to the desired workflow and timing requirements.
-
-If an application contains any logic related to other peripherals with their own interrupts and handlers, it should be connected to the loop through modules.
-
-A module is technically a callback that can be executed by the loop as soon as the loop returns to the application context after WFI. If such processing is required, the peripheral interrupt handler should notify the loop by calling the `loop->interrupted()` method.
-
-##### Examples
+The Loop owns no dynamic memory — you provide the slot arrays:
 
 ```cpp
-// create a loop instance
 Embys::Stm32::Base::Timer timer(TIM2);
 
-// The loop instance doesn't allocate any memory for events and modules,
-// so you need to provide it yourself
 constexpr size_t events_capacity = 10;
-Embys::Stm32::Base::Event* events[events_capacity];
-Embys::Stm32::Base::Event* active_events[events_capacity];
-constexpr size_t modules_capacity = 10;
-Embys::Stm32::Base::Module* modules[modules_capacity];
+static Embys::Stm32::Base::Event *event_slots[events_capacity];
+static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
 
-Embys::Stm32::Base::Loop loop(timer,
-                              events, active_events,events_capacity,
-                              modules, modules_capacity);
+constexpr size_t modules_capacity = 4;
+static Embys::Stm32::Base::Module module_slots[modules_capacity];
+
+Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
+                              events_capacity, module_slots, modules_capacity);
+loop.run();
 ```
 
-Then you can add events to the loop:
+**Events** are scheduled in microseconds. An event with `EV_PERSIST` is re-scheduled automatically after each execution.
+
+| Flag         | Meaning                                                             |
+| ------------ | ------------------------------------------------------------------- |
+| _(none)_     | One-shot: fires once then is removed                                |
+| `EV_PERSIST` | Periodic: re-scheduled after each execution                         |
+| `EV_RT`      | Real-time: executed in IRQ context — must be short and non-blocking |
 
 ```cpp
-// create an event
-void event_callback(void *context) {
-    // do stuff
+void on_event(void *context) { /* ... */ }
+
+// One-shot: fires after 100 ms
+Embys::Stm32::Base::Event event1(&loop, 0, {on_event, &ctx});
+event1.enable(100000);
+
+// Periodic: fires every 500 ms
+Embys::Stm32::Base::Event blink(&loop, Embys::Stm32::Base::EV_PERSIST,
+                                {on_event, &ctx});
+blink.enable(500000);
+
+// Stop blinking
+blink.disable();
+```
+
+#### Modules
+
+A `Module` connects a peripheral IRQ to the loop. The IRQ handler calls `loop.interrupted(module)` to set a flag; the loop executes the module callback in application context after waking from WFI. Every peripheral driver (`Gpio::Bus`, `I2c::Bus`, etc.) uses this pattern.
+
+```cpp
+// In the IRQ handler:
+extern "C" void EXTI0_IRQHandler()
+{
+  // signal the loop; actual processing happens in app context
+  loop.interrupted(my_module);
 }
-Embys::Stm32::Base::Event event1(&loop, 0, {event_callback, &ev1_ctx});
-event1.enable(100000); // to run after 100ms
-
-Embys::Stm32::Base::Event event2(&loop, EV_PERSIST, {event_callback, &ev2_ctx});
-event2.enable(200000); // to run every 200ms
 ```
 
-#### GPIO
+Modules are registered automatically when a peripheral's `enable()` is called.
 
-The GPIO library provides an interface for configuring and using GPIO pins on the STM32 microcontroller. It allows you to set pin modes, read and write pin states, and configure EXTI interrupts for input pins to receive state change in callbacks.
+#### Critical Sections
 
-##### Example
+`cs_begin()` / `cs_end()` implement a nestable critical section by saving and restoring `PRIMASK`. Include `<embys/stm32/base/cs.hpp>`.
 
 ```cpp
-// The GPIO library doesn't allocate any memory for pin instances,
-// so you need to provide it yourself
-// If not all pins are enabled at the same time during the application lifecycle,
-// then you should provide only as many slots as the maximum number of simultaneously enabled pins,
-// slots will be reused when pins are disabled
+Embys::Stm32::cs_begin(); // disable interrupts, save PRIMASK
+// ... access shared state ...
+Embys::Stm32::cs_end();   // restore PRIMASK (nesting-aware)
+```
+
+### GPIO
+
+Base path: `libs/stm32/gpio/`
+
+Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1. Two classes make up the public API:
+
+- `Embys::Stm32::Gpio::Bus` — a `Module` registered with `Base::Loop`. Owns a slot array of `Pin*`, configures MODE/CNF/EXTI for each enabled pin, and dispatches pin-level callbacks in loop context from EXTI IRQ handlers.
+- `Embys::Stm32::Gpio::Pin` — represents a single GPIO pin. Supports output (push-pull, open-drain, AF) and input (floating, pull-up/pull-down, with optional EXTI interrupt).
+
+**Caller responsibilities:**
+
+- Enable NVIC for each `EXTIx_IRQn` used
+- Route `EXTIx_IRQHandler → bus.handle_irq(start_line, end_line)`
+- Reserve one module slot in the Loop
+
+**Link**: add `libstm32-gpio.a` to `LDLIBS` and include `<embys/stm32/gpio/bus.hpp>` / `<embys/stm32/gpio/pin.hpp>`.
+
+Key enums (from `api.hpp`):
+
+| Enum     | Values                                                                  |
+| -------- | ----------------------------------------------------------------------- |
+| `Mode`   | `IN`, `OUT_2`, `OUT_10`, `OUT_50`                                       |
+| `Cnf`    | `IN_AN`, `IN_FL`, `IN_PU`, `OUT_PP`, `OUT_OD`, `OUT_PP_AF`, `OUT_OD_AF` |
+| `PinCfg` | `NONE`, `PULL_UP`, `PULL_DOWN`, `IRQ`                                   |
+
+#### Example
+
+```cpp
+using GpioMode = Embys::Stm32::Gpio::Mode;
+using GpioCnf  = Embys::Stm32::Gpio::Cnf;
+using PinCfg   = Embys::Stm32::Gpio::PinCfg;
+
+// The Bus doesn't allocate pin memory — provide slot storage.
+// Only simultaneously-enabled pins need a slot; slots are reused on disable.
 constexpr size_t gpio_pins_capacity = 2;
-Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-// create gpio bus instance
+static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
+
 Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
 
-// create a pin instance for the LED on PC13
-// as output 2MHz, push-pull without extra pin configuration
+// LED on PC13: output 2 MHz, push-pull, no extra config
 Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                  GpioCnf::OUT_PP, PinCfg::NONE);
+                                GpioCnf::OUT_PP, PinCfg::NONE);
+led_pin.set_init_value(1); // start with LED off (active-low)
 
-// create a pin instance for the button on PA0
-// as input, floating with EXTI interrupt on both edges
+// Button on PA0: input floating, EXTI on both edges
 Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
-                                     GpioCnf::IN_FL, PinCfg::IRQ);
-
-// set a callback for the button pin,
-// which will be called when the button state changes (pressed or released)
+                                   GpioCnf::IN_FL, PinCfg::IRQ);
 button_pin.set_callback({toggle_btn, &context});
 
-// the bus must be enabled to connect it with the main loop
+// Wire the IRQ handler (in your IRQ handler .cpp)
+void EXTI0_IRQHandler() { gpio_bus.handle_irq(0, 0); }
+
+// Enable the bus first, then each pin
 gpio_bus.enable();
-// the pins must be enabled to connect them with the bus and receive events
 led_pin.enable();
 button_pin.enable();
 ```
+
+### I2C
+
+Base path: `libs/stm32/i2c/`
+
+Provides an interrupt-driven I2C master for STM32F1. The central class is `Embys::Stm32::I2c::Bus`, which integrates with `Base::Loop` as a `Module` (completions are dispatched in loop context) and registers a timeout event.
+
+All transfers are fully asynchronous — `read()` and `write()` return immediately; your callback is invoked from the main loop once the transfer completes or fails.
+
+**Caller responsibilities:**
+
+- Configure SCL/SDA GPIO pins as open-drain AF output before calling `enable()`
+- Enable and prioritise `I2Cx_EV_IRQn` and `I2Cx_ER_IRQn` in NVIC
+- Route the IRQ handlers to `bus.handle_ev_irq()` / `bus.handle_er_irq()`
+- Reserve one extra event slot in the Loop (used for the transaction timeout)
+
+**Link**: add `libstm32-i2c.a` to `LDLIBS` and include `<embys/stm32/i2c/bus.hpp>`.
+
+```cpp
+// Construct and enable at 100 kHz (default)
+Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+i2c_bus.enable();          // or enable(400000) for 400 kHz
+
+// Wire up IRQ handlers (in the same .cpp as your I2Cx_*_IRQHandler definitions)
+void I2C1_EV_IRQHandler() { i2c_bus.handle_ev_irq(); }
+void I2C1_ER_IRQHandler() { i2c_bus.handle_er_irq(); }
+
+// Asynchronous write — callback fires in loop context
+i2c_bus.write(0x27, buf, sizeof(buf), {on_done, &context});
+
+// Asynchronous register-addressed read (write reg, repeated START, read)
+i2c_bus.read(0x38, 0xAC, rx_buf, 6, {on_done, &context});
+```
+
+Error codes are defined in `Embys::Stm32::I2c::Diag` (e.g. `NACK`, `TIMEOUT`, `BUS_BUSY`).
 
 ### Tests
 
@@ -263,3 +337,19 @@ For simulation, you can run the example in the simulator `make TC=sim run` and s
 Since there's no hardware button connected, simulator can accept commands through named pipe to trigger the button press event.
 You can run `make btn-toggle` in the example directory to simulate a button press and release.
 Run this command multiple times to see the effect.
+
+#### I2C button blink
+
+Located in the `examples/i2c_btn_blink/` directory, this example extends the GPIO button blink example by adding an HD44780 LCD display connected over I2C. The LCD shows the current blink status and a running count of LED toggles. Pressing the button on PA0 starts and stops blinking; the LCD updates accordingly.
+
+All libraries must be built for the target architecture (ARM or simulation) to run the example.
+
+Wire up:
+
+- LED on PC13 (active-low, push-pull output)
+- Button on PA0 (input floating, EXTI)
+- HD44780-compatible LCD (I2C PCF8574 backpack) on I2C1: SCL on PB6, SDA on PB7
+
+Build with `make`, then flash with `make flash`. Press the button to toggle blinking; the LCD updates the blink status and count in real time.
+
+For simulation, run `make TC=sim run`. As with the GPIO button blink example, the simulator accepts commands through the named pipe. Run `make btn-toggle` in the example directory to simulate a button press and release.

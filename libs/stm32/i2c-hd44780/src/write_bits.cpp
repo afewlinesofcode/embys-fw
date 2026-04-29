@@ -1,7 +1,5 @@
 #include "write_bits.hpp"
 
-#include <embys/stm32/debug.hpp>
-
 #include "pulse_enable.hpp"
 #include "state.hpp"
 #include "write.hpp"

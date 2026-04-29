@@ -1,3 +1,13 @@
+/**
+ * @file api.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief I2C public API types and low-level peripheral operations
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <stdint.h>

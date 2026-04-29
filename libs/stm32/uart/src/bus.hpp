@@ -1,3 +1,16 @@
+/**
+ * @file bus.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief UART Bus managing UART peripheral communication
+ *
+ * The Bus class provides the main interface for UART communication,
+ * integrating TX/RX interrupt handling with the main Loop.
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <stddef.h>

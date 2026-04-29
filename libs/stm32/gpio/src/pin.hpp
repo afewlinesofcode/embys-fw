@@ -1,3 +1,13 @@
+/**
+ * @file pin.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief GPIO Pin abstraction for individual pin management
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <embys/stm32/types.hpp>
@@ -44,6 +54,12 @@ public:
   is_enabled() const
   {
     return enabled;
+  }
+
+  inline void
+  set_init_value(uint8_t value)
+  {
+    init_value = value ? 1 : 0;
   }
 
   /**
@@ -99,7 +115,8 @@ private:
   uint8_t index;
   uint32_t gpio_cfg;
   uint8_t pin_cfg;
-  Callable<uint8_t> cb; ///< Interrupt event callback
+  Callable<uint8_t> cb;   ///< Interrupt event callback
+  uint8_t init_value = 0; ///< Initial output value
 
   /**
    * @brief Executes the interrupt callback with specified value

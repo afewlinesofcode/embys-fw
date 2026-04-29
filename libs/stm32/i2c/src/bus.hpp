@@ -1,3 +1,16 @@
+/**
+ * @file bus.hpp
+ * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
+ * @brief I2C Bus managing I2C peripheral communication
+ *
+ * The Bus class provides the main interface for I2C communication,
+ * integrating the interrupt-driven state machine with the main Loop.
+ *
+ * @version 0.1
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <stdint.h>
