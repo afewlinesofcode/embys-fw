@@ -89,6 +89,24 @@ public:
     return tx_active;
   }
 
+  inline uint32_t
+  get_baud_rate() const
+  {
+    return baud_rate;
+  }
+
+  inline uint32_t
+  get_frame_bits() const
+  {
+    return calc_frame_bits(word_length, stop_bits);
+  }
+
+  inline Stm32::Base::Loop *
+  get_base() const
+  {
+    return base;
+  }
+
   /**
    * @brief Enable the USART peripheral and register with the loop.
    * @return 0 on success, negative error code on failure.

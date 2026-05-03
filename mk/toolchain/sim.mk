@@ -13,6 +13,7 @@ BUILD_DIR     ?= build
 BIN_DIR       ?= $(BUILD_DIR)/sim
 OBJ_DIR       = $(BUILD_DIR)/obj/$(APP_NAME)/sim
 APP_OBJ_DIR   = $(OBJ_DIR)/app
+BUILD_LIB_DIR = $(PROJECT_ROOT)/build/sim
 
 APP_SRC      ?= $(shell find $(SRC_DIR) -type f -name '*.cpp')
 APP_OBJ      := $(patsubst $(SRC_DIR)/%.cpp,$(APP_OBJ_DIR)/%.o,$(APP_SRC))
@@ -26,14 +27,16 @@ INCLUDES     += -I$(PROJECT_ROOT)/build/include \
 DEFINES      += -DSTM32F103xB -DSTM32_SIM
 CPPFLAGS     += $(INCLUDES) $(DEFINES)
 CXXFLAGS     += -Wall -Wextra -Werror -std=c++20 -O0 -g3 -MMD -MP
-LDFLAGS      += -L$(PROJECT_ROOT)/build/sim
+LDFLAGS      += -L$(BUILD_LIB_DIR)
 # LDLIBS       += -lstm32-base -lstm32-sim
+
+TARGET_DEPS  += $(APP_OBJ)
 
 $(APP_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET): $(APP_OBJ)
+$(TARGET): $(TARGET_DEPS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
