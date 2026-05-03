@@ -34,6 +34,8 @@ extern "C"
   void
   EXTI0_IRQHandler()
   {
+    SIM_LOG("EXTI0 IRQ triggered");
+
     if (gpio_ptr)
       gpio_ptr->handle_irq(0, 0);
     else
@@ -84,12 +86,13 @@ toggle_led(void *context)
 
   if (ctx->led_on)
   {
-    ctx->led->write(1);
+    // Reset pin to turn on LED (active low)
+    ctx->led->write(0);
     SIM_LOG("LED ON");
   }
   else
   {
-    ctx->led->write(0);
+    ctx->led->write(1);
     SIM_LOG("LED OFF");
   }
 }
@@ -113,12 +116,15 @@ toggle_btn(void *context, uint8_t value)
 
     if (ctx->blink_on)
     {
+      ctx->led->write(0); // Ensure LED is on immediately when blinking starts
+      ctx->led_on = true;
       ctx->blink_event->enable(LED_BLINK_INTERVAL_US);
       SIM_LOG("Blinking ON");
     }
     else
     {
       ctx->blink_event->disable();
+      ctx->led->write(1); // Ensure LED is off when blinking stops
       SIM_LOG("Blinking OFF");
     }
   }

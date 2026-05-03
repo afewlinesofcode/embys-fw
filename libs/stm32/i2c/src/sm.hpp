@@ -115,7 +115,9 @@ private:
     Address,
     WriteReg,
     WriteData,
-    ReadData
+    ReadData,
+    Finishing,
+    Error
   };
 
   volatile State state = State::Idle;
@@ -159,6 +161,12 @@ private:
 
   void
   handle_read_data_n();
+
+  void
+  handle_finished();
+
+  void
+  init_stop();
 
   void
   done();

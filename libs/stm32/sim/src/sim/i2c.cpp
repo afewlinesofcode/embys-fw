@@ -44,7 +44,7 @@ static bool wait_clear = false;
 /**
  * @brief Address of the current I2C peripheral.
  */
-static std::optional<uint8_t> addr;
+std::optional<uint8_t> addr = std::nullopt;
 
 /**
  * @brief Shift register for simulating data reception and transmission.
@@ -74,7 +74,7 @@ static uint8_t nack_countdown = 0;
 /**
  * @brief Buffers for storing data to be read by the I2C peripheral.
  */
-static std::vector<std::vector<uint8_t>> read_buffers;
+static std::vector<std::vector<uint8_t>> rx_buffers;
 
 /**
  * @brief Position within the current read buffer.
@@ -84,7 +84,12 @@ static size_t read_buffer_pos = 0;
 /**
  * @brief Buffers for storing data written by the I2C peripheral.
  */
-static std::vector<std::vector<uint8_t>> write_buffers;
+std::vector<std::vector<uint8_t>> tx_buffers;
+
+/**
+ * @brief Callback for handling data transmission in the I2C peripheral.
+ */
+Callable<uint8_t, std::vector<uint8_t>> on_tx;
 
 /**
  * @brief Whether to block SB flag from being set to simulate a stuck bus or
@@ -99,14 +104,14 @@ static bool block_sb = false;
 static bool block_addr = false;
 
 void
-simulate_recv(std::vector<uint8_t> data)
+simulate_rx(std::vector<uint8_t> data)
 {
-  read_buffers.push_back(std::move(data));
-  if (read_buffers.size() == 1)
+  rx_buffers.push_back(data);
+  if (rx_buffers.size() == 1)
   {
     // If this is the first buffer, we need to load it into the shift register
     // to trigger the reception process.
-    sr = read_buffers.front()[0];
+    sr = rx_buffers.front()[0];
     sr_full = true;
     sr_receiving = true;
     read_buffer_pos = 1; // Start from the second byte for the next read
@@ -299,7 +304,7 @@ read_sr2_hook(uint32_t)
   else if (condition == Writing)
   {
     // Create new buffer to store transmitted data and set up state for it
-    write_buffers.emplace_back();
+    tx_buffers.emplace_back();
     SET_BIT_V(i2c->SR1, I2C_SR1_TXE);
   }
 }
@@ -345,10 +350,9 @@ receiver_hook(uint32_t)
       if (nack_countdown != 0xFF)
         nack_countdown--;
 
-      if (!read_buffers.empty() &&
-          read_buffer_pos < read_buffers.front().size())
+      if (!rx_buffers.empty() && read_buffer_pos < rx_buffers.front().size())
       {
-        sr = read_buffers.front()[read_buffer_pos];
+        sr = rx_buffers.front()[read_buffer_pos];
       }
       else
       {
@@ -374,7 +378,7 @@ receiver_hook(uint32_t)
       // Finished receiving all data
       condition = Idle;
       nack_countdown = 0xFF;
-      read_buffers.erase(read_buffers.begin());
+      rx_buffers.erase(rx_buffers.begin());
 
       Base::add_delayed_hook(5,
                              [](uint32_t)
@@ -401,8 +405,8 @@ transmitter_hook(uint32_t)
 
   if (sr_sending)
   {
-    auto &write_buffer = write_buffers.back();
-    write_buffer.push_back(static_cast<uint8_t>(sr));
+    auto &tx_buffer = tx_buffers.back();
+    tx_buffer.push_back(static_cast<uint8_t>(sr));
     sr_sending = false;
     sr_full = false;
 
@@ -429,8 +433,9 @@ transmitter_hook(uint32_t)
     {
       // Finished sending all data
       condition = Idle;
+      on_tx(addr.value_or(0), tx_buffers.back());
 
-      Base::add_delayed_hook(5,
+      Base::add_delayed_hook(10,
                              [](uint32_t)
                              {
                                CLEAR_BIT_V(i2c->CR1, I2C_CR1_STOP);
@@ -454,9 +459,10 @@ reset()
   sr_receiving = false;
   sr_sending = false;
   nack_countdown = 0xFF;
-  read_buffers.clear();
+  rx_buffers.clear();
   read_buffer_pos = 0;
-  write_buffers.clear();
+  tx_buffers.clear();
+  on_tx.clear();
   block_sb = false;
   block_addr = false;
 

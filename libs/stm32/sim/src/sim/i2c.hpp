@@ -38,6 +38,8 @@
 #include <optional>
 #include <vector>
 
+#include <embys/stm32/types.hpp>
+
 #include "core.hpp"
 
 namespace Embys::Stm32::Sim::I2C
@@ -50,11 +52,28 @@ namespace Embys::Stm32::Sim::I2C
 extern I2C_TypeDef *i2c;
 
 /**
+ * @brief Address of the current I2C peripheral.
+ */
+extern std::optional<uint8_t> addr;
+
+/**
+ * @brief Buffers for storing data written by the I2C peripheral.
+ */
+extern std::vector<std::vector<uint8_t>> tx_buffers;
+
+/**
+ * @brief Callback for handling data transmission in the I2C peripheral.
+ * The callback takes the I2C address and the data bytes that were "sent" by the
+ * peripheral.
+ */
+extern Callable<uint8_t, std::vector<uint8_t>> on_tx;
+
+/**
  * @brief Simulate receiving data on the I2C bus.
  * @param data The data to be received on the I2C bus.
  */
 void
-simulate_recv(std::vector<uint8_t> data);
+simulate_rx(std::vector<uint8_t> data);
 
 /**
  * @brief Simulate the I2C bus being busy by setting the BUSY flag in the SR2

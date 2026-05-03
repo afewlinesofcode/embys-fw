@@ -14,8 +14,10 @@ Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
     return INVALID_STATE;
+
   if (!buf || !len)
     return INVALID_BUFFER;
+
   if (is_busy(i2c))
     return BUS_BUSY;
 
@@ -42,8 +44,10 @@ Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t reg_, uint8_t *buf,
 {
   if (state != State::Idle)
     return INVALID_STATE;
+
   if (!buf || !len)
     return INVALID_BUFFER;
+
   if (is_busy(i2c))
     return BUS_BUSY;
 
@@ -71,8 +75,10 @@ Sm::start_write(Callable<int> cb_, uint8_t addr7_, const uint8_t *buf,
 {
   if (state != State::Idle)
     return INVALID_STATE;
+
   if (!buf || !len)
     return INVALID_BUFFER;
+
   if (is_busy(i2c))
     return BUS_BUSY;
 
@@ -101,6 +107,7 @@ Sm::handle_irq()
   handle_write_reg();
   handle_write_data();
   handle_read_data();
+  handle_finished();
 }
 
 void
@@ -209,7 +216,7 @@ Sm::handle_address()
     {
       nack(i2c);
       (void)read_sr2(i2c); // clear ADDR
-      stop_condition(i2c);
+      init_stop();
     }
     else if (buf_len == 2u)
     {
@@ -258,7 +265,7 @@ Sm::handle_write_data()
   else if (is_btf(i2c))
   {
     // All bytes transmitted — generate STOP
-    stop_condition(i2c);
+    init_stop();
     done();
   }
 }
@@ -299,7 +306,7 @@ Sm::handle_read_data_2()
   // NACK and POS were set in handle_address; STOP then read both bytes.
   if (is_rxne(i2c) && is_btf(i2c))
   {
-    stop_condition(i2c);
+    init_stop();
     rx_buf[buf_pos] = read_dr(i2c);
     buf_pos = buf_pos + 1u;
     rx_buf[buf_pos] = read_dr(i2c);
@@ -328,7 +335,7 @@ Sm::handle_read_data_n()
       nack(i2c);
       rx_buf[buf_pos] = read_dr(i2c); // byte N-3 (clears BTF)
       buf_pos = buf_pos + 1u;
-      stop_condition(i2c);
+      init_stop();
       rx_buf[buf_pos] = read_dr(i2c); // byte N-2
       buf_pos = buf_pos + 1u;
     }
@@ -345,21 +352,43 @@ Sm::handle_read_data_n()
 }
 
 void
+Sm::handle_finished()
+{
+  if (state != State::Finishing)
+    return;
+
+  if (!is_busy(i2c))
+  {
+    result_ready = true;
+  }
+}
+
+void
+Sm::init_stop()
+{
+  stop_condition(i2c);
+  __DSB();
+  state = State::Finishing;
+}
+
+void
 Sm::done()
 {
-  __DSB();
   disable_buf_irq(i2c);
   result = 0;
-  result_ready = true;
 }
 
 void
 Sm::error(int result_code)
 {
+  state = State::Error;
+
   disable_buf_irq(i2c);
   CLEAR_BIT_V(i2c->SR1, err_mask);
   stop_condition(i2c);
   __DSB();
+  soft_reset(i2c);
+
   result = result_code;
   result_ready = true;
 }

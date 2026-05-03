@@ -14,17 +14,21 @@
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 
-#ifdef STM32_SIM
-#include <embys/stm32/sim/sim.hpp>
-#endif
+#include "def.hpp"
+#include "sim.hpp"
 
 /**
  * @brief Global pointer to the timer instance for use in the interrupt handler
  */
 Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 
-void
-toggle_led(void *context);
+/**
+ * @brief Application context structure to hold state information for callbacks
+ */
+struct AppContext
+{
+  bool led_on = false;
+};
 
 /**
  * @brief Timer interrupt handler for TIM2.
@@ -35,7 +39,7 @@ TIM2_IRQHandler()
   if (timer_ptr)
     timer_ptr->handle_irq(); // Call the timer's callback
   else
-    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Clear interrupt flag
+    CLEAR_BIT_V(TIM2->SR, TIM_SR_UIF); // Fallback: clear interrupt flag
 }
 
 /**
@@ -61,28 +65,24 @@ configure_led()
 void
 toggle_led(void *context)
 {
-  bool *led_state = static_cast<bool *>(context);
+  auto *ctx = static_cast<AppContext *>(context);
 
-  if (*led_state)
+  if (ctx->led_on)
   {
     // Reset pin to turn on LED (active low)
     SET_BIT_V(GPIOC->BSRR, GPIO_BSRR_BR13);
 
-#ifdef STM32_SIM
-    std::cout << "LED ON" << std::endl;
-#endif
+    SIM_LOG("LED ON");
   }
   else
   {
     // Set pin to turn off LED (active low)
     SET_BIT_V(GPIOC->BSRR, GPIO_BSRR_BS13);
 
-#ifdef STM32_SIM
-    std::cout << "LED OFF" << std::endl;
-#endif
+    SIM_LOG("LED OFF");
   }
 
-  *led_state = !*led_state;
+  ctx->led_on = !ctx->led_on;
 }
 
 /**
@@ -93,17 +93,12 @@ toggle_led(void *context)
 int
 main()
 {
-#ifdef STM32_SIM
-  // // Initialize simulation environment if in simulation mode
-  Embys::Stm32::Sim::reset();
-  Embys::Stm32::Sim::TIM2_IRQHandler_ptr = TIM2_IRQHandler;
-  // Register signal handler for graceful shutdown
-  Embys::Stm32::Sim::register_int_signal();
-#endif
+  SIM_RESET();
+
+  AppContext context;
 
   // Initialize timer instance and update global pointer for interrupt handler
   Embys::Stm32::Base::Timer timer(TIM2);
-  timer_ptr = &timer;
 
   // Allocate event slots and module slots for the loop
   constexpr size_t events_capacity = 5;
@@ -117,30 +112,24 @@ main()
                                 events_capacity, module_slots,
                                 modules_capacity);
 
+  // Create an event to toggle the LED
+  Embys::Stm32::Base::Event toggle_led_event(
+      &loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &context});
+
   // Configure GPIO for LED control
   configure_led();
 
-  // State variable to track LED status
-  bool led_on = false;
-
-  // Create an event to toggle the LED
-  Embys::Stm32::Base::Event toggle_led_event(
-      &loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &led_on});
-
-  // Interval for toggling the LED in microseconds
-  uint32_t toggle_interval_us = 500000;
-
-#ifdef STM32_SIM
-  // Time in simulation is not real and much slower
-  toggle_interval_us = 5000;
-#endif
+  // Set global pointer for timer interrupt handler
+  timer_ptr = &timer;
 
   // Enable the LED toggle event before starting the loop
-  toggle_led_event.enable(toggle_interval_us);
+  toggle_led_event.enable(LED_BLINK_INTERVAL_US);
 
-  // Enable interrupts and start main loop
+  // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0x00);
+
+  // Run the main loop
   loop.run();
 
   return 0;

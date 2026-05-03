@@ -46,7 +46,7 @@ peripheral_reset(I2C_TypeDef *i2c)
   pos_disable(i2c);
 }
 
-static void
+void
 soft_reset(I2C_TypeDef *i2c)
 {
   SET_BIT_V(i2c->CR1, I2C_CR1_SWRST);

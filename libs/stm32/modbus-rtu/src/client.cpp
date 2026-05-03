@@ -1,7 +1,5 @@
 #include "client.hpp"
 
-#include <iostream>
-
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/modbus/utils.hpp>
 
