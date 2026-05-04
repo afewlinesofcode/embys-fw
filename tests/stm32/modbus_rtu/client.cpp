@@ -121,7 +121,7 @@ struct ClientFixture : RtuBaseFixture
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_SUITE("ONLY modbus_rtu_client")
+TEST_SUITE("modbus_rtu_client")
 {
 
   TEST_CASE_FIXTURE(ClientFixture, "Client: is_available before any request")
@@ -134,6 +134,8 @@ TEST_SUITE("ONLY modbus_rtu_client")
   {
     static uint8_t resp_data[4] = {};
     static bool response_received = false;
+
+    client.override_frame_delay_us(400); // use short delay for faster test
 
     client.read_holding_registers(
         1, 0, 2,
@@ -161,7 +163,7 @@ TEST_SUITE("ONLY modbus_rtu_client")
 
     // Run long enough for both events to execute and for the client to process
     // the response after frame delay
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     REQUIRE(response_received);
@@ -209,7 +211,7 @@ TEST_SUITE("ONLY modbus_rtu_client")
       uint8_t *&data;
     } ctx{timeout_device, timeout_qty, timeout_data};
 
-    Modbus::Rtu::Client::kRequestTimeoutUs = 5000U; // shorten timeout for test
+    Modbus::Rtu::Client::kRequestTimeoutUs = 500U; // shorten timeout for test
 
     client.read_holding_registers(
         1, 0, 2,
@@ -222,8 +224,8 @@ TEST_SUITE("ONLY modbus_rtu_client")
          },
          &ctx});
 
-    // Run long enough for the 5-second timeout to fire
-    loop.stop(Modbus::Rtu::Client::kRequestTimeoutUs + 1000U);
+    // Run long enough for the timeout to fire
+    loop.stop(Modbus::Rtu::Client::kRequestTimeoutUs + 100U);
     loop.run();
 
     CHECK(timeout_device == 0x01U);

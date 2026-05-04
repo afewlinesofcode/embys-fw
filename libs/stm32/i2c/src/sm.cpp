@@ -2,15 +2,20 @@
 
 #include <embys/stm32/def.hpp>
 
+#include "bus.hpp"
+
 namespace Embys::Stm32::I2c
 {
 
-Sm::Sm(I2C_TypeDef *i2c) : i2c(i2c)
+Sm::Sm(Bus *bus_)
+  : bus(bus_), i2c(bus_->get_i2c()),
+    wait_bus(bus_, {Sm::wait_bus_callback, this}),
+    timeout_event(bus_->get_base(), Base::EV_RT, {Sm::timeout_handler, this})
 {
 }
 
 int
-Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t *buf, uint16_t len)
+Sm::start_read(uint8_t addr7_, uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
     return INVALID_STATE;
@@ -18,29 +23,20 @@ Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t *buf, uint16_t len)
   if (!buf || !len)
     return INVALID_BUFFER;
 
-  if (is_busy(i2c))
-    return BUS_BUSY;
-
-  cb = cb_;
   addr7 = addr7_;
   dir = Direction::Read;
   reg_and_restart = false;
   rx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result_ready = false;
-  state = State::Start;
+  result = 0;
+  state = State::WaitBus;
 
-  ack(i2c);
-  pos_disable(i2c);
-  start_condition(i2c);
-
-  return 0;
+  return wait_bus.start();
 }
 
 int
-Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t reg_, uint8_t *buf,
-               uint16_t len)
+Sm::start_read(uint8_t addr7_, uint8_t reg_, uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
     return INVALID_STATE;
@@ -48,10 +44,6 @@ Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t reg_, uint8_t *buf,
   if (!buf || !len)
     return INVALID_BUFFER;
 
-  if (is_busy(i2c))
-    return BUS_BUSY;
-
-  cb = cb_;
   addr7 = addr7_;
   dir = Direction::Read;
   reg_and_restart = true;
@@ -59,19 +51,14 @@ Sm::start_read(Callable<int> cb_, uint8_t addr7_, uint8_t reg_, uint8_t *buf,
   rx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result_ready = false;
-  state = State::Start;
+  result = 0;
+  state = State::WaitBus;
 
-  ack(i2c);
-  pos_disable(i2c);
-  start_condition(i2c);
-
-  return 0;
+  return wait_bus.start();
 }
 
 int
-Sm::start_write(Callable<int> cb_, uint8_t addr7_, const uint8_t *buf,
-                uint16_t len)
+Sm::start_write(uint8_t addr7_, const uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
     return INVALID_STATE;
@@ -79,24 +66,16 @@ Sm::start_write(Callable<int> cb_, uint8_t addr7_, const uint8_t *buf,
   if (!buf || !len)
     return INVALID_BUFFER;
 
-  if (is_busy(i2c))
-    return BUS_BUSY;
-
-  cb = cb_;
   addr7 = addr7_;
   dir = Direction::Write;
   reg_and_restart = false;
   tx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result_ready = false;
-  state = State::Start;
+  result = 0;
+  state = State::WaitBus;
 
-  ack(i2c);
-  pos_disable(i2c);
-  start_condition(i2c);
-
-  return 0;
+  return wait_bus.start();
 }
 
 void
@@ -107,7 +86,6 @@ Sm::handle_irq()
   handle_write_reg();
   handle_write_data();
   handle_read_data();
-  handle_finished();
 }
 
 void
@@ -131,25 +109,11 @@ Sm::handle_error()
 }
 
 void
-Sm::complete()
+Sm::reset()
 {
-  if (!result_ready)
-    return;
-
-  result_ready = false;
+  (void)timeout_event.disable();
   state = State::Idle;
-  cb(result);
 }
-
-void
-Sm::force_timeout()
-{
-  if (state != State::Idle)
-    error(TIMEOUT);
-}
-
-// ── private state handlers
-// ────────────────────────────────────────────────────
 
 void
 Sm::handle_start()
@@ -216,7 +180,7 @@ Sm::handle_address()
     {
       nack(i2c);
       (void)read_sr2(i2c); // clear ADDR
-      init_stop();
+      stop();
     }
     else if (buf_len == 2u)
     {
@@ -265,7 +229,7 @@ Sm::handle_write_data()
   else if (is_btf(i2c))
   {
     // All bytes transmitted — generate STOP
-    init_stop();
+    stop();
     done();
   }
 }
@@ -306,7 +270,7 @@ Sm::handle_read_data_2()
   // NACK and POS were set in handle_address; STOP then read both bytes.
   if (is_rxne(i2c) && is_btf(i2c))
   {
-    init_stop();
+    stop();
     rx_buf[buf_pos] = read_dr(i2c);
     buf_pos = buf_pos + 1u;
     rx_buf[buf_pos] = read_dr(i2c);
@@ -335,7 +299,7 @@ Sm::handle_read_data_n()
       nack(i2c);
       rx_buf[buf_pos] = read_dr(i2c); // byte N-3 (clears BTF)
       buf_pos = buf_pos + 1u;
-      init_stop();
+      stop();
       rx_buf[buf_pos] = read_dr(i2c); // byte N-2
       buf_pos = buf_pos + 1u;
     }
@@ -352,45 +316,73 @@ Sm::handle_read_data_n()
 }
 
 void
-Sm::handle_finished()
+Sm::start()
 {
-  if (state != State::Finishing)
-    return;
-
-  if (!is_busy(i2c))
-  {
-    result_ready = true;
-  }
+  uint16_t timeout_len = buf_len + (reg_and_restart ? 1u : 0u);
+  (void)timeout_event.enable(25000u +
+                             static_cast<uint32_t>(timeout_len) * 250u);
+  state = State::Start;
+  ack(i2c);
+  pos_disable(i2c);
+  start_condition(i2c);
 }
 
 void
-Sm::init_stop()
+Sm::stop()
 {
   stop_condition(i2c);
   __DSB();
-  state = State::Finishing;
 }
 
 void
 Sm::done()
 {
+  __DSB();
   disable_buf_irq(i2c);
   result = 0;
+  state = State::Stop;
 }
 
 void
 Sm::error(int result_code)
 {
-  state = State::Error;
-
   disable_buf_irq(i2c);
   CLEAR_BIT_V(i2c->SR1, err_mask);
-  stop_condition(i2c);
-  __DSB();
-  soft_reset(i2c);
+  stop();
+  reset_i2c(i2c);
 
   result = result_code;
-  result_ready = true;
+  state = State::Error;
+}
+
+void
+Sm::timeout_handler(void *context)
+{
+  auto *self = static_cast<Sm *>(context);
+
+  if (self->state == State::Idle || self->is_complete())
+    return;
+
+  self->error(TIMEOUT);
+  self->bus->set_module_pending();
+}
+
+void
+Sm::wait_bus_callback(void *context, int res)
+{
+  auto *self = static_cast<Sm *>(context);
+
+  if (self->state != State::WaitBus)
+    return;
+
+  if (res == 0)
+  {
+    self->start();
+    return;
+  }
+
+  self->error(res);
+  self->bus->set_module_pending();
 }
 
 }; // namespace Embys::Stm32::I2c

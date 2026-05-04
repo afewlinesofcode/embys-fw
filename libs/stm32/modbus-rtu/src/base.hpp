@@ -46,6 +46,12 @@ public:
   void
   enable();
 
+  inline void
+  override_frame_delay_us(uint32_t delay_us)
+  {
+    frame_delay_us = delay_us;
+  }
+
 protected:
   Uart::Bus *transport;
   Stm32::Base::Event frame_timeout_event;

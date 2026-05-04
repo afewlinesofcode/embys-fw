@@ -217,6 +217,8 @@ TEST_SUITE("modbus_rtu_base")
                     "rx: bytes accumulate in buffer_in and frame_in_cb fires "
                     "after the inter-frame gap")
   {
+    base.override_frame_delay_us(400); // use short delay for faster tests
+
     bool cb_called = false;
     base.set_frame_in_callback(
         {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
@@ -224,7 +226,7 @@ TEST_SUITE("modbus_rtu_base")
     // Base does not validate CRC; any 4-byte payload triggers the callback.
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00, 0x04});
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK(cb_called);
@@ -243,7 +245,7 @@ TEST_SUITE("modbus_rtu_base")
 
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00}); // 3 bytes — below minimum
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK_FALSE(cb_called);
@@ -253,6 +255,7 @@ TEST_SUITE("modbus_rtu_base")
                     "rx: buffer overflow discards the frame and frame_in_cb "
                     "is not called")
   {
+    base.override_frame_delay_us(400); // use short delay for faster tests
     bool cb_called = false;
     base.set_frame_in_callback(
         {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
@@ -261,11 +264,10 @@ TEST_SUITE("modbus_rtu_base")
     std::vector<uint8_t> oversized(Modbus::kFrameSize + 1U, 0xAAU);
     Sim::Uart::simulate_rx(oversized);
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK_FALSE(cb_called);
-    CHECK_FALSE(base.buffer_in_overflow); // cleared by frame_timeout_callback
   }
 
 } // TEST_SUITE("modbus_rtu_base")

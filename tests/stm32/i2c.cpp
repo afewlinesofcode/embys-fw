@@ -191,7 +191,7 @@ TEST_SUITE("i2c")
     const uint8_t data[] = {0xDE, 0xAD};
     CHECK(bus.write(0x50u, data, 2u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -222,16 +222,16 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
 
-    Sim::I2C::simulate_recv({0xAB});
+    Sim::I2C::simulate_rx({0xAB});
 
-    int result = -1;
+    int result = -2;
     uint8_t buf[1] = {};
     auto cb = Callable<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -245,7 +245,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
 
-    Sim::I2C::simulate_recv({0xCA, 0xFE});
+    Sim::I2C::simulate_rx({0xCA, 0xFE});
 
     int result = -1;
     uint8_t buf[2] = {};
@@ -254,7 +254,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, buf, 2u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -269,7 +269,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
 
-    Sim::I2C::simulate_recv({0xA1, 0xB2, 0xC3});
+    Sim::I2C::simulate_rx({0xA1, 0xB2, 0xC3});
 
     int result = -1;
     uint8_t buf[3] = {};
@@ -278,7 +278,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, buf, 3u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -292,7 +292,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
 
-    Sim::I2C::simulate_recv({0x11, 0x22, 0x33, 0x44});
+    Sim::I2C::simulate_rx({0x11, 0x22, 0x33, 0x44});
 
     int result = -1;
     uint8_t buf[4] = {};
@@ -301,7 +301,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, buf, 4u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -318,7 +318,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
 
-    Sim::I2C::simulate_recv({0x55, 0x66});
+    Sim::I2C::simulate_rx({0x55, 0x66});
 
     int result = -1;
     uint8_t buf[2] = {};
@@ -327,7 +327,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 0x10u, buf, 2u, cb) == 0);
 
-    loop.stop(500u);
+    loop.stop(100u);
     loop.run();
 
     CHECK(result == 0);
@@ -340,16 +340,21 @@ TEST_SUITE("i2c")
   TEST_CASE_FIXTURE(I2cLoopFixture,
                     "Bus: read returns BUS_BUSY when I2C bus is already busy")
   {
-    bus.enable(100000u);
+    bus.enable(400000u);
 
     Sim::I2C::simulate_busy();
 
     uint8_t buf[1] = {};
-    int dummy = 0;
+    int result = 0;
     auto cb = Callable<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &dummy};
+                            { *static_cast<int *>(ctx) = r; }, &result};
 
-    CHECK(bus.read(0x50u, buf, 1u, cb) == I2c::BUS_BUSY);
+    CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
+
+    loop.stop(500u);
+    loop.run();
+
+    CHECK(result == I2c::BUS_BUSY);
   }
 
 } // TEST_SUITE("i2c")

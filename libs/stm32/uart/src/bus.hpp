@@ -233,11 +233,14 @@ private:
   void
   tx_complete(int result);
 
-  void
-  module_notify();
+  inline void
+  set_module_pending()
+  {
+    base->set_module_pending(module);
+  }
 
   static void
-  module_handler(void *context);
+  module_callback(void *context);
 
   static void
   timeout_handler(void *context);

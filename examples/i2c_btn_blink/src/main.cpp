@@ -62,6 +62,8 @@ extern "C"
   {
     if (i2c_bus_ptr)
       i2c_bus_ptr->handle_er_irq();
+    else
+      I2C1->SR1 = 0; // Clear error flags to avoid repeated interrupts
   }
 }
 

@@ -203,7 +203,4 @@ addr_latched(I2C_TypeDef *i2c)
   return (i2c->SR1 & I2C_SR1_ADDR) != 0;
 }
 
-void
-soft_reset(I2C_TypeDef *i2c);
-
 }; // namespace Embys::Stm32::I2c

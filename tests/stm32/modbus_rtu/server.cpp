@@ -45,7 +45,7 @@ inject_frame(std::vector<uint8_t> frame)
 }
 
 static std::vector<uint8_t>
-run_and_capture(Base::Loop &loop, uint32_t timeout_us = 5000U)
+run_and_capture(Base::Loop &loop, uint32_t timeout_us = 500U)
 {
   loop.stop(timeout_us);
   loop.run();
@@ -144,6 +144,7 @@ struct ServerFixture : RtuLoopFixture, StoreFixture
   ServerFixture()
   {
     server.enable();
+    server.override_frame_delay_us(400); // use short delay for faster tests
   }
 };
 
@@ -151,7 +152,7 @@ struct ServerFixture : RtuLoopFixture, StoreFixture
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_SUITE("ONLY modbus_rtu_server")
+TEST_SUITE("modbus_rtu_server")
 {
 
   TEST_CASE_FIXTURE(ServerFixture,
@@ -171,7 +172,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
 
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x02});
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     // Response: device=01 FC=03 byte_count=04 [0x12 0x34 0x56 0x78] + CRC
@@ -191,7 +192,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
                                   0x00, 0x01, 0xFF, 0xFF}; // wrong CRC
     Embys::Stm32::Sim::Uart::simulate_rx(frame);
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK(server.get_statistics().get_crc_errors() == 1U);
@@ -203,7 +204,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device=2, not 1
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -216,7 +217,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
   {
     inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // write coil 0 ON
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -239,7 +240,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
 
     inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     REQUIRE(sent.size() >= 3U);
@@ -253,7 +254,7 @@ TEST_SUITE("ONLY modbus_rtu_server")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(5000);
+    loop.stop(500);
     loop.run();
 
     CHECK(server.get_statistics().get_responses() == 1U);

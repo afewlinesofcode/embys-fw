@@ -144,7 +144,7 @@ public:
    * @param module Pointer to the module that has been interrupted.
    */
   inline void
-  interrupted(Module *module)
+  set_module_pending(Module *module)
   {
     cs_begin();
 

@@ -16,16 +16,14 @@
 
 #include <embys/stm32/base/loop.hpp>
 
-#include "api.hpp"
+#include "def.hpp"
 #include "pin.hpp"
 
 namespace Embys::Stm32::Gpio
 {
 
-class Pin;
-
 /**
- * @class Gpio
+ * @class Bus
  * @brief STM32F10x GPIO Controller
  *
  * Central management for GPIO pins and EXTI interrupts with Base system
@@ -59,22 +57,8 @@ public:
   int
   disable();
 
-  inline void
-  handle_irq(uint8_t start, uint8_t end)
-  {
-    for (uint8_t pin_index = start; pin_index <= end; ++pin_index)
-    {
-      uint32_t pin_bit = (1 << pin_index);
-
-      if (EXTI->PR & pin_bit)
-      {
-        EXTI->PR = pin_bit;
-        activate_pin(pin_bit);
-      }
-    }
-
-    module_notify();
-  }
+  void
+  handle_irq(uint8_t start, uint8_t end);
 
 private:
   friend class Pin;
@@ -156,10 +140,10 @@ private:
    * the main loop executes the GPIO event processing as soon as possible.
    */
   inline void
-  module_notify()
+  set_module_pending()
   {
     if (module)
-      base->interrupted(module);
+      base->set_module_pending(module);
   }
 
   /**
@@ -172,7 +156,7 @@ private:
    * registration)
    */
   static void
-  module_handler(void *context)
+  module_callback(void *context)
   {
     Bus *gpio = static_cast<Bus *>(context);
     gpio->trigger_activated_pins();

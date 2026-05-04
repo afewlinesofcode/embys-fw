@@ -5,14 +5,17 @@ TC ?= arm
 
 include mk/format.mk
 
+sim:
+	$(MAKE) TC=sim all
+
 test:
-	$(MAKE) TC=sim all && cd tests && $(MAKE) all
+	cd tests && $(MAKE) all
 
 test-only:
-	$(MAKE) TC=sim all && cd tests && $(MAKE) only
+	cd tests && $(MAKE) only
 
 test-only-suite:
-	$(MAKE) TC=sim all && cd tests && $(MAKE) only-suite
+	cd tests && $(MAKE) only-suite
 
 clean-tests:
 	cd tests && $(MAKE) clean
