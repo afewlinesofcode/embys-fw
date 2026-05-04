@@ -2,6 +2,7 @@
 
 #include <embys/stm32/def.hpp>
 
+#include "api.hpp"
 #include "diag.hpp"
 #include "stm32f1xx.hpp"
 
@@ -32,7 +33,7 @@ Bus::enable()
   }
 
   TRY(enable_afio());
-  module = base->add_module({Bus::module_handler, this});
+  module = base->add_module({Bus::module_callback, this});
 
   enabled = true;
 
@@ -54,6 +55,23 @@ Bus::disable()
 
   enabled = false;
   return 0;
+}
+
+void
+Bus::handle_irq(uint8_t start, uint8_t end)
+{
+  for (uint8_t pin_index = start; pin_index <= end; ++pin_index)
+  {
+    uint32_t pin_bit = (1 << pin_index);
+
+    if (EXTI->PR & pin_bit)
+    {
+      EXTI->PR = pin_bit;
+      activate_pin(pin_bit);
+    }
+  }
+
+  set_module_pending();
 }
 
 int

@@ -7,8 +7,10 @@ PROJECT_ROOT := $(realpath $(shell pwd)/../..)
 WORK_DIR     := /work/examples/i2c_btn_blink
 DOCKER_NAME  := i2c_btn_blink_container
 
-LDLIBS = -lstm32-i2c-hd44780 -lstm32-i2c-common -lstm32-i2c \
-         -lstm32-gpio -lstm32-base -lstm32-common
+LIBS = stm32-i2c-hd44780 stm32-i2c-common stm32-i2c \
+			 stm32-gpio stm32-base stm32-common
+LDLIBS = $(LIBS:%=-l%)
+TARGET_DEPS = $(addprefix $(BUILD_LIB_DIR)/lib,$(addsuffix .a,$(LIBS)))
 
 ifeq ($(TC),sim)
 	LDLIBS += -lstm32-sim

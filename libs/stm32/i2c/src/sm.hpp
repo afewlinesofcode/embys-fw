@@ -16,26 +16,24 @@
 
 #include <stdint.h>
 
+#include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "api.hpp"
 #include "def.hpp"
 #include "stm32f1xx.hpp"
+#include "wait_bus.hpp"
 
 namespace Embys::Stm32::I2c
 {
+
+class Bus;
 
 /**
  * @brief Interrupt-driven I2C state machine.
  *
  * Manages a single I2C transaction (read, register-addressed read, or write)
  * driven entirely by EV and ER interrupts. No blocking waits.
- *
- * The owning Bus calls:
- *   handle_irq()   — from I2Cx_EV_IRQHandler
- *   handle_error() — from I2Cx_ER_IRQHandler
- *   complete()     — from main-loop context after is_result_ready() is true
- *   force_timeout()— from Bus timeout handler (EV_RT event)
  */
 class Sm
 {
@@ -48,29 +46,27 @@ public:
   Sm &
   operator=(Sm &&) = delete;
 
-  explicit Sm(I2C_TypeDef *i2c);
+  Sm(Bus *bus);
 
   /**
    * @brief Start an asynchronous read of len bytes from addr7.
    * Issues a START condition; completion delivered via cb.
    */
   int
-  start_read(Callable<int> cb, uint8_t addr7, uint8_t *buf, uint16_t len);
+  start_read(uint8_t addr7, uint8_t *buf, uint16_t len);
 
   /**
    * @brief Start an asynchronous register-addressed read.
    * Writes reg in a first frame, issues a repeated START, then reads len bytes.
    */
   int
-  start_read(Callable<int> cb, uint8_t addr7, uint8_t reg, uint8_t *buf,
-             uint16_t len);
+  start_read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len);
 
   /**
    * @brief Start an asynchronous write of len bytes to addr7.
    */
   int
-  start_write(Callable<int> cb, uint8_t addr7, const uint8_t *buf,
-              uint16_t len);
+  start_write(uint8_t addr7, const uint8_t *buf, uint16_t len);
 
   /** @brief Process an I2C event interrupt. */
   void
@@ -82,24 +78,23 @@ public:
 
   /** @brief True if the transaction has completed (success or error). */
   inline bool
-  is_result_ready() const
+  is_complete() const
   {
-    return result_ready;
+    return state == State::Stop || state == State::Error;
+  }
+
+  inline int
+  get_result() const
+  {
+    return result;
   }
 
   /**
    * @brief Deliver the result to the callback. Must be called from main-loop
-   * context after is_result_ready() returns true.
+   * context after is_complete() returns true.
    */
   void
-  complete();
-
-  /**
-   * @brief Force a timeout error. Called from the Bus timeout handler when the
-   * EV_RT event fires before the transaction finishes naturally.
-   */
-  void
-  force_timeout();
+  reset();
 
 private:
   enum class Direction : uint8_t
@@ -111,16 +106,21 @@ private:
   enum class State : uint8_t
   {
     Idle,
+    WaitBus,
     Start,
     Address,
     WriteReg,
     WriteData,
-    ReadData
+    ReadData,
+    Stop,
+    Error
   };
 
   volatile State state = State::Idle;
+  Bus *bus;
   I2C_TypeDef *i2c;
-  Callable<int> cb;
+  WaitBus wait_bus;
+  Base::Event timeout_event;
 
   volatile uint8_t addr7 = 0;
   volatile Direction dir = Direction::Write;
@@ -133,7 +133,6 @@ private:
   volatile uint16_t buf_len = 0;
   volatile uint16_t buf_pos = 0;
 
-  volatile bool result_ready = false;
   volatile int result = 0;
 
   void
@@ -161,10 +160,22 @@ private:
   handle_read_data_n();
 
   void
+  stop();
+
+  void
   done();
 
   void
   error(int result_code);
+
+  void
+  start();
+
+  static void
+  timeout_handler(void *context);
+
+  static void
+  wait_bus_callback(void *context, int result);
 };
 
 }; // namespace Embys::Stm32::I2c

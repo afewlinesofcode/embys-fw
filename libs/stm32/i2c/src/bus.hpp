@@ -71,6 +71,24 @@ public:
   Bus(I2C_TypeDef *i2c, Base::Loop *base);
   ~Bus();
 
+  inline I2C_TypeDef *
+  get_i2c() const
+  {
+    return i2c;
+  }
+
+  inline Base::Loop *
+  get_base() const
+  {
+    return base;
+  }
+
+  inline uint32_t
+  get_scl_hz() const
+  {
+    return scl_hz;
+  }
+
   inline bool
   is_enabled() const
   {
@@ -134,32 +152,23 @@ public:
   void
   handle_er_irq();
 
+  void
+  set_module_pending()
+  {
+    base->set_module_pending(module);
+  }
+
 private:
-  friend void
-  ev_irq_handler(uint8_t);
-
-  friend void
-  er_irq_handler(uint8_t);
-
   I2C_TypeDef *i2c;
   Base::Loop *base;
   Sm sm;
-  Base::Event timeout_event;
   Base::Module *module = nullptr;
   uint32_t scl_hz = 0u;
   bool enabled = false;
-
-  void
-  module_notify();
-
-  uint32_t
-  calc_timeout_us(uint16_t len) const;
+  Callable<int> cb;
 
   static void
-  module_handler(void *context);
-
-  static void
-  timeout_handler(void *context);
+  module_callback(void *context);
 };
 
 }; // namespace Embys::Stm32::I2c

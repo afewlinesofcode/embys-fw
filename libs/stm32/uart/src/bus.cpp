@@ -30,7 +30,7 @@ Bus::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
 
   TRY(enable_uart(usart, baud_rate_, word_length_, stop_bits_, parity_));
 
-  module = base->add_module({Bus::module_handler, this});
+  module = base->add_module({Bus::module_callback, this});
   if (!module)
   {
     (void)disable_uart(usart);
@@ -109,7 +109,7 @@ Bus::handle_irq()
 {
   uint32_t sr = read_sr(usart);
 
-  // ── RX ────────────────────────────────────────────────────────────────
+  // RX
   if (sr & USART_SR_RXNE)
   {
     uint8_t byte = read_dr(usart); // read clears RXNE
@@ -124,10 +124,10 @@ Bus::handle_irq()
       rx_overflow = true;
     }
 
-    module_notify();
+    set_module_pending();
   }
 
-  // ── TX ────────────────────────────────────────────────────────────────
+  // TX
   if ((sr & USART_SR_TXE) && (usart->CR1 & USART_CR1_TXEIE))
   {
     if (tx_buffer_pos < tx_buffer_len)
@@ -151,7 +151,7 @@ Bus::handle_irq()
     }
   }
 
-  // ── TC (transmission complete) ─────────────────────────────────────────
+  // TC (transmission complete)
   if ((sr & USART_SR_TC) && (usart->CR1 & USART_CR1_TCIE))
   {
     disable_tc_irq(usart);
@@ -164,15 +164,18 @@ Bus::handle_irq()
   }
 }
 
-// ── private ──────────────────────────────────────────────────────────────────
-
 uint32_t
 Bus::calc_tx_timeout_us(size_t len) const
 {
   uint32_t frame_bits = calc_frame_bits(word_length, stop_bits);
+#ifndef STM32_SIM
   // +1000 us guard time to account for system latency
   return (frame_bits * static_cast<uint32_t>(len) * 1'000'000u / baud_rate) +
          1000u;
+#else
+  // 100 times less in simulation to speed up tests
+  return (frame_bits * static_cast<uint32_t>(len) * 10'000u / baud_rate) + 10u;
+#endif
 }
 
 void
@@ -187,21 +190,15 @@ Bus::tx_complete(int result)
     disable_tc_irq(usart);
   cs_end();
 
-  module_notify();
+  set_module_pending();
 }
 
 void
-Bus::module_notify()
-{
-  base->interrupted(module);
-}
-
-void
-Bus::module_handler(void *context)
+Bus::module_callback(void *context)
 {
   auto *self = static_cast<Bus *>(context);
 
-  // ── Drain received bytes ──────────────────────────────────────────────
+  // Drain received bytes
   while (self->rx_buffer_pos < self->rx_buffer_len)
   {
     uint8_t byte = self->rx_buffer[self->rx_buffer_pos];
@@ -226,7 +223,7 @@ Bus::module_handler(void *context)
     }
   }
 
-  // ── TX completion ─────────────────────────────────────────────────────
+  // TX completion
   if (self->tx_ready)
   {
     self->tx_ready = false;

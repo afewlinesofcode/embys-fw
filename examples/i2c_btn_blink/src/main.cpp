@@ -62,22 +62,10 @@ extern "C"
   {
     if (i2c_bus_ptr)
       i2c_bus_ptr->handle_er_irq();
+    else
+      I2C1->SR1 = 0; // Clear error flags to avoid repeated interrupts
   }
 }
-
-/**
- * @brief Application context to be used in callbacks
- */
-struct AppContext
-{
-  bool led_on = false;
-  bool blink_on = false;
-  uint32_t blink_count = 0;
-
-  Embys::Stm32::Gpio::Pin *led = nullptr;
-  Embys::Stm32::Base::Event *blink_event = nullptr;
-  Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd *lcd = nullptr;
-};
 
 /**
  * @brief A startup callback to perform initial LCD setup
@@ -103,7 +91,6 @@ toggle_led(void *context)
   auto *ctx = static_cast<AppContext *>(context);
   ctx->led_on = !ctx->led_on;
   ctx->led->write(ctx->led_on ? 0 : 1);
-  ctx->led->write(ctx->led_on ? 1 : 0);
 
   if (ctx->led_on)
   {
@@ -161,7 +148,7 @@ main()
 
   static AppContext context;
 
-  SIM_RESET();
+  SIM_RESET(&context);
 
   Embys::Stm32::Base::Timer timer(TIM2);
 
@@ -227,7 +214,7 @@ main()
   context.blink_event = &blink_event;
   context.lcd = &lcd;
 
-  // Initialize system (performs DWT setup, probably will be moved to a more
+  // Initialize system (performs DWT setup, needs to be moved to a more
   // central place in the future)
   Embys::Stm32::Base::system_init();
 

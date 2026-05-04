@@ -280,18 +280,10 @@ void
 wfi(void)
 {
   interrupted = false;
-  uint32_t cycle_count = 0;
 
   do
   {
     cycle();
-
-    if (Base::wfi_max_cycles > 0 && ++cycle_count >= Base::wfi_max_cycles)
-    {
-      std::cerr << "wfi(): no interrupt fired after " << cycle_count
-                << " cycles, possible deadlock\n";
-      std::abort();
-    }
   } while (!interrupted);
 }
 
@@ -315,8 +307,6 @@ struct DelayedHook
   Hook hook;
 };
 
-uint32_t wfi_max_cycles = 10'000'000;
-
 // Persistent hooks that are called on every cycle
 std::vector<Hook> hooks;
 
@@ -337,7 +327,6 @@ reset()
   tim2_cyc = 0;
   tim3_cyc = 0;
   tim4_cyc = 0;
-  wfi_max_cycles = 10'000'000;
   mock_primask = 0;
   interrupted = false;
 }

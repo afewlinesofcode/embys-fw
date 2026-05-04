@@ -261,7 +261,7 @@ TEST_SUITE("uart")
     const uint8_t data[] = {0xDE, 0xAD};
     bus.write(data, sizeof(data));
 
-    loop.stop(5000);
+    loop.stop(100);
     loop.run();
 
     CHECK(tx_result == 0);
@@ -285,7 +285,7 @@ TEST_SUITE("uart")
 
     Sim::Uart::simulate_rx({'A'});
 
-    loop.stop(5000);
+    loop.stop(100);
     loop.run();
 
     REQUIRE(received.size() == 1);
@@ -305,7 +305,7 @@ TEST_SUITE("uart")
 
     Sim::Uart::simulate_rx({0x11, 0x22, 0x33});
 
-    loop.stop(5000);
+    loop.stop(100);
     loop.run();
 
     REQUIRE(received.size() == 3);
@@ -333,7 +333,7 @@ TEST_SUITE("uart")
     // REDE must be asserted immediately when write() is called
     CHECK((GPIOA->BSRR & (1u << 5)) != 0);
 
-    loop.stop(5000);
+    loop.stop(100);
     loop.run();
 
     // REDE must be de-asserted after the TC interrupt fires

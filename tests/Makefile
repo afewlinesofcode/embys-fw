@@ -5,7 +5,11 @@ WORK_DIR := /work/tests
 
 SRC_DIR := .
 
-LDLIBS = -lstm32-uart -lstm32-i2c -lstm32-gpio -lstm32-base -lstm32-sim
+LIBS = stm32-modbus-rtu stm32-modbus stm32-uart stm32-i2c stm32-gpio stm32-base stm32-sim
+LDLIBS = $(addprefix -l,$(LIBS))
+DEPS = $(addprefix $(BUILD_LIB_DIR)/lib,$(addsuffix .a,$(LIBS)))
+TARGET_DEPS = $(DEPS)
+
 INCLUDES = -Iinclude -I$(PROJECT_ROOT)/build/include_sim
 
 include $(PROJECT_ROOT)/mk/toolchain/$(TC).mk
