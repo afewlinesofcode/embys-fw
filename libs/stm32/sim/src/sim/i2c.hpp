@@ -76,6 +76,18 @@ void
 simulate_rx(std::vector<uint8_t> data);
 
 /**
+ * @brief Register a simulated response for a given I2C address and register.
+ * Whenever a read to @p addr starts (optionally preceded by a write of @p reg),
+ * @p data is automatically injected into the rx buffers.
+ * Use @p reg = 0 for plain reads with no preceding register write.
+ * @param addr  7-bit I2C device address.
+ * @param reg   Register byte written before the read (0 if none).
+ * @param data  Bytes to return on each matching read.
+ */
+void
+simulate_response(uint8_t addr, uint8_t reg, std::vector<uint8_t> data);
+
+/**
  * @brief Simulate the I2C bus being busy by setting the BUSY flag in the SR2
  * register. This can be used to test how code handles a busy I2C bus condition.
  */
