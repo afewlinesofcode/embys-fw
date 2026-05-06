@@ -39,6 +39,7 @@ examples:
 	cd examples/uart_print && $(MAKE) TC=$(TC) all
 	cd examples/uart_echo && $(MAKE) TC=$(TC) all
 	cd examples/i2c_btn_blink && $(MAKE) TC=$(TC) all
+	cd examples/i2c_aht20 && $(MAKE) TC=$(TC) all
 
 clean:
 	cd libs/stm32/common && $(MAKE) TC=$(TC) clean
@@ -57,5 +58,6 @@ clean:
 	cd examples/uart_print && $(MAKE) TC=$(TC) clean
 	cd examples/uart_echo && $(MAKE) TC=$(TC) clean
 	cd examples/i2c_btn_blink && $(MAKE) TC=$(TC) clean
+	cd examples/i2c_aht20 && $(MAKE) TC=$(TC) clean
 
 .PHONY: all test clean-tests examples clean

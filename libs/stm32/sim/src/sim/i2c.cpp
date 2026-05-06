@@ -103,18 +103,36 @@ static bool block_sb = false;
  */
 static bool block_addr = false;
 
+/**
+ * @brief Flag indicating whether the current transaction had a write phase
+ * before switching to read (used to detect repeated-start reg reads).
+ */
+static bool had_write_phase = false;
+
+/**
+ * @brief Simulated responses: maps (addr, reg) -> data to be injected into
+ * rx_buffers automatically when a matching read operation starts.
+ */
+static std::map<std::pair<uint8_t, uint8_t>, std::vector<uint8_t>>
+    simulated_responses;
+
+void
+simulate_response(uint8_t a, uint8_t reg, std::vector<uint8_t> data)
+{
+  simulated_responses[{a, reg}] = std::move(data);
+}
+
 void
 simulate_rx(std::vector<uint8_t> data)
 {
   rx_buffers.push_back(data);
+
   if (rx_buffers.size() == 1)
   {
-    // If this is the first buffer, we need to load it into the shift register
-    // to trigger the reception process.
-    sr = rx_buffers.front()[0];
-    sr_full = true;
+    // If this is the first buffer, we need to kick off the reception
+    sr_full = false;
     sr_receiving = true;
-    read_buffer_pos = 1; // Start from the second byte for the next read
+    read_buffer_pos = 0;
   }
 }
 
@@ -257,6 +275,9 @@ start_hook(uint32_t)
     return;
   }
 
+  if (!is_repeated_start)
+    had_write_phase = false;
+
   SET_BIT_V(i2c->SR2, I2C_SR2_BUSY | I2C_SR2_MSL);
   SET_BIT_V(i2c->SR1, I2C_SR1_TXE);
   CLEAR_BIT_V(i2c->SR1, I2C_SR1_RXNE);
@@ -300,10 +321,23 @@ read_sr2_hook(uint32_t)
     // state for it
     sr_receiving = true;
     read_buffer_pos = 0;
+
+    // Auto-inject simulated response if one is registered for (addr, reg)
+    uint8_t reg = 0;
+
+    if (had_write_phase && !tx_buffers.empty() && !tx_buffers.back().empty())
+      reg = tx_buffers.back()[0];
+
+    auto key = std::make_pair(addr.value_or(0), reg);
+    auto it = simulated_responses.find(key);
+
+    if (it != simulated_responses.end())
+      simulate_rx(it->second);
   }
   else if (condition == Writing)
   {
     // Create new buffer to store transmitted data and set up state for it
+    had_write_phase = true;
     tx_buffers.emplace_back();
     SET_BIT_V(i2c->SR1, I2C_SR1_TXE);
   }
@@ -465,6 +499,8 @@ reset()
   on_tx.clear();
   block_sb = false;
   block_addr = false;
+  had_write_phase = false;
+  simulated_responses.clear();
 
   Base::add_test_hook("i2c_read_dr", read_dr_hook);
   Base::add_test_hook("i2c_write_dr", write_dr_hook);
