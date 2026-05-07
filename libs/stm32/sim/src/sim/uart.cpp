@@ -20,6 +20,8 @@ USART_TypeDef *usart = &usart1_instance; // Default to usart1
 
 std::vector<std::vector<uint8_t>> tx_buffers;
 
+Callable<std::vector<uint8_t>> on_tx;
+
 /**
  * @brief RX shift register: holds a byte being transferred from rx_buffer to
  * DR.
@@ -68,7 +70,7 @@ static bool tx_active = false;
 static bool wait_clear = false;
 
 /**
- * @brief Absolute cycle count at which TC should be set after transmission.
+ * @brief Cycle at which countdown starts for TC to be set after transmission.
  * std::nullopt when no TC is pending.
  */
 static std::optional<uint32_t> tc_cyc;
@@ -102,6 +104,8 @@ simulate_rx(std::vector<uint8_t> data)
 
   rx_buffer = data;
   rx_buffer_pos = 0;
+  rx_sr_receiving = true;
+  rx_sr_full = false;
 }
 
 /**
@@ -243,7 +247,7 @@ transmitter_hook(uint32_t cyc)
     tx_sr_full = false;
     tx_sr_sending = false;
     // Schedule TC after a short delay to simulate transmission time
-    tc_cyc = cyc + 20;
+    tc_cyc = cyc;
   }
   else if (tx_sr_full)
   {
@@ -257,12 +261,14 @@ transmitter_hook(uint32_t cyc)
   }
   else
   {
-    if (tc_cyc.has_value() && cyc >= *tc_cyc)
+    if (tc_cyc.has_value() &&
+        (cyc - tc_cyc.value() >= 20)) // Simulate TC delay of 20 cycles
     {
       current_tx_buffer = nullptr;
       tx_active = false;
       tc_cyc = std::nullopt;
       SET_BIT_V(usart->SR, USART_SR_TC);
+      on_tx(tx_buffers.back());
     }
   }
 }
@@ -284,6 +290,8 @@ reset()
   tx_buffers.clear();
   current_tx_buffer = nullptr;
   rx_buffer_pos = 0;
+
+  on_tx.clear();
 
   usart->DR = 0;
   // Start in idle state: TX empty and complete.

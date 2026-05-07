@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include <embys/stm32/modbus/handler.hpp>
+#include <embys/stm32/types.hpp>
 
 #include "base.hpp"
 #include "statistics.hpp"
@@ -50,6 +51,17 @@ public:
     return statistics;
   }
 
+  /**
+   * @brief Register a callback invoked for every valid (CRC-OK, addressed)
+   * request, with the raw PDU bytes and length (CRC already stripped).
+   * Byte layout: [0]=device_id, [1]=FC, [2:3]=starting address.
+   */
+  inline void
+  set_on_request_callback(Embys::Callable<const uint8_t *, uint16_t> cb)
+  {
+    on_request_cb = cb;
+  }
+
   void
   enable();
 
@@ -57,6 +69,8 @@ private:
   uint8_t device_id;
   Modbus::Handler *handler;
   bool handling_request = false;
+
+  Embys::Callable<const uint8_t *, uint16_t> on_request_cb;
 
   ServerStatistics statistics;
 

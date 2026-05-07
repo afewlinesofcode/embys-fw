@@ -44,6 +44,8 @@ Server::process_request()
 
   buffer_in_len -= 2U; // strip CRC
 
+  on_request_cb(buffer_in, buffer_in_len);
+
   handling_request = true;
   uint8_t exception =
       handler->handle(buffer_in, buffer_in_len, buffer_out, &buffer_out_len);
