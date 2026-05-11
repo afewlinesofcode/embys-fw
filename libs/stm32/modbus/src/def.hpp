@@ -23,8 +23,22 @@ struct FunctionCode
   static constexpr uint8_t ReadInputRegisters = 0x04;
   static constexpr uint8_t WriteSingleCoil = 0x05;
   static constexpr uint8_t WriteSingleRegister = 0x06;
+  static constexpr uint8_t Diagnostics = 0x08;
+  static constexpr uint8_t ReportServerId = 0x11;
   static constexpr uint8_t WriteMultipleCoils = 0x0F;
   static constexpr uint8_t WriteMultipleRegisters = 0x10;
+};
+
+struct DiagnosticsSubCode
+{
+  static constexpr uint16_t ReturnQueryData = 0x0000;
+  static constexpr uint16_t ClearCounters = 0x000A;
+  static constexpr uint16_t ReturnBusMessageCount = 0x000B;
+  static constexpr uint16_t ReturnBusCommErrorCount = 0x000C;
+  static constexpr uint16_t ReturnBusExceptionErrorCount = 0x000D;
+  static constexpr uint16_t ReturnSlaveMessageCount = 0x000E;
+  static constexpr uint16_t ReturnSlaveNoResponseCount = 0x000F;
+  static constexpr uint16_t ReturnSlaveBusyCount = 0x0011;
 };
 
 struct ExceptionCode

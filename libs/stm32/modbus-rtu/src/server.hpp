@@ -22,11 +22,11 @@
 
 #include <stdint.h>
 
+#include <embys/stm32/modbus/diagnostics.hpp>
 #include <embys/stm32/modbus/handler.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "base.hpp"
-#include "statistics.hpp"
 
 namespace Embys::Stm32::Modbus::Rtu
 {
@@ -45,10 +45,10 @@ public:
   Server(uint8_t device_id, Modbus::Handler *handler, Uart::Bus *transport);
   ~Server();
 
-  inline ServerStatistics &
-  get_statistics()
+  inline const Modbus::DiagnosticsCounters &
+  get_diagnostics_counters() const
   {
-    return statistics;
+    return diag_counters;
   }
 
   /**
@@ -72,7 +72,7 @@ private:
 
   Embys::Callable<const uint8_t *, uint16_t> on_request_cb;
 
-  ServerStatistics statistics;
+  Modbus::DiagnosticsCounters diag_counters;
 
   int
   process_request();

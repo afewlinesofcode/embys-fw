@@ -162,9 +162,9 @@ TEST_SUITE("modbus_rtu_base")
 
     // Length grows by exactly 2 bytes.
     CHECK(base.buffer_out_len == static_cast<uint16_t>(sizeof(payload)) + 2U);
-    // CRC 0x8776: high byte 0x87 first, low byte 0x76 second (big-endian).
-    CHECK(base.buffer_out[sizeof(payload)] == 0x87U);
-    CHECK(base.buffer_out[sizeof(payload) + 1U] == 0x76U);
+    // CRC 0x8776: low byte 0x76 first, high byte 0x87 second (little-endian).
+    CHECK(base.buffer_out[sizeof(payload)] == 0x76U);
+    CHECK(base.buffer_out[sizeof(payload) + 1U] == 0x87U);
   }
 
   // ── validate_crc ──────────────────────────────────────────────────────────

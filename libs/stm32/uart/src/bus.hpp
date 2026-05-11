@@ -108,6 +108,17 @@ public:
   }
 
   /**
+   * @brief Set an optional RS-485 RE/DE control pin.
+   * When set, the pin is driven high before transmission begins and low
+   * after the TC (transmission-complete) interrupt fires.
+   */
+  inline void
+  set_rede_pin(Gpio::Pin *pin)
+  {
+    rede_pin = pin;
+  }
+
+  /**
    * @brief Enable the USART peripheral and register with the loop.
    * @return 0 on success, negative error code on failure.
    */
@@ -170,17 +181,6 @@ public:
   clear_tx_callback()
   {
     tx_cb.clear();
-  }
-
-  /**
-   * @brief Set an optional RS-485 RE/DE control pin.
-   * When set, the pin is driven high before transmission begins and low
-   * after the TC (transmission-complete) interrupt fires.
-   */
-  inline void
-  set_rede_pin(Gpio::Pin *pin)
-  {
-    rede_pin = pin;
   }
 
 private:

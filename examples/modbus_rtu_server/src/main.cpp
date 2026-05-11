@@ -50,8 +50,6 @@ namespace Uart = Embys::Stm32::Uart;
 namespace Modbus = Embys::Stm32::Modbus;
 namespace I2c = Embys::Stm32::I2c;
 
-// ── IRQ handler globals ───────────────────────────────────────────────────
-
 static Base::Timer *timer_ptr = nullptr;
 static Uart::Bus *uart_ptr = nullptr;
 static I2c::Bus *i2c_bus_ptr = nullptr;
@@ -91,7 +89,23 @@ extern "C"
   }
 }
 
-// ── on_request callback ───────────────────────────────────────────────────
+// Blink management
+
+static void
+blink(AppContext *ctx)
+{
+  ctx->led->write(0); // active-low: 0 = on
+  ctx->blink_off_event->enable(LED_BLINK_US);
+}
+
+static void
+on_blink_off(void *ctx)
+{
+  auto *context = static_cast<AppContext *>(ctx);
+  context->led->write(1); // active-low: 1 = off
+}
+
+// Modbus
 
 static void
 on_request(void *ctx, const uint8_t *buf, uint16_t len)
@@ -142,24 +156,13 @@ on_request(void *ctx, const uint8_t *buf, uint16_t len)
 
   SIM_LOG("[Modbus] " << op << " " << type << " 0x" << std::hex << addr);
 
-  // Blink LED: turn on, schedule a one-shot event to turn it off
-  context->led->write(0); // active-low: 0 = on
-  context->blink_off_event->enable(LED_BLINK_US);
+  blink(context);
 
   // Update LCD
   context->lcd->show_operation(op, type, addr);
 }
 
-// ── LED blink-off callback ────────────────────────────────────────────────
-
-static void
-on_blink_off(void *ctx)
-{
-  auto *context = static_cast<AppContext *>(ctx);
-  context->led->write(1); // active-low: 1 = off
-}
-
-// ── startup callback ──────────────────────────────────────────────────────
+// Startup
 
 static void
 on_start(void *ctx)
@@ -168,8 +171,6 @@ on_start(void *ctx)
   context->lcd->init();
 }
 
-// ── main ──────────────────────────────────────────────────────────────────
-
 int
 main()
 {
@@ -177,10 +178,8 @@ main()
 
   SIM_RESET(&context);
 
-  // ── timer ──────────────────────────────────────────────────────────────
   Base::Timer timer(TIM2);
 
-  // ── loop ───────────────────────────────────────────────────────────────
   // Events:
   //   1. loop stop (internal)
   //   2. UART Bus timeout
@@ -200,11 +199,9 @@ main()
   Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
                   module_slots, modules_capacity);
 
-  // ── events ─────────────────────────────────────────────────────────────
   Base::Event blink_off_event(&loop, 0, {on_blink_off, &context});
   Base::Event startup_event(&loop, 0, {on_start, &context});
 
-  // ── GPIO ───────────────────────────────────────────────────────────────
   constexpr size_t gpio_pins_capacity = 6;
   static Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
   Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
@@ -214,7 +211,6 @@ main()
                     Gpio::PinCfg::NONE);
   led_pin.set_init_value(1); // off at start
 
-  // ── UART (USART1) ──────────────────────────────────────────────────────
   // PA8: RE/DE (output push-pull, 50 MHz) — MAX485 direction control
   Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8, Gpio::Mode::OUT_50,
                       Gpio::Cnf::OUT_PP, Gpio::PinCfg::NONE);
@@ -232,7 +228,6 @@ main()
   Uart::Bus uart_bus(USART1, &loop, uart_rx_buf, sizeof(uart_rx_buf));
   uart_bus.set_rede_pin(&uart_rede);
 
-  // ── Modbus store, handler, server ─────────────────────────────────────
   // Coils / discrete inputs: ceil(10 / 8) = 2 bytes each
   static uint8_t coils_buf[2] = {};
   static uint8_t di_buf[2] = {};
@@ -244,6 +239,7 @@ main()
                              ir_buf, MODBUS_TABLE_SIZE);
 
   Modbus::Handler modbus_handler(&modbus_store);
+  modbus_handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
   modbus_handler.set_coils_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_discrete_inputs_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_holding_registers_offset(MODBUS_BASE_ADDR);
@@ -253,7 +249,6 @@ main()
                                     &uart_bus);
   modbus_server.set_on_request_callback({on_request, &context});
 
-  // ── I2C (I2C1) — LCD ──────────────────────────────────────────────────
   // PB6: SCL (open-drain AF, 50 MHz)
   Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6, Gpio::Mode::OUT_50,
                     Gpio::Cnf::OUT_OD_AF, Gpio::PinCfg::NONE);
@@ -265,20 +260,19 @@ main()
   I2c::Bus i2c_bus(I2C1, &loop);
   ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
 
-  // ── global pointers for IRQ handlers ──────────────────────────────────
+  // Global pointers for IRQ handlers
   timer_ptr = &timer;
   uart_ptr = &uart_bus;
   i2c_bus_ptr = &i2c_bus;
 
-  // ── application context ────────────────────────────────────────────────
+  // Application context
   context.led = &led_pin;
   context.blink_off_event = &blink_off_event;
   context.lcd = &lcd;
 
-  // ── system init ────────────────────────────────────────────────────────
   Base::system_init();
 
-  // ── enable peripherals ────────────────────────────────────────────────
+  // Enable peripherals
   TRY(gpio_bus.enable());
   TRY(led_pin.enable());
   TRY(uart_rede.enable());
@@ -294,7 +288,7 @@ main()
   modbus_server.override_frame_delay_us(100);
 #endif
 
-  // ── enable interrupts ─────────────────────────────────────────────────
+  // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0x00);
   __NVIC_EnableIRQ(USART1_IRQn);
@@ -304,10 +298,8 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  // ── startup ───────────────────────────────────────────────────────────
   startup_event.enable(0);
 
-  // ── run ───────────────────────────────────────────────────────────────
   loop.run();
 
   return 0;
