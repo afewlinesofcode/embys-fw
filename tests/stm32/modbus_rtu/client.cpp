@@ -26,8 +26,8 @@ append_crc_to_vec(std::vector<uint8_t> &frame)
       crc = (crc & 0x0001U) ? ((crc >> 1U) ^ 0xA001U) : (crc >> 1U);
     }
   }
-  frame.push_back(static_cast<uint8_t>(crc >> 8U));
   frame.push_back(static_cast<uint8_t>(crc & 0xFFU));
+  frame.push_back(static_cast<uint8_t>(crc >> 8U));
 }
 
 static void
@@ -287,8 +287,8 @@ TEST_SUITE("modbus_rtu_client")
     CHECK(client.buffer_out[3] == 0x6BU); // addr low
     CHECK(client.buffer_out[4] == 0x00U); // qty high
     CHECK(client.buffer_out[5] == 0x03U); // qty low
-    CHECK(client.buffer_out[6] == 0x87U); // CRC high (known from spec)
-    CHECK(client.buffer_out[7] == 0x76U); // CRC low  (known from spec)
+    CHECK(client.buffer_out[6] == 0x76U); // CRC low  (known from spec)
+    CHECK(client.buffer_out[7] == 0x87U); // CRC high (known from spec)
   }
 
   TEST_CASE_FIXTURE(

@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "def.hpp"
+#include "diagnostics.hpp"
 #include "store.hpp"
 
 namespace Embys::Stm32::Modbus
@@ -85,8 +86,24 @@ public:
     input_registers_offset = offset;
   }
 
+  inline void
+  set_diagnostics_counters(DiagnosticsCounters *ptr)
+  {
+    diag_counters = ptr;
+  }
+
+  inline void
+  set_server_id(const uint8_t *buf, uint8_t len)
+  {
+    server_id_buf = buf;
+    server_id_len = len;
+  }
+
 private:
   Store *store;
+  DiagnosticsCounters *diag_counters = nullptr;
+  const uint8_t *server_id_buf = nullptr;
+  uint8_t server_id_len = 0;
   uint16_t starting_address = 0;
   uint16_t quantity = 0;
   uint16_t write_value = 0;
@@ -118,6 +135,14 @@ private:
   uint8_t
   handle_write_single_register(BufferIn request, uint16_t req_len,
                                BufferOut response, uint16_t *res_len);
+
+  uint8_t
+  handle_diagnostics(BufferIn request, uint16_t req_len, BufferOut response,
+                     uint16_t *res_len);
+
+  uint8_t
+  handle_report_server_id(BufferIn request, uint16_t req_len,
+                          BufferOut response, uint16_t *res_len);
 
   uint8_t
   handle_write_multiple_coils(BufferIn request, uint16_t req_len,

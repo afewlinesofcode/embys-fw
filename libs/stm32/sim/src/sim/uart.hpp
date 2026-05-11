@@ -35,6 +35,8 @@
 
 #include <vector>
 
+#include <embys/stm32/types.hpp>
+
 #include "core.hpp"
 
 namespace Embys::Stm32::Sim::Uart
@@ -51,6 +53,12 @@ extern USART_TypeDef *usart;
  * separate transmission that has been initiated by writing to DR.
  */
 extern std::vector<std::vector<uint8_t>> tx_buffers;
+
+/**
+ * @brief Callback invoked when a UART transmission completes (TC flag set).
+ * Receives the bytes that were transmitted.
+ */
+extern Callable<std::vector<uint8_t>> on_tx;
 
 /**
  * @brief Simulate receiving data on the UART.

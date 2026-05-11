@@ -33,8 +33,8 @@ static void
 append_crc(std::vector<uint8_t> &frame)
 {
   uint16_t crc = crc16(frame.data(), static_cast<uint16_t>(frame.size()));
-  frame.push_back(static_cast<uint8_t>(crc >> 8U));
   frame.push_back(static_cast<uint8_t>(crc & 0xFFU));
+  frame.push_back(static_cast<uint8_t>(crc >> 8U));
 }
 
 static void
@@ -60,8 +60,8 @@ response_crc_valid(const std::vector<uint8_t> &buf)
   if (buf.size() < 2U)
     return false;
   uint16_t crc = crc16(buf.data(), static_cast<uint16_t>(buf.size() - 2U));
-  return buf[buf.size() - 2U] == static_cast<uint8_t>(crc >> 8U) &&
-         buf[buf.size() - 1U] == static_cast<uint8_t>(crc & 0xFFU);
+  return buf[buf.size() - 2U] == static_cast<uint8_t>(crc & 0xFFU) &&
+         buf[buf.size() - 1U] == static_cast<uint8_t>(crc >> 8U);
 }
 
 namespace
@@ -195,7 +195,7 @@ TEST_SUITE("modbus_rtu_server")
     loop.stop(500);
     loop.run();
 
-    CHECK(server.get_statistics().get_crc_errors() == 1U);
+    CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
   }
 
@@ -208,7 +208,6 @@ TEST_SUITE("modbus_rtu_server")
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
-    CHECK(server.get_statistics().get_responses() == 0U);
   }
 
   TEST_CASE_FIXTURE(ServerFixture,
@@ -246,18 +245,18 @@ TEST_SUITE("modbus_rtu_server")
     REQUIRE(sent.size() >= 3U);
     CHECK(sent[1] == (0x42U | 0x80U));
     CHECK(sent[2] == Modbus::ExceptionCode::IllegalFunction);
-    CHECK(server.get_statistics().get_exceptions() >= 1U);
+    CHECK(server.get_diagnostics_counters().bus_exception_error_count >= 1U);
   }
 
   TEST_CASE_FIXTURE(ServerFixture,
-                    "Server: statistics count responses correctly")
+                    "Server: valid request increments slave_message_count")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
 
     loop.stop(500);
     loop.run();
 
-    CHECK(server.get_statistics().get_responses() == 1U);
+    CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
   }
 
   // ── Response byte layout ─────────────────────────────────────────────────
@@ -420,3 +419,191 @@ TEST_SUITE("modbus_rtu_server")
   }
 
 } // TEST_SUITE("modbus_rtu_server")
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+TEST_SUITE("modbus_rtu_server_diagnostics")
+{
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "bus_message_count increments for every addressed frame")
+  {
+    inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "bus_message_count increments even for non-addressed frame")
+  {
+    inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2, not 1
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "bus_comm_error_count increments on CRC error")
+  {
+    // Inject frame with corrupt CRC bytes
+    std::vector<uint8_t> frame = {0x01, 0x03, 0x00, 0x00,
+                                  0x00, 0x01, 0xFF, 0xFF};
+    Sim::Uart::simulate_rx(frame);
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "slave_message_count increments for valid addressed frame")
+  {
+    inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "slave_message_count does not increment for non-addressed "
+                    "frame")
+  {
+    inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().slave_message_count == 0U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "slave_no_response_count increments on broadcast")
+  {
+    inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // broadcast write coil
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().slave_no_response_count == 1U);
+    CHECK(Sim::Uart::tx_buffers.empty());
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "bus_exception_error_count increments when exception is "
+                    "sent")
+  {
+    inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01}); // unsupported FC
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().bus_exception_error_count == 1U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "FC 0x08 ReturnQueryData: server echoes data field")
+  {
+    inject_frame({0x01, 0x08, 0x00, 0x00, 0xAB, 0xCD});
+    auto sent = run_and_capture(loop);
+
+    // Response: device=01 FC=08 sub_fn_hi sub_fn_lo data_hi data_lo CRC CRC
+    REQUIRE(sent.size() == 8U);
+    CHECK(sent[0] == 0x01U);
+    CHECK(sent[1] == 0x08U);
+    CHECK(sent[2] == 0x00U); // sub-function high
+    CHECK(sent[3] == 0x00U); // sub-function low
+    CHECK(sent[4] == 0xABU); // echoed data high
+    CHECK(sent[5] == 0xCDU); // echoed data low
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "FC 0x08 ReturnSlaveMessageCount: returns live counter")
+  {
+    // First, generate two slave messages
+    inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
+    loop.stop(500);
+    loop.run();
+    inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
+    loop.stop(500);
+    loop.run();
+
+    // Now query slave message count via FC 0x08
+    inject_frame({0x01, 0x08, 0x00, 0x0E, 0x00, 0x00});
+    auto sent = run_and_capture(loop);
+
+    REQUIRE(sent.size() == 8U);
+    CHECK(sent[0] == 0x01U);
+    CHECK(sent[1] == 0x08U);
+    CHECK(sent[2] == 0x00U); // sub-fn high
+    CHECK(sent[3] == 0x0EU); // sub-fn low (ReturnSlaveMessageCount)
+    // slave_message_count should be 3 (2 reads + 1 diagnostics query)
+    uint16_t count =
+        static_cast<uint16_t>((static_cast<uint16_t>(sent[4]) << 8U) | sent[5]);
+    CHECK(count == 3U);
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture, "FC 0x08 ClearCounters: resets all counters")
+  {
+    // Generate some traffic
+    inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
+    loop.stop(500);
+    loop.run();
+
+    CHECK(server.get_diagnostics_counters().bus_message_count >= 1U);
+
+    // Clear
+    inject_frame({0x01, 0x08, 0x00, 0x0A, 0x00, 0x00});
+    loop.stop(500);
+    loop.run();
+
+    // Counters should be reset (ClearCounters itself increments them by 1
+    // each, but then resets them, so net result is 0 for all)
+    CHECK(server.get_diagnostics_counters().bus_message_count == 0U);
+    CHECK(server.get_diagnostics_counters().slave_message_count == 0U);
+    CHECK(server.get_diagnostics_counters().bus_comm_error_count == 0U);
+  }
+
+} // TEST_SUITE("modbus_rtu_server_diagnostics")
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+TEST_SUITE("modbus_rtu_server_report_server_id")
+{
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "FC 0x11 default: response has device_id and run indicator")
+  {
+    inject_frame({0x01, 0x11}); // FC 0x11, no data
+    auto sent = run_and_capture(loop);
+
+    // device=01 FC=11 byte_count=02 id=01 run=FF CRC CRC  → 7 bytes
+    REQUIRE(sent.size() == 7U);
+    CHECK(sent[0] == 0x01U);
+    CHECK(sent[1] == Modbus::FunctionCode::ReportServerId);
+    CHECK(sent[2] == 0x02U); // byte_count
+    CHECK(sent[3] == 0x01U); // server id = device_id
+    CHECK(sent[4] == 0xFFU); // run indicator
+    CHECK(response_crc_valid(sent));
+  }
+
+  TEST_CASE_FIXTURE(ServerFixture,
+                    "FC 0x11 custom server id: response reflects set_server_id")
+  {
+    const uint8_t id[] = {0xAB, 0xCD};
+    handler.set_server_id(id, sizeof(id));
+
+    inject_frame({0x01, 0x11});
+    auto sent = run_and_capture(loop);
+
+    // device=01 FC=11 byte_count=04 01 FF AB CD CRC CRC  → 9 bytes
+    REQUIRE(sent.size() == 9U);
+    CHECK(sent[2] == 0x04U); // byte_count
+    CHECK(sent[3] == 0x01U); // device id
+    CHECK(sent[4] == 0xFFU); // run indicator
+    CHECK(sent[5] == 0xABU);
+    CHECK(sent[6] == 0xCDU);
+    CHECK(response_crc_valid(sent));
+  }
+
+} // TEST_SUITE("modbus_rtu_server_report_server_id")

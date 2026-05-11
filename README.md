@@ -357,6 +357,112 @@ i2c_bus.read(0x38, 0xAC, rx_buf, 6, {on_done, &context});
 
 Error codes are defined in `Embys::Stm32::I2c::Diag` (e.g. `NACK`, `TIMEOUT`, `BUS_BUSY`).
 
+### Modbus RTU
+
+Base paths:
+
+- `libs/stm32/modbus/` — protocol layer (store, handler, definitions)
+- `libs/stm32/modbus-rtu/` — RTU framing layer (server, client)
+
+Provides a Modbus RTU server (slave) and client (master) over the interrupt-driven `Uart::Bus`. The protocol layer is independent of transport and can be tested standalone.
+
+#### Store
+
+`Embys::Stm32::Modbus::Store` holds the four Modbus data models — coils, discrete inputs, holding registers, and input registers. All backing memory is provided by the caller; no heap allocation occurs.
+
+```cpp
+static uint8_t  coils_buf[2];     // ceil(10 / 8) bytes → 16 coils
+static uint8_t  di_buf[2];        // 16 discrete inputs
+static uint16_t hr_buf[16];       // 16 holding registers
+static uint16_t ir_buf[8];        // 8 input registers
+
+Modbus::Store store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
+```
+
+#### Handler
+
+`Embys::Stm32::Modbus::Handler` processes raw Modbus PDUs (without CRC) against a `Store` and writes the response PDU into a caller-provided buffer. It returns `0` on success or a `Modbus::ExceptionCode` on failure.
+
+Supported function codes:
+
+| FC   | Name                     |
+| ---- | ------------------------ |
+| 0x01 | Read Coils               |
+| 0x02 | Read Discrete Inputs     |
+| 0x03 | Read Holding Registers   |
+| 0x04 | Read Input Registers     |
+| 0x05 | Write Single Coil        |
+| 0x06 | Write Single Register    |
+| 0x08 | Diagnostics              |
+| 0x0F | Write Multiple Coils     |
+| 0x10 | Write Multiple Registers |
+| 0x11 | Report Server ID         |
+
+Optional address offsets let a single store be shared by multiple servers with different on-wire base addresses:
+
+```cpp
+Modbus::Handler handler(&store);
+handler.set_coils_offset(0x1000);
+handler.set_holding_registers_offset(0x1000);
+
+// Optional: custom server ID reported by FC 0x11
+handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
+```
+
+#### Server
+
+`Embys::Stm32::Modbus::Rtu::Server` listens for frames addressed to `device_id`, validates CRC, dispatches to `Handler`, and sends the response. Broadcast frames (device ID 0) are executed but produce no response.
+
+**Link**: add `libstm32-modbus-rtu.a` and `libstm32-modbus.a` to `LDLIBS`, include `<embys/stm32/modbus-rtu/server.hpp>` and `<embys/stm32/modbus/handler.hpp>`.
+
+**Caller responsibilities:**
+
+- Construct a `Uart::Bus` and a `Modbus::Handler` before the server
+- Optionally register a per-request callback with `set_on_request_callback()`
+- Call `server.enable()` after all peripherals are enabled
+
+```cpp
+Modbus::Store  store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
+Modbus::Handler handler(&store);
+
+Modbus::Rtu::Server server(1 /*device_id*/, &handler, &uart_bus);
+server.set_on_request_callback({on_request, &context});
+server.enable();
+```
+
+Diagnostics counters (FC 0x08) are maintained automatically and accessible via `get_diagnostics_counters()`:
+
+```cpp
+const auto &diag = server.get_diagnostics_counters();
+// diag.bus_message_count, bus_comm_error_count, bus_exception_error_count,
+// slave_message_count, slave_no_response_count, slave_busy_count
+```
+
+#### Client
+
+`Embys::Stm32::Modbus::Rtu::Client` serialises Modbus requests over RTU and dispatches the parsed response (or a timeout notification) via a caller-supplied callback. Only one request may be in flight at a time; `is_available()` returns `false` while a response is pending.
+
+**Required events**: 2 (one for frame timeout in `Base`, one for response timeout).
+
+**Link**: add `libstm32-modbus-rtu.a` and `libstm32-modbus.a` to `LDLIBS`, include `<embys/stm32/modbus-rtu/client.hpp>`.
+
+```cpp
+Modbus::Rtu::Client client(&uart_bus, &loop);
+client.enable();
+
+// Response callback: (device_id, fc, quantity, data_ptr)
+// On timeout: quantity == 0, data_ptr == nullptr
+// On exception: fc has bit 7 set
+auto on_response = [](void *, uint8_t, uint8_t fc, uint8_t qty, uint8_t *data)
+{
+    if (qty == 0) { /* timeout */ return; }
+    // process data...
+};
+
+if (client.is_available())
+    client.read_holding_registers(1, 0x1000, 4, {on_response, nullptr});
+```
+
 ### Tests
 
 Tests are located in the `tests/` directory and are worth exploring. They cover most of the functionality provided by the library. Tests are written using the Doctest library.
@@ -439,3 +545,36 @@ Wire up:
 Build with `make`, then flash with `make flash`. Press the button to toggle blinking; the LCD updates the blink status and count in real time.
 
 For simulation, run `make TC=sim run`. As with the GPIO button blink example, the simulator accepts commands through the named pipe. Run `make btn-toggle` in the example directory to simulate a button press and release.
+
+#### Modbus RTU server
+
+Located in the `examples/modbus_rtu_server/` directory, this example demonstrates a Modbus RTU slave running on USART1 with a MAX485-compatible half-duplex transceiver. Received requests are shown on an HD44780 LCD connected over I2C, and PC13 blinks briefly on each request.
+
+**Hardware (Blue Pill / STM32F103C8):**
+
+| Signal       | Pin  | Notes                          |
+| ------------ | ---- | ------------------------------ |
+| USART1 TX    | PA9  | AF push-pull                   |
+| USART1 RX    | PA10 | Input floating                 |
+| RE/DE        | PA8  | MAX485 direction control       |
+| I2C1 SCL     | PB6  | Open-drain AF, 100 kHz         |
+| I2C1 SDA     | PB7  | Open-drain AF                  |
+| LCD backpack | 0x27 | HD44780 via PCF8574, I2C       |
+| LED          | PC13 | Active-low, blinks per request |
+
+**Modbus tables** (all at on-wire base address `0x1000`, 10 entries each):
+
+| Table             | FC           |
+| ----------------- | ------------ |
+| Coils             | 01 / 05 / 0F |
+| Discrete inputs   | 02           |
+| Holding registers | 03 / 06 / 10 |
+| Input registers   | 04           |
+
+Slave address: `0x01`. Baud rate: 9600 8N1. Server ID (FC 0x11): `"EMBYS"`.
+
+All libraries must be built for the target architecture before running.
+
+Build with `make`, then flash with `make flash`. Connect a Modbus master (e.g. `modpoll` or a PLC) at 9600 8N1 to PA9/PA10 through a MAX485 module.
+
+For simulation, run `make TC=sim run`. The simulator prints received Modbus operations to stdout and you can inject raw RTU frames through the named pipe `/tmp/embys_stm32_sim_pipe`. Press Ctrl+C to terminate.

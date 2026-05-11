@@ -32,6 +32,10 @@ Handler::handle(BufferIn request, uint16_t req_len, BufferOut response,
       return handle_write_single_coil(request, req_len, response, res_len);
     case FunctionCode::WriteSingleRegister:
       return handle_write_single_register(request, req_len, response, res_len);
+    case FunctionCode::Diagnostics:
+      return handle_diagnostics(request, req_len, response, res_len);
+    case FunctionCode::ReportServerId:
+      return handle_report_server_id(request, req_len, response, res_len);
     case FunctionCode::WriteMultipleCoils:
       return handle_write_multiple_coils(request, req_len, response, res_len);
     case FunctionCode::WriteMultipleRegisters:
@@ -316,6 +320,99 @@ Handler::handle_write_multiple_registers(BufferIn request, uint16_t req_len,
                                                    holding_registers_offset));
   write_u16_be(&response[4], quantity);
   *res_len = kFrameHeaderSize + 4U;
+  return 0;
+}
+
+uint8_t
+Handler::handle_diagnostics(BufferIn request, uint16_t req_len,
+                            BufferOut response, uint16_t *res_len)
+{
+  if (req_len != kFrameHeaderSize + 4U)
+  {
+    return ExceptionCode::IllegalDataValue;
+  }
+
+  uint16_t sub_fn = read_u16_be(&request[2]);
+  uint16_t data_field = read_u16_be(&request[4]);
+
+  write_u16_be(&response[2], sub_fn);
+
+  uint16_t counter_value = 0;
+
+  switch (sub_fn)
+  {
+    case DiagnosticsSubCode::ReturnQueryData:
+      write_u16_be(&response[4], data_field);
+      break;
+    case DiagnosticsSubCode::ClearCounters:
+      if (diag_counters != nullptr)
+      {
+        diag_counters->reset();
+      }
+      write_u16_be(&response[4], 0x0000U);
+      break;
+    case DiagnosticsSubCode::ReturnBusMessageCount:
+      counter_value =
+          (diag_counters != nullptr) ? diag_counters->bus_message_count : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    case DiagnosticsSubCode::ReturnBusCommErrorCount:
+      counter_value =
+          (diag_counters != nullptr) ? diag_counters->bus_comm_error_count : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    case DiagnosticsSubCode::ReturnBusExceptionErrorCount:
+      counter_value = (diag_counters != nullptr)
+                          ? diag_counters->bus_exception_error_count
+                          : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    case DiagnosticsSubCode::ReturnSlaveMessageCount:
+      counter_value =
+          (diag_counters != nullptr) ? diag_counters->slave_message_count : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    case DiagnosticsSubCode::ReturnSlaveNoResponseCount:
+      counter_value = (diag_counters != nullptr)
+                          ? diag_counters->slave_no_response_count
+                          : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    case DiagnosticsSubCode::ReturnSlaveBusyCount:
+      counter_value =
+          (diag_counters != nullptr) ? diag_counters->slave_busy_count : 0U;
+      write_u16_be(&response[4], counter_value);
+      break;
+    default:
+      return ExceptionCode::IllegalFunction;
+  }
+
+  *res_len = kFrameHeaderSize + 4U;
+  return 0;
+}
+
+uint8_t
+Handler::handle_report_server_id(BufferIn request, uint16_t req_len,
+                                 BufferOut response, uint16_t *res_len)
+{
+  if (req_len != kFrameHeaderSize)
+  {
+    return ExceptionCode::IllegalDataValue;
+  }
+
+  static constexpr uint8_t kStatusIndicator = 0xFFU; // running
+
+  response[2] = 2 + server_id_len; // byte count
+  response[3] = request[0];        // device_id from request frame
+  response[4] = kStatusIndicator;  // device status
+
+  if (server_id_buf != nullptr)
+  {
+    for (uint8_t i = 0; i < server_id_len; ++i)
+      response[5 + i] = server_id_buf[i];
+  }
+
+  *res_len = static_cast<uint16_t>(kFrameHeaderSize + 1U + response[2]);
   return 0;
 }
 

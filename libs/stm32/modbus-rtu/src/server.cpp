@@ -9,6 +9,7 @@ Server::Server(uint8_t device_id, Modbus::Handler *handler,
                Uart::Bus *transport)
   : Base(transport), device_id(device_id), handler(handler)
 {
+  handler->set_diagnostics_counters(&diag_counters);
 }
 
 Server::~Server()
@@ -31,6 +32,8 @@ Server::process_request()
     return 0;
   }
 
+  ++diag_counters.bus_message_count;
+
   if (buffer_in[0] != device_id && buffer_in[0] != 0U)
   {
     return 0;
@@ -38,11 +41,21 @@ Server::process_request()
 
   if (!validate_crc(buffer_in, buffer_in_len))
   {
-    statistics.inc_crc_errors();
+    ++diag_counters.bus_comm_error_count;
     return 0;
   }
 
   buffer_in_len -= 2U; // strip CRC
+
+  if (handling_request)
+  {
+    ++diag_counters.slave_busy_count;
+    return 0;
+  }
+
+  ++diag_counters.slave_message_count;
+
+  on_request_cb(buffer_in, buffer_in_len);
 
   handling_request = true;
   uint8_t exception =
@@ -51,6 +64,7 @@ Server::process_request()
   if (buffer_in[0] == 0U)
   {
     // Broadcast — no response
+    ++diag_counters.slave_no_response_count;
     handling_request = false;
     return 0;
   }
@@ -67,7 +81,6 @@ int
 Server::send_response()
 {
   TRY(send_frame());
-  statistics.inc_responses();
   return 0;
 }
 
@@ -78,7 +91,7 @@ Server::send_exception(uint8_t exception_code)
   buffer_out[1] = buffer_in[1] | 0x80U;
   buffer_out[2] = exception_code;
   buffer_out_len = Modbus::kFrameHeaderSize + 1U;
-  statistics.inc_exceptions();
+  ++diag_counters.bus_exception_error_count;
   return send_response();
 }
 

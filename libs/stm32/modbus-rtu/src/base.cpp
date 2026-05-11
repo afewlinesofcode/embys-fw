@@ -65,14 +65,18 @@ void
 Base::append_crc(uint8_t *buffer, uint16_t *len)
 {
   uint16_t crc = calculate_crc(buffer, *len);
-  Modbus::write_u16_be(&buffer[*len], crc);
+  // Modbus RTU CRC is little-endian: low byte first, then high byte
+  buffer[*len] = static_cast<uint8_t>(crc & 0xFFU);
+  buffer[*len + 1U] = static_cast<uint8_t>((crc >> 8U) & 0xFFU);
   *len += 2U;
 }
 
 bool
 Base::validate_crc(const uint8_t *buffer, uint16_t len) const
 {
-  uint16_t received_crc = Modbus::read_u16_be(&buffer[len - 2U]);
+  // Modbus RTU CRC is little-endian: low byte first, then high byte
+  uint16_t received_crc = static_cast<uint16_t>(buffer[len - 2U]) |
+                          (static_cast<uint16_t>(buffer[len - 1U]) << 8U);
   uint16_t calculated_crc =
       calculate_crc(buffer, static_cast<uint16_t>(len - 2U));
   return received_crc == calculated_crc;

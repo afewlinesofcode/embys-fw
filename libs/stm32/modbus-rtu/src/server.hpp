@@ -22,10 +22,11 @@
 
 #include <stdint.h>
 
+#include <embys/stm32/modbus/diagnostics.hpp>
 #include <embys/stm32/modbus/handler.hpp>
+#include <embys/stm32/types.hpp>
 
 #include "base.hpp"
-#include "statistics.hpp"
 
 namespace Embys::Stm32::Modbus::Rtu
 {
@@ -44,10 +45,21 @@ public:
   Server(uint8_t device_id, Modbus::Handler *handler, Uart::Bus *transport);
   ~Server();
 
-  inline ServerStatistics &
-  get_statistics()
+  inline const Modbus::DiagnosticsCounters &
+  get_diagnostics_counters() const
   {
-    return statistics;
+    return diag_counters;
+  }
+
+  /**
+   * @brief Register a callback invoked for every valid (CRC-OK, addressed)
+   * request, with the raw PDU bytes and length (CRC already stripped).
+   * Byte layout: [0]=device_id, [1]=FC, [2:3]=starting address.
+   */
+  inline void
+  set_on_request_callback(Embys::Callable<const uint8_t *, uint16_t> cb)
+  {
+    on_request_cb = cb;
   }
 
   void
@@ -58,7 +70,9 @@ private:
   Modbus::Handler *handler;
   bool handling_request = false;
 
-  ServerStatistics statistics;
+  Embys::Callable<const uint8_t *, uint16_t> on_request_cb;
+
+  Modbus::DiagnosticsCounters diag_counters;
 
   int
   process_request();
