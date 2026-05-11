@@ -578,3 +578,11 @@ All libraries must be built for the target architecture before running.
 Build with `make`, then flash with `make flash`. Connect a Modbus master (e.g. `modpoll` or a PLC) at 9600 8N1 to PA9/PA10 through a MAX485 module.
 
 For simulation, run `make TC=sim run`. The simulator prints received Modbus operations to stdout and you can inject raw RTU frames through the named pipe `/tmp/embys_stm32_sim_pipe`. Press Ctrl+C to terminate.
+
+The example Makefile provides convenience targets that send pre-built RTU frames into the running simulator:
+
+```
+make read-coils     # FC 0x01 — read 10 coils at address 0x1000
+make write-coil     # FC 0x05 — write single coil at 0x1000 ON
+make read-holding   # FC 0x03 — read 10 holding registers at 0x1000
+```
