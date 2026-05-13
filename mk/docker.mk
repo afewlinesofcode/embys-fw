@@ -36,6 +36,8 @@ in-docker: $(PROJECT_ROOT)/.docker
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
 		make $(TARGET)
 
+MCU ?= stm32f103xb
+
 %-in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Running 'make $*' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
@@ -44,7 +46,7 @@ in-docker: $(PROJECT_ROOT)/.docker
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
-		make TC=$(TC) $*
+		make TC=$(TC) MCU=$(MCU) $*
 
 docker-shell:
 	@echo "Starting interactive shell in Docker container"

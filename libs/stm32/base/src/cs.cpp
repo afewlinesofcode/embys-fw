@@ -1,6 +1,6 @@
 #include "cs.hpp"
 
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32
 {

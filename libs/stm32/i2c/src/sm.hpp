@@ -19,9 +19,9 @@
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/types.hpp>
 
-#include "api.hpp"
 #include "def.hpp"
-#include "stm32f1xx.hpp"
+#include "hal.hpp"
+#include "stm32xx.hpp"
 #include "wait_bus.hpp"
 
 namespace Embys::Stm32::I2c

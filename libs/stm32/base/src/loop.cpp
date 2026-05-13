@@ -1,8 +1,5 @@
 #include "loop.hpp"
 
-#include "event.hpp"
-#include "stm32f1xx.hpp"
-
 namespace Embys::Stm32::Base
 {
 

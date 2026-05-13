@@ -133,8 +133,7 @@ TEST_SUITE("gpio")
     // Clock enabled
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
     // CRL nibble matches IN + IN_FL = 0b0100
-    CHECK(read_cr_nibble(GPIOA, 0) ==
-          Gpio::make_cfg(Gpio::Mode::IN, Gpio::Cnf::IN_FL));
+    CHECK(read_cr_nibble(GPIOA, 0) == 0b0100u); // IN + IN_FL nibble
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: enable with PULL_UP sets ODR bit")

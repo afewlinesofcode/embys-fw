@@ -1,7 +1,7 @@
 #include "wait_bus.hpp"
 
-#include "api.hpp"
 #include "bus.hpp"
+#include "hal.hpp"
 
 namespace Embys::Stm32::I2c
 {

@@ -18,10 +18,10 @@
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/types.hpp>
 
-#include "api.hpp"
+#include "hal.hpp"
 #include "def.hpp"
 #include "sm.hpp"
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::I2c
 {

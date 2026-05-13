@@ -10,13 +10,31 @@ RANLIB  := arm-none-eabi-ranlib
 APP_NAME     ?= embys
 PROJECT_ROOT ?= $(shell pwd)
 
-ARCH_DIR      := $(PROJECT_ROOT)/arch/stm32f103xb
+MCU ?= stm32f103xb
+
+HAL_FAMILY := $(shell echo $(MCU) | cut -c6-7)
+ARCH_DIR   := $(PROJECT_ROOT)/arch/$(MCU)
+CMSIS_DEV  := $(PROJECT_ROOT)/third_party/cmsis-device-$(HAL_FAMILY)/Include
+MCU_UPPER  := $(shell echo $(MCU) | tr 'a-wyz' 'A-WYZ')
+HAL_UPPER  := $(shell echo $(HAL_FAMILY) | tr 'a-z' 'A-Z')
+DEFINES    += -D$(MCU_UPPER) -DSTM32$(HAL_UPPER)xx
+
+ifeq ($(HAL_FAMILY),f1)
+  MCUFLAGS += -mcpu=cortex-m3 -mthumb
+else ifeq ($(HAL_FAMILY),f4)
+  MCUFLAGS += -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb
+else ifneq (,$(filter $(HAL_FAMILY),f7 h7))
+  MCUFLAGS += -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
+else
+  $(error Unknown HAL_FAMILY '$(HAL_FAMILY)' derived from MCU=$(MCU))
+endif
+
 SRC_DIR       ?= src
 BUILD_DIR     ?= build
 BIN_DIR       ?= $(BUILD_DIR)/arm
 OBJ_DIR       := $(BUILD_DIR)/obj/$(APP_NAME)/arm
 APP_OBJ_DIR   := $(OBJ_DIR)/app
-ARCH_OBJ_DIR	:= $(OBJ_DIR)/arch
+ARCH_OBJ_DIR  := $(OBJ_DIR)/arch
 
 APP_SRC      ?= $(shell find $(SRC_DIR) -type f -name '*.cpp')
 ARCH_SRC     ?= $(shell find $(ARCH_DIR) -type f -name '*.c')
@@ -28,13 +46,11 @@ TARGET_LIB  := $(BIN_DIR)/lib$(APP_NAME).a
 TARGET      := $(BIN_DIR)/$(APP_NAME).elf
 HEX         := $(BIN_DIR)/$(APP_NAME).hex
 BIN         := $(BIN_DIR)/$(APP_NAME).bin
-MAP			 	  := $(BIN_DIR)/$(APP_NAME).map
+MAP         := $(BIN_DIR)/$(APP_NAME).map
 
 INCLUDES     += -I$(PROJECT_ROOT)/third_party/CMSIS_6/CMSIS/Core/Include \
-							  -I$(PROJECT_ROOT)/third_party/cmsis-device-f1/Include \
-								-I$(PROJECT_ROOT)/build/include
-DEFINES      += -DSTM32F103xB
-MCUFLAGS     += -mcpu=cortex-m3 -mthumb
+                -I$(CMSIS_DEV) \
+                -I$(PROJECT_ROOT)/build/include
 CPPFLAGS     += $(MCUFLAGS) $(INCLUDES) $(DEFINES)
 CFLAGS       += -Wall -Wextra -Werror \
 			          -Os -flto \

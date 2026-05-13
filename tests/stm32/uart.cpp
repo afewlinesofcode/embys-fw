@@ -4,9 +4,9 @@
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/sim/sim.hpp>
-#include <embys/stm32/uart/api.hpp>
 #include <embys/stm32/uart/bus.hpp>
 #include <embys/stm32/uart/diag.hpp>
+#include <embys/stm32/uart/hal.hpp>
 
 #include "test.hpp"
 

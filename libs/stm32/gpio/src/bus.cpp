@@ -2,9 +2,8 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "api.hpp"
 #include "diag.hpp"
-#include "stm32f1xx.hpp"
+#include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
 {
@@ -32,7 +31,7 @@ Bus::enable()
     return 0;
   }
 
-  TRY(enable_afio());
+  TRY(enable_exti_source_clock());
   module = base->add_module({Bus::module_callback, this});
 
   enabled = true;
@@ -49,7 +48,7 @@ Bus::disable()
     return 0;
   }
 
-  TRY(disable_afio());
+  TRY(disable_exti_source_clock());
   base->remove_module(module);
   module = nullptr;
 
@@ -62,13 +61,8 @@ Bus::handle_irq(uint8_t start, uint8_t end)
 {
   for (uint8_t pin_index = start; pin_index <= end; ++pin_index)
   {
-    uint32_t pin_bit = (1 << pin_index);
-
-    if (EXTI->PR & pin_bit)
-    {
-      EXTI->PR = pin_bit;
-      activate_pin(pin_bit);
-    }
+    if (exti_get_and_clear_pending(pin_index))
+      activate_pin(1U << pin_index);
   }
 
   set_module_pending();

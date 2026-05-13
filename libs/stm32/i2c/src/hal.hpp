@@ -1,5 +1,5 @@
 /**
- * @file api.hpp
+ * @file hal.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
  * @brief I2C public API types and low-level peripheral operations
  *
@@ -15,7 +15,7 @@
 #include <embys/stm32/def.hpp>
 
 #include "def.hpp"
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::I2c
 {

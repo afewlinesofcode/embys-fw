@@ -20,9 +20,9 @@
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/types.hpp>
 
-#include "api.hpp"
 #include "def.hpp"
-#include "stm32f1xx.hpp"
+#include "hal.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::Uart
 {

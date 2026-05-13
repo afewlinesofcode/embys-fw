@@ -24,7 +24,7 @@ TARGET       := $(BIN_DIR)/$(APP_NAME)
 INCLUDES     += -I$(PROJECT_ROOT)/build/include \
 							  -I$(PROJECT_ROOT)/third_party/CMSIS_6/CMSIS/Core/Include \
 							  -I$(PROJECT_ROOT)/third_party/cmsis-device-f1/Include
-DEFINES      += -DSTM32F103xB -DSTM32_SIM
+DEFINES      += -DSTM32F103xB -DSTM32F1xx -DSTM32_SIM
 CPPFLAGS     += $(INCLUDES) $(DEFINES)
 CXXFLAGS     += -Wall -Wextra -Werror -std=c++20 -O0 -g3 -MMD -MP
 LDFLAGS      += -L$(BUILD_LIB_DIR)

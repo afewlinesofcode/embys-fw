@@ -2,17 +2,17 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "api.hpp"
 #include "bus.hpp"
 #include "diag.hpp"
+#include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
 {
 
-Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, uint32_t gpio_mode,
-         uint32_t gpio_cnf, uint8_t pin_cfg)
-  : enabled(false), bus(bus), port(port), index(index),
-    gpio_cfg(make_cfg(gpio_mode, gpio_cnf)), pin_cfg(pin_cfg)
+Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, Mode gpio_mode,
+         Cnf gpio_cnf, uint8_t pin_cfg)
+  : enabled(false), bus(bus), port(port), index(index), mode(gpio_mode),
+    cnf(gpio_cnf), pin_cfg(pin_cfg)
 {
 }
 
@@ -31,9 +31,9 @@ Pin::enable()
   TRY(enable_gpio(port));
 
   // Configure GPIO pin mode and CNF
-  TRY(configure_pin(port, index, gpio_cfg));
+  TRY(configure_pin(port, index, mode, cnf));
 
-  if ((gpio_cfg & 0b11) != Mode::IN)
+  if (mode != Mode::IN)
     TRY(write_pin(port, index, init_value));
 
   // Configure pull resistors via ODR
@@ -127,17 +127,12 @@ Pin::trigger()
 int
 Pin::validate_config()
 {
-  // Extract MODE and CNF fields
-  uint32_t mode = gpio_cfg & 0b11;
-  uint32_t cnf = (gpio_cfg & 0b1100) >> 2;
-
   // Validate CNF based on MODE
   if (mode == Mode::IN)
   {
     if (cnf > Cnf::IN_PU)
       return PIN_CNF_CONFIG_FAILED; // Invalid input CNF
 
-    // Check pull configuration compatibility
     // Pull-up/pull-down only valid with GPIO_CNF_IN_PU
     if (cnf != Cnf::IN_PU &&
         (pin_cfg & (PinCfg::PULL_UP | PinCfg::PULL_DOWN)) != 0)

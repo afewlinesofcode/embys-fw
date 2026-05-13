@@ -43,10 +43,10 @@ const void *g_pfnVectors[] = {
     [32] = DMA1_Channel6_IRQHandler,// 32 IRQ16 DMA1 Channel 6
     [33] = DMA1_Channel7_IRQHandler,// 33 IRQ17 DMA1 Channel 7
     [34] = ADC1_2_IRQHandler,       // 34 IRQ18 ADC1 & ADC2
-    [35] = USB_HP_CAN_TX_IRQHandler,// 35 IRQ19 USB HP / CAN TX
-    [36] = USB_LP_CAN_RX0_IRQHandler,//36 IRQ20 USB LP / CAN RX0
-    [37] = CAN_RX1_IRQHandler,      // 37 IRQ21 CAN RX1
-    [38] = CAN_SCE_IRQHandler,      // 38 IRQ22 CAN SCE
+    [35] = USB_HP_CAN1_TX_IRQHandler, // 35 IRQ19 USB HP / CAN1 TX
+    [36] = USB_LP_CAN1_RX0_IRQHandler, // 36 IRQ20 USB LP / CAN1 RX0
+    [37] = CAN1_RX1_IRQHandler,      // 37 IRQ21 CAN1 RX1
+    [38] = CAN1_SCE_IRQHandler,      // 38 IRQ22 CAN1 SCE
     [39] = EXTI9_5_IRQHandler,      // 39 IRQ23 EXTI Line 9..5
     [40] = TIM1_BRK_IRQHandler,     // 40 IRQ24 TIM1 Break
     [41] = TIM1_UP_IRQHandler,      // 41 IRQ25 TIM1 Update
@@ -65,7 +65,7 @@ const void *g_pfnVectors[] = {
     [54] = USART2_IRQHandler,       // 54 IRQ38 USART2
     [55] = USART3_IRQHandler,       // 55 IRQ39 USART3
     [56] = EXTI15_10_IRQHandler,    // 56 IRQ40 EXTI Line 15..10
-    [57] = RTCAlarm_IRQHandler,     // 57 IRQ41 RTC Alarm
+    [57] = RTC_Alarm_IRQHandler,    // 57 IRQ41 RTC Alarm
     [58] = USBWakeUp_IRQHandler,    // 58 IRQ42 USB Wakeup
 
     // high-density / XL only

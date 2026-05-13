@@ -12,7 +12,8 @@
 
 #include <embys/stm32/types.hpp>
 
-#include "stm32f1xx.hpp"
+#include "def.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::Gpio
 {
@@ -23,8 +24,8 @@ class Api;
 class Pin
 {
 public:
-  Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, uint32_t gpio_mode,
-      uint32_t gpio_cnf, uint8_t pin_cfg);
+  Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, Mode gpio_mode, Cnf gpio_cnf,
+      uint8_t pin_cfg);
 
   inline GPIO_TypeDef *
   get_port() const
@@ -38,10 +39,16 @@ public:
     return index;
   }
 
-  inline uint32_t
-  get_gpio_cfg() const
+  inline Mode
+  get_mode() const
   {
-    return gpio_cfg;
+    return mode;
+  }
+
+  inline Cnf
+  get_cnf() const
+  {
+    return cnf;
   }
 
   inline uint8_t
@@ -113,7 +120,8 @@ private:
   Api *api; ///< GPIO bus API
   GPIO_TypeDef *port;
   uint8_t index;
-  uint32_t gpio_cfg;
+  Mode mode;
+  Cnf cnf;
   uint8_t pin_cfg;
   Callable<uint8_t> cb;   ///< Interrupt event callback
   uint8_t init_value = 0; ///< Initial output value

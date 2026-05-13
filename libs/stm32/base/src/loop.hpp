@@ -31,7 +31,7 @@
 
 #include "cs.hpp"
 #include "event.hpp"
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 #include "timer.hpp"
 
 namespace Embys::Stm32::Base
