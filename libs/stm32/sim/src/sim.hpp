@@ -10,10 +10,12 @@
 #pragma once
 
 #include "sim/base.hpp"
+#include "sim/can.hpp"
 #include "sim/core.hpp"
 #include "sim/gpio.hpp"
 #include "sim/i2c.hpp"
 #include "sim/signal.hpp"
+#include "sim/spi.hpp"
 #include "sim/uart.hpp"
 
 namespace Embys::Stm32::Sim

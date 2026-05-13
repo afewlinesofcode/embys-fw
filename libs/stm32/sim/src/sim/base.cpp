@@ -142,6 +142,95 @@ check_irq_i2c(I2C_TypeDef *i2c_instance, void (**I2C_EV_IRQHandler_ptr)(),
 }
 
 /**
+ * @brief Check for CAN interrupts and call the corresponding handlers if
+ * conditions are met.
+ * `interrupted` is set to true if any CAN interrupt was handled.
+ * @param can_instance         Pointer to the CAN instance to check.
+ * @param TX_IRQHandler_ptr    Pointer to the CAN TX interrupt handler pointer.
+ * @param RX0_IRQHandler_ptr   Pointer to the CAN RX0 interrupt handler pointer.
+ * @param RX1_IRQHandler_ptr   Pointer to the CAN RX1 interrupt handler pointer.
+ * @param SCE_IRQHandler_ptr   Pointer to the CAN SCE interrupt handler pointer.
+ */
+void
+check_irq_can(CAN_TypeDef *can_instance, void (**TX_IRQHandler_ptr)(),
+              void (**RX0_IRQHandler_ptr)(), void (**RX1_IRQHandler_ptr)(),
+              void (**SCE_IRQHandler_ptr)())
+{
+  const uint32_t ier = can_instance->IER;
+
+  // TX: at least one mailbox became empty
+  if (*TX_IRQHandler_ptr && (ier & CAN_IER_TMEIE_Msk) &&
+      (can_instance->TSR &
+       (CAN_TSR_RQCP0_Msk | CAN_TSR_RQCP1_Msk | CAN_TSR_RQCP2_Msk)))
+  {
+    (*TX_IRQHandler_ptr)();
+    interrupted = true;
+  }
+
+  // RX FIFO 0: message pending
+  if (*RX0_IRQHandler_ptr && (ier & CAN_IER_FMPIE0_Msk) &&
+      (can_instance->RF0R & CAN_RF0R_FMP0_Msk))
+  {
+    (*RX0_IRQHandler_ptr)();
+    interrupted = true;
+  }
+
+  // RX FIFO 1: message pending
+  if (*RX1_IRQHandler_ptr && (ier & CAN_IER_FMPIE1_Msk) &&
+      (can_instance->RF1R & CAN_RF1R_FMP1_Msk))
+  {
+    (*RX1_IRQHandler_ptr)();
+    interrupted = true;
+  }
+
+  // SCE: error / bus-off / wakeup
+  if (*SCE_IRQHandler_ptr)
+  {
+    const bool boff =
+        (can_instance->ESR & CAN_ESR_BOFF_Msk) && (ier & CAN_IER_BOFIE_Msk);
+    const bool epv =
+        (can_instance->ESR & CAN_ESR_EPVF_Msk) && (ier & CAN_IER_EPVIE_Msk);
+    const bool ewg =
+        (can_instance->ESR & CAN_ESR_EWGF_Msk) && (ier & CAN_IER_EWGIE_Msk);
+
+    if (boff || epv || ewg)
+    {
+      (*SCE_IRQHandler_ptr)();
+      interrupted = true;
+    }
+  }
+}
+
+/**
+ * @brief Check for SPI interrupts and call the corresponding handler if
+ * conditions are met.
+ * `interrupted` is set to true if any SPI interrupt was handled.
+ * @param spi_instance Pointer to the SPI instance to check.
+ * @param SPI_IRQHandler_ptr Pointer to the SPI interrupt handler function
+ * pointer.
+ */
+void
+check_irq_spi(SPI_TypeDef *spi_instance, void (**SPI_IRQHandler_ptr)())
+{
+  if (!*SPI_IRQHandler_ptr)
+    return;
+
+  const uint32_t sr = spi_instance->SR;
+  const uint32_t cr2 = spi_instance->CR2;
+
+  const bool rxne_irq = (sr & SPI_SR_RXNE) && (cr2 & SPI_CR2_RXNEIE);
+  const bool txe_irq = (sr & SPI_SR_TXE) && (cr2 & SPI_CR2_TXEIE);
+  const bool err_irq = (sr & (SPI_SR_MODF | SPI_SR_OVR | SPI_SR_CRCERR)) &&
+                       (cr2 & SPI_CR2_ERRIE);
+
+  if (rxne_irq || txe_irq || err_irq)
+  {
+    (*SPI_IRQHandler_ptr)();
+    interrupted = true;
+  }
+}
+
+/**
  * @brief Check for USART interrupts and call the corresponding handler if
  * conditions are met.
  * `interrupted` is set to true if any USART interrupt was handled.
@@ -406,6 +495,13 @@ cycle()
                 &I2C1_ER_IRQHandler_ptr);
   check_irq_i2c(&i2c2_instance, &I2C2_EV_IRQHandler_ptr,
                 &I2C2_ER_IRQHandler_ptr);
+
+  check_irq_can(&can1_instance, &CAN1_TX_IRQHandler_ptr,
+                &CAN1_RX0_IRQHandler_ptr, &CAN1_RX1_IRQHandler_ptr,
+                &CAN1_SCE_IRQHandler_ptr);
+
+  check_irq_spi(&spi1_instance, &SPI1_IRQHandler_ptr);
+  check_irq_spi(&spi2_instance, &SPI2_IRQHandler_ptr);
 
   check_irq_usart(&usart1_instance, &USART1_IRQHandler_ptr);
   check_irq_usart(&usart2_instance, &USART2_IRQHandler_ptr);
