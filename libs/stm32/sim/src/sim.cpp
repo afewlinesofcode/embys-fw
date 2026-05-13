@@ -17,7 +17,9 @@ reset()
 {
   Core::reset();
   Base::reset();
+  CAN::reset();
   I2C::reset();
+  SPI::reset();
   Uart::reset();
 }
 

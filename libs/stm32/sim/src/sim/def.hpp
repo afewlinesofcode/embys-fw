@@ -28,6 +28,7 @@
 #undef GPIOC
 #undef I2C1
 #undef I2C2
+#undef CAN1
 #undef SPI1
 #undef SPI2
 #undef USART1
@@ -50,6 +51,7 @@
 #define GPIOC (Embys::Stm32::Sim::gpioc)
 #define I2C1 (Embys::Stm32::Sim::i2c1)
 #define I2C2 (Embys::Stm32::Sim::i2c2)
+#define CAN1 (Embys::Stm32::Sim::can1)
 #define SPI1 (Embys::Stm32::Sim::spi1)
 #define SPI2 (Embys::Stm32::Sim::spi2)
 #define USART1 (Embys::Stm32::Sim::usart1)
