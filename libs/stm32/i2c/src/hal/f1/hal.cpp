@@ -1,6 +1,12 @@
-#include "hal.hpp"
+#ifdef STM32F1xx
+
+#include "../v1/hal.hpp"
 
 #include <embys/stm32/def.hpp>
+
+// F1 I2C HAL implementation.
+// I2C1 and I2C2 are on APB1. PCLK1 is derived from RCC->CFGR PPRE1 field.
+// Uses I2C V1 register layout: SR1/SR2/DR/CCR/TRISE.
 
 namespace Embys::Stm32::I2c
 {
@@ -20,6 +26,17 @@ busy_wait_us(uint32_t us)
 
   while ((DWT->CYCCNT - start_cyc) < wait_cyc)
     __NOP();
+}
+
+// Derive APB1 (PCLK1) frequency from SystemCoreClock and RCC->CFGR PPRE1.
+// PPRE1 field is RCC_CFGR bits [10:8] on F1 — same encoding as F4.
+// 0xx → /1, 100 → /2, 101 → /4, 110 → /8, 111 → /16.
+static uint32_t
+pclk1_hz()
+{
+  uint32_t ppre1 = (RCC->CFGR >> 8U) & 0x7U;
+  uint32_t div = (ppre1 & 0x4U) ? (1U << ((ppre1 & 0x3U) + 1U)) : 1U;
+  return SystemCoreClock / div;
 }
 
 static void
@@ -121,8 +138,8 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
   (void)RCC->APB1ENR; // read-back for completion
   __DSB();            // ensure clock stability
 
-  // I2C1 and I2C2 are on APB1 (SystemCoreClock / 2 for 72 MHz config)
-  uint32_t pclk_hz = SystemCoreClock / 2u;
+  // Derive PCLK1 from RCC->CFGR PPRE1 (same field/encoding as F4).
+  uint32_t pclk_hz = pclk1_hz();
   uint32_t pclk_mhz = (pclk_hz / 1'000'000u) & 0x3Fu;
 
   if (pclk_mhz < 2u)
@@ -220,3 +237,5 @@ reset_i2c(I2C_TypeDef *i2c)
 }
 
 }; // namespace Embys::Stm32::I2c
+
+#endif // STM32F1xx

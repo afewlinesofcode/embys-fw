@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := all
 TC := sim
+APP_NAME := embys-tests
 PROJECT_ROOT := $(realpath $(shell pwd)/..)
 WORK_DIR := /work/tests
 

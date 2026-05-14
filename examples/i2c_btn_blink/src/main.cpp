@@ -7,7 +7,6 @@
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
-#include <embys/stm32/i2c/api.hpp>
 #include <embys/stm32/i2c/bus.hpp>
 
 #include "def.hpp"

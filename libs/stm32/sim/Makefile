@@ -4,7 +4,6 @@ APP_NAME := stm32-sim
 PROJECT_ROOT := $(realpath $(shell pwd)/../../..)
 WORK_DIR := /work/libs/stm32/sim
 BUILD_DIR := $(PROJECT_ROOT)/build
-BIN_DIR := $(BUILD_DIR)/$(TC)
 INCLUDE_DIR := $(BUILD_DIR)/include/embys/stm32/sim
 INCLUDES = -Iinclude
 

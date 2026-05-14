@@ -5,7 +5,6 @@ APP_NAME := stm32-i2c-hd44780
 PROJECT_ROOT := $(realpath $(shell pwd)/../../..)
 WORK_DIR := /work/libs/stm32/i2c-hd44780
 BUILD_DIR := $(PROJECT_ROOT)/build
-BIN_DIR := $(BUILD_DIR)/$(TC)
 INCLUDE_DIR := $(BUILD_DIR)/include/embys/stm32/i2c-hd44780
 INCLUDES += -Iinclude -I$(PROJECT_ROOT)/build/include
 LDLIBS = -lstm32-i2c-common -lstm32-i2c -lstm32-base

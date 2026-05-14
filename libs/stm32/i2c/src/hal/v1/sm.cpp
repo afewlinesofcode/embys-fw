@@ -1,8 +1,11 @@
 #include "sm.hpp"
 
+#ifdef I2C_HAL_V1
+
 #include <embys/stm32/def.hpp>
 
-#include "bus.hpp"
+#include "../../bus.hpp"
+#include "../../hal.hpp"
 
 namespace Embys::Stm32::I2c
 {
@@ -386,3 +389,5 @@ Sm::wait_bus_callback(void *context, int res)
 }
 
 }; // namespace Embys::Stm32::I2c
+
+#endif // I2C_HAL_V1

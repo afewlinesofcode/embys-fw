@@ -1,3 +1,5 @@
+#ifdef STM32H7xx
+
 #include "../../hal.hpp"
 
 #include <embys/stm32/def.hpp>
@@ -312,3 +314,5 @@ exti_get_and_clear_pending(uint8_t pin_index)
 }
 
 }; // namespace Embys::Stm32::Gpio
+
+#endif // STM32H7xx

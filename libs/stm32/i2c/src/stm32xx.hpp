@@ -23,3 +23,12 @@
 #error                                                                         \
     "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
 #endif
+
+// ── I2C HAL version ──────────────────────────────────────────────────────
+// V1: F1/F4 and sim (which emulates F1) — SR1/SR2/DR/CCR/TRISE.
+// V2: F7/H7 — ISR/ICR/RXDR/TXDR/TIMINGR.
+#if defined(STM32_SIM) || defined(STM32F1xx) || defined(STM32F4xx)
+#define I2C_HAL_V1
+#elif defined(STM32F7xx) || defined(STM32H7xx)
+#define I2C_HAL_V2
+#endif
