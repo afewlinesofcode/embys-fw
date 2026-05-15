@@ -2,6 +2,8 @@
 
 #include <embys/stm32/def.hpp>
 
+#include "hal.hpp"
+
 namespace Embys::Stm32::I2c
 {
 
@@ -110,7 +112,7 @@ Bus::handle_er_irq()
   if (sm.is_complete())
     set_module_pending();
 
-  i2c->SR1 = 0; // Clear error flags to avoid repeated interrupts
+  clear_error_flags(i2c); // Clear error flags to avoid repeated interrupts
 }
 
 void

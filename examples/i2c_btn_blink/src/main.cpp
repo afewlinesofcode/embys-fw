@@ -1,5 +1,17 @@
 #include <stddef.h>
+
+#ifdef STM32F1xx
 #include <stm32f1xx.h>
+#elif defined(STM32F4xx)
+#include <stm32f4xx.h>
+#elif defined(STM32F7xx)
+#include <stm32f7xx.h>
+#elif defined(STM32H7xx)
+#include <stm32h7xx.h>
+#else
+#error                                                                         \
+    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
@@ -7,7 +19,6 @@
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
-#include <embys/stm32/i2c/api.hpp>
 #include <embys/stm32/i2c/bus.hpp>
 
 #include "def.hpp"
@@ -32,6 +43,9 @@ Embys::Stm32::I2c::Bus *i2c_bus_ptr = nullptr;
 // Interrupt handlers for each peripheral used in the example
 extern "C"
 {
+  void
+  panic(int code);
+
   void
   TIM2_IRQHandler()
   {
@@ -142,8 +156,6 @@ toggle_btn(void *context, uint8_t value)
 int
 main()
 {
-  using GpioMode = Embys::Stm32::Gpio::Mode;
-  using GpioCnf = Embys::Stm32::Gpio::Cnf;
   using PinCfg = Embys::Stm32::Gpio::PinCfg;
 
   static AppContext context;
@@ -183,22 +195,22 @@ main()
   Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
 
   // Button on PA0 (input floating, EXTI)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
-                                     GpioCnf::IN_FL, PinCfg::IRQ);
+  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
+                                     PinCfg::IN | PinCfg::LISTEN);
   button_pin.set_callback({toggle_btn, &context});
 
   // LED on PC13 (output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                  GpioCnf::OUT_PP, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
+                                  PinCfg::OUT | PinCfg::MEDIUM);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
+                                  PinCfg::I2C | PinCfg::HIGH);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
+                                  PinCfg::I2C | PinCfg::HIGH);
 
   Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
 
@@ -236,7 +248,7 @@ main()
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
   // Schedule startup event
-  startup_event.enable(0);
+  startup_event.enable(1000000);
 
   // Run main loop
   loop.run();

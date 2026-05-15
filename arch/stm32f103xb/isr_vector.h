@@ -71,13 +71,13 @@ DMA1_Channel7_IRQHandler(void) ALIAS(Default_Handler); // 17
 void WEAK
 ADC1_2_IRQHandler(void) ALIAS(Default_Handler); // 18
 void WEAK
-USB_HP_CAN_TX_IRQHandler(void) ALIAS(Default_Handler); // 19
+USB_HP_CAN1_TX_IRQHandler(void) ALIAS(Default_Handler); // 19
 void WEAK
-USB_LP_CAN_RX0_IRQHandler(void) ALIAS(Default_Handler); // 20
+USB_LP_CAN1_RX0_IRQHandler(void) ALIAS(Default_Handler); // 20
 void WEAK
-CAN_RX1_IRQHandler(void) ALIAS(Default_Handler); // 21
+CAN1_RX1_IRQHandler(void) ALIAS(Default_Handler); // 21
 void WEAK
-CAN_SCE_IRQHandler(void) ALIAS(Default_Handler); // 22
+CAN1_SCE_IRQHandler(void) ALIAS(Default_Handler); // 22
 void WEAK
 EXTI9_5_IRQHandler(void) ALIAS(Default_Handler); // 23
 void WEAK
@@ -115,7 +115,7 @@ USART3_IRQHandler(void) ALIAS(Default_Handler); // 39
 void WEAK
 EXTI15_10_IRQHandler(void) ALIAS(Default_Handler); // 40
 void WEAK
-RTCAlarm_IRQHandler(void) ALIAS(Default_Handler); // 41
+RTC_Alarm_IRQHandler(void) ALIAS(Default_Handler); // 41
 void WEAK
 USBWakeUp_IRQHandler(void) ALIAS(Default_Handler); // 42
 

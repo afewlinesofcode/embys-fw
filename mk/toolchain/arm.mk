@@ -10,13 +10,24 @@ RANLIB  := arm-none-eabi-ranlib
 APP_NAME     ?= embys
 PROJECT_ROOT ?= $(shell pwd)
 
-ARCH_DIR      := $(PROJECT_ROOT)/arch/stm32f103xb
+include $(PROJECT_ROOT)/mk/toolchain/mcu.mk
+
+ifeq ($(HAL_FAMILY),f1)
+  MCUFLAGS += -mcpu=cortex-m3 -mthumb
+else ifeq ($(HAL_FAMILY),f4)
+  MCUFLAGS += -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb
+else ifneq (,$(filter $(HAL_FAMILY),f7 h7))
+  MCUFLAGS += -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
+else
+  $(error Unknown HAL_FAMILY '$(HAL_FAMILY)' derived from MCU=$(MCU))
+endif
+
 SRC_DIR       ?= src
 BUILD_DIR     ?= build
-BIN_DIR       ?= $(BUILD_DIR)/arm
-OBJ_DIR       := $(BUILD_DIR)/obj/$(APP_NAME)/arm
+BIN_DIR       ?= $(BUILD_DIR)/arm/$(ARCH_NAME)
+OBJ_DIR       := $(BIN_DIR)/obj/$(APP_NAME)
 APP_OBJ_DIR   := $(OBJ_DIR)/app
-ARCH_OBJ_DIR	:= $(OBJ_DIR)/arch
+ARCH_OBJ_DIR  := $(OBJ_DIR)/arch
 
 APP_SRC      ?= $(shell find $(SRC_DIR) -type f -name '*.cpp')
 ARCH_SRC     ?= $(shell find $(ARCH_DIR) -type f -name '*.c')
@@ -28,14 +39,12 @@ TARGET_LIB  := $(BIN_DIR)/lib$(APP_NAME).a
 TARGET      := $(BIN_DIR)/$(APP_NAME).elf
 HEX         := $(BIN_DIR)/$(APP_NAME).hex
 BIN         := $(BIN_DIR)/$(APP_NAME).bin
-MAP			 	  := $(BIN_DIR)/$(APP_NAME).map
+MAP         := $(BIN_DIR)/$(APP_NAME).map
 
 INCLUDES     += -I$(PROJECT_ROOT)/third_party/CMSIS_6/CMSIS/Core/Include \
-							  -I$(PROJECT_ROOT)/third_party/cmsis-device-f1/Include \
-								-I$(PROJECT_ROOT)/build/include
-DEFINES      += -DSTM32F103xB
-MCUFLAGS     += -mcpu=cortex-m3 -mthumb
-CPPFLAGS     += $(MCUFLAGS) $(INCLUDES) $(DEFINES)
+                -I$(CMSIS_DEV) \
+                -I$(PROJECT_ROOT)/build/include
+CPPFLAGS     += $(MCUFLAGS) $(INCLUDES) $(DEFINES) $(MCU_DEFINES)
 CFLAGS       += -Wall -Wextra -Werror \
 			          -Os -flto \
 			          -ffunction-sections -fdata-sections -fno-builtin \
@@ -46,7 +55,7 @@ CXXFLAGS     += -Wall -Wextra -Werror -Wundef \
 			          -fno-unwind-tables -fno-asynchronous-unwind-tables \
 			          -ffreestanding -fno-builtin -fstack-usage \
 			          -fno-use-cxa-atexit -MMD -MP
-LDFLAGS      += $(MCUFLAGS) -flto -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-Map,$(MAP) -T $(LINKER_LD) -Wl,--print-memory-usage -L$(PROJECT_ROOT)/build/arm
+LDFLAGS      += $(MCUFLAGS) -flto -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-Map,$(MAP) -T $(LINKER_LD) -Wl,--print-memory-usage -L$(PROJECT_ROOT)/build/arm/$(ARCH_NAME)
 LDLIBS       += -lgcc
 
 $(APP_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
@@ -81,7 +90,7 @@ $(BIN): $(TARGET)
 
 flash:
 	@echo "Flashing $(BIN) to device..."
-	st-flash write $(BIN) 0x8000000
+	st-flash --connect-under-reset write $(BIN) 0x8000000
 
 chipinfo:
 	st-info --chipid

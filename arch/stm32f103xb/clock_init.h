@@ -1,5 +1,3 @@
-#include "stm32f1xx.h"
-
 void
 clock_init_72mhz(void);
 

@@ -2,7 +2,11 @@
 
 Embys FW is a modular C++ firmware foundation for STM32-based systems, built around an interrupt-driven event loop, deterministic scheduling, peripheral drivers, and lightweight simulation for testing firmware logic on x86.
 
-It is tested on the STM32F103C8T6 "Blue Pill" board, but should be portable to other STM32F1 chips with minimal adjustments. The simulation is designed to run in a Linux container and provides a way to test application logic without needing physical hardware.
+Several configured architectures can be found in `arch` directory.
+
+Tested architectures: STM32F103xB, STM32F411xE
+
+The simulation is designed to run in a Linux container and provides a way to test application logic without needing physical hardware.
 
 Features:
 
@@ -471,7 +475,7 @@ Tests are located in the `tests/` directory and are worth exploring. They cover 
 
 #### GPIO blink
 
-Located in the `examples/gpio_blink/` directory, this example demonstrates how to use the loop and timer to blink an LED on the PC13 pin. It also shows how to use the simulator to run the example without actual hardware.
+Located in the `examples/gpio_blink_f1/` and `examples/gpio_blink_f4/` directories, these examples demonstrate how to use the loop and timer to blink an LED on the PC13 pin. It also shows how to use the simulator to run the example without actual hardware.
 
 You need to have all libraries built for the target architecture (ARM or simulation) to run the example.
 
@@ -550,7 +554,7 @@ For simulation, run `make TC=sim run`. As with the GPIO button blink example, th
 
 Located in the `examples/modbus_rtu_server/` directory, this example demonstrates a Modbus RTU slave running on USART1 with a MAX485-compatible half-duplex transceiver. Received requests are shown on an HD44780 LCD connected over I2C, and PC13 blinks briefly on each request.
 
-**Hardware (Blue Pill / STM32F103C8):**
+**Hardware:**
 
 | Signal       | Pin  | Notes                          |
 | ------------ | ---- | ------------------------------ |

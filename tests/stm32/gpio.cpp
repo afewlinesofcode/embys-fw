@@ -97,24 +97,23 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_PU,
-                  Gpio::PinCfg::PULL_UP | Gpio::PinCfg::PULL_DOWN);
+    Gpio::Pin pin(&bus, GPIOA, 0,
+                  Gpio::PinCfg::IN | Gpio::PinCfg::PU | Gpio::PinCfg::PD);
 
     CHECK(pin.enable() < 0);
     CHECK(!pin.is_enabled());
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
-                    "Pin: enable rejects pull flags with non-IN_PU CNF")
+                    "Pin: enable accepts input pull-up via unified PinCfg")
   {
     bus.enable();
 
-    // IN_FL with PULL_UP is invalid (pull only works with IN_PU CNF)
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::PULL_UP);
+    // Unified PinCfg allows input pull-up directly without CNF coupling.
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::PU);
 
-    CHECK(pin.enable() == Gpio::PIN_CONFIG_CONFLICT);
-    CHECK(!pin.is_enabled());
+    CHECK(pin.enable() == 0);
+    CHECK(pin.is_enabled());
   }
 
   // ── hardware enable ───────────────────────────────────────────────────────
@@ -125,24 +124,21 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
 
     CHECK(pin.enable() == 0);
 
     // Clock enabled
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
     // CRL nibble matches IN + IN_FL = 0b0100
-    CHECK(read_cr_nibble(GPIOA, 0) ==
-          Gpio::make_cfg(Gpio::Mode::IN, Gpio::Cnf::IN_FL));
+    CHECK(read_cr_nibble(GPIOA, 0) == 0b0100u); // IN + IN_FL nibble
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: enable with PULL_UP sets ODR bit")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::Mode::IN, Gpio::Cnf::IN_PU,
-                  Gpio::PinCfg::PULL_UP);
+    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PU);
 
     CHECK(pin.enable() == 0);
     CHECK((GPIOA->ODR & (1u << 3)) != 0);
@@ -156,8 +152,7 @@ TEST_SUITE("gpio")
     // Pre-set the ODR bit to make sure the test actually clears it
     SET_BIT_V(GPIOA->ODR, (1u << 3));
 
-    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::Mode::IN, Gpio::Cnf::IN_PU,
-                  Gpio::PinCfg::PULL_DOWN);
+    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PD);
 
     CHECK(pin.enable() == 0);
     CHECK((GPIOA->ODR & (1u << 3)) == 0);
@@ -167,8 +162,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::IRQ);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
 
     CHECK(pin.enable() == 0);
 
@@ -186,8 +180,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
 
     CHECK(pin.enable() == 0);
     uint32_t crl_after_first = GPIOA->CRL;
@@ -201,8 +194,7 @@ TEST_SUITE("gpio")
   {
     // bus.enable() deliberately NOT called
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
 
     CHECK(pin.enable() == Gpio::BUS_NOT_ENABLED);
     CHECK(!pin.is_enabled());
@@ -215,8 +207,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::OUT_2, Gpio::Cnf::OUT_PP,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::OUT);
 
     CHECK(pin.enable() == 0);
     CHECK(pin.disable() == 0);
@@ -230,8 +221,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::IRQ);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
 
     CHECK(pin.enable() == 0);
     CHECK(pin.disable() == 0);
@@ -248,8 +238,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
 
     CHECK(pin.enable() == 0);
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
@@ -264,8 +253,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::PinCfg::IN);
 
     CHECK(pin.enable() == 0);
 
@@ -285,8 +273,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::Mode::OUT_2, Gpio::Cnf::OUT_PP,
-                  Gpio::PinCfg::NONE);
+    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::PinCfg::OUT);
 
     CHECK(pin.enable() == 0);
 
@@ -307,20 +294,16 @@ TEST_SUITE("gpio")
     bus.enable();
 
     // Fill all 3 slots (GpioLoopFixture has pins_capacity = 3)
-    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::NONE);
-    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::NONE);
-    Gpio::Pin pin2(&bus, GPIOA, 2, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::NONE);
+    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::PinCfg::IN);
+    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::PinCfg::IN);
+    Gpio::Pin pin2(&bus, GPIOA, 2, Gpio::PinCfg::IN);
 
     CHECK(pin0.enable() == 0);
     CHECK(pin1.enable() == 0);
     CHECK(pin2.enable() == 0);
 
     // Fourth pin exceeds capacity
-    Gpio::Pin pin3(&bus, GPIOA, 3, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::NONE);
+    Gpio::Pin pin3(&bus, GPIOA, 3, Gpio::PinCfg::IN);
 
     CHECK(pin3.enable() == Gpio::BUS_FULL);
   }
@@ -332,8 +315,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::IRQ);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
     CHECK(pin.enable() == 0);
 
     std::vector<uint8_t> calls;
@@ -359,8 +341,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::IRQ);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
     CHECK(pin.enable() == 0);
 
     std::vector<uint8_t> calls;
@@ -388,10 +369,8 @@ TEST_SUITE("gpio")
     bus.enable();
 
     // PA0 → EXTI0, PA1 → EXTI1
-    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::IRQ);
-    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::IRQ);
+    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
 
     CHECK(pin0.enable() == 0);
     CHECK(pin1.enable() == 0);
@@ -423,8 +402,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                  Gpio::PinCfg::IRQ);
+    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
     CHECK(pin.enable() == 0);
 
     int call_count = 0;

@@ -17,7 +17,7 @@
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::Base
 {

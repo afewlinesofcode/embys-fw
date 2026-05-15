@@ -8,7 +8,6 @@
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c-aht20/device.hpp>
-#include <embys/stm32/i2c/api.hpp>
 #include <embys/stm32/i2c/bus.hpp>
 
 #include "def.hpp"
@@ -152,8 +151,6 @@ on_lcd_ready(void *context, int rc)
 int
 main()
 {
-  using GpioMode = Embys::Stm32::Gpio::Mode;
-  using GpioCnf = Embys::Stm32::Gpio::Cnf;
   using PinCfg = Embys::Stm32::Gpio::PinCfg;
 
   static AppContext context;
@@ -196,17 +193,17 @@ main()
   Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
 
   // LED on PC13 (output push-pull, 2 MHz, active-low)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                  GpioCnf::OUT_PP, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
+                                  PinCfg::OUT | PinCfg::MEDIUM);
   led_pin.set_init_value(1);
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
+                                  PinCfg::I2C | PinCfg::HIGH);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
+                                  PinCfg::I2C | PinCfg::HIGH);
 
   Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
 

@@ -1,4 +1,15 @@
+#ifdef STM32F1xx
 #include <stm32f1xx.h>
+#elif defined(STM32F4xx)
+#include <stm32f4xx.h>
+#elif defined(STM32F7xx)
+#include <stm32f7xx.h>
+#elif defined(STM32H7xx)
+#include <stm32h7xx.h>
+#else
+#error                                                                         \
+    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
@@ -21,6 +32,9 @@ Embys::Stm32::Gpio::Bus *gpio_ptr = nullptr;
 
 extern "C"
 {
+  void
+  panic(int code);
+
   void
   TIM2_IRQHandler()
   {
@@ -134,8 +148,6 @@ int
 main()
 {
   // Define aliases
-  using GpioMode = Embys::Stm32::Gpio::Mode;
-  using GpioCnf = Embys::Stm32::Gpio::Cnf;
   using PinCfg = Embys::Stm32::Gpio::PinCfg;
 
   // Application context with pointers to be used in callbacks
@@ -177,13 +189,12 @@ main()
   Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
 
   // Initialize button pin at PA0 (Input floating with IRQ)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
-                                     GpioCnf::IN_FL, PinCfg::IRQ);
+  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
+                                     PinCfg::IN | PinCfg::LISTEN);
   button_pin.set_callback({toggle_btn, &context});
 
   // Initialize LED pin at PC13 (Output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                  GpioCnf::OUT_PP, PinCfg::NONE);
+  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, PinCfg::OUT);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // Set global pointers for interrupt handlers
@@ -193,6 +204,8 @@ main()
   // Set up context
   context.blink_event = &blink_event;
   context.led = &led_pin;
+  context.blink_on = true;
+  context.blink_event->enable(LED_BLINK_INTERVAL_US);
 
   // Enable peripherals before starting main loop
   TRY(gpio_bus.enable());

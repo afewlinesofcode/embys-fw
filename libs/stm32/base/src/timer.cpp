@@ -1,9 +1,33 @@
 #include "timer.hpp"
 
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/mcu_traits.hpp>
 
 namespace Embys::Stm32::Base
 {
+
+// Helper: pointer to the APB1 enable/reset registers for the timer clock.
+// H7 splits APB1 into APB1LENR (low) and APB1HENR (high); TIM2-7 are in LENR.
+// All other supported families use APB1ENR.
+static volatile uint32_t *
+apb1enr()
+{
+#if defined(STM32H7xx)
+  return &RCC->APB1LENR;
+#else
+  return &RCC->APB1ENR;
+#endif
+}
+
+static volatile uint32_t *
+apb1rstr()
+{
+#if defined(STM32H7xx)
+  return &RCC->APB1LRSTR;
+#else
+  return &RCC->APB1RSTR;
+#endif
+}
 
 Timer::Timer(TIM_TypeDef *timer) : timer(timer)
 {
@@ -65,53 +89,75 @@ Timer::reset()
   timer->CNT = 0;
 }
 
+// H7 uses APB1LENR/APB1LRSTR for TIM2-7; all other families use
+// APB1ENR/APB1RSTR. The bit positions are the same, so we alias the constants.
+#if defined(STM32H7xx)
+#define TIM_APB1ENR_TIM2EN RCC_APB1LENR_TIM2EN
+#define TIM_APB1ENR_TIM3EN RCC_APB1LENR_TIM3EN
+#define TIM_APB1ENR_TIM4EN RCC_APB1LENR_TIM4EN
+#define TIM_APB1RSTR_TIM2RST RCC_APB1LRSTR_TIM2RST
+#define TIM_APB1RSTR_TIM3RST RCC_APB1LRSTR_TIM3RST
+#define TIM_APB1RSTR_TIM4RST RCC_APB1LRSTR_TIM4RST
+#else
+#define TIM_APB1ENR_TIM2EN RCC_APB1ENR_TIM2EN
+#define TIM_APB1ENR_TIM3EN RCC_APB1ENR_TIM3EN
+#define TIM_APB1ENR_TIM4EN RCC_APB1ENR_TIM4EN
+#define TIM_APB1RSTR_TIM2RST RCC_APB1RSTR_TIM2RST
+#define TIM_APB1RSTR_TIM3RST RCC_APB1RSTR_TIM3RST
+#define TIM_APB1RSTR_TIM4RST RCC_APB1RSTR_TIM4RST
+#endif
+
 void
 Timer::init_peripheral()
 {
+  volatile uint32_t *enr = apb1enr();
+  volatile uint32_t *rstr = apb1rstr();
+
+  uint32_t en_mask = 0;
+  uint32_t rst_mask = 0;
+
   if (timer == TIM2)
   {
-    // Enable TIM2 clock
-    SET_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM2EN);
-    // Reset TIM2 peripheral to ensure it's in a known state
-    SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM2RST);
-    CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM2RST);
+    en_mask = TIM_APB1ENR_TIM2EN;
+    rst_mask = TIM_APB1RSTR_TIM2RST;
   }
   else if (timer == TIM3)
   {
-    // Enable TIM3 clock
-    SET_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM3EN);
-    // Reset TIM3 peripheral to ensure it's in a known state
-    SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM3RST);
-    CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM3RST);
+    en_mask = TIM_APB1ENR_TIM3EN;
+    rst_mask = TIM_APB1RSTR_TIM3RST;
   }
   else if (timer == TIM4)
   {
-    // Enable TIM4 clock
-    SET_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM4EN);
-    // Reset TIM4 peripheral to ensure it's in a known state
-    SET_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM4RST);
-    CLEAR_BIT_V(RCC->APB1RSTR, RCC_APB1RSTR_TIM4RST);
+    en_mask = TIM_APB1ENR_TIM4EN;
+    rst_mask = TIM_APB1RSTR_TIM4RST;
+  }
+
+  if (en_mask)
+  {
+    SET_BIT_V(*enr, en_mask);
+    SET_BIT_V(*rstr, rst_mask);
+    CLEAR_BIT_V(*rstr, rst_mask);
   }
 }
 
 void
 Timer::deinit_peripheral()
 {
+  volatile uint32_t *enr = apb1enr();
+
   if (timer == TIM2)
-  {
-    // Disable TIM2 clock
-    CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM2EN);
-  }
+    CLEAR_BIT_V(*enr, TIM_APB1ENR_TIM2EN);
   else if (timer == TIM3)
-  {
-    // Disable TIM3 clock
-    CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM3EN);
-  }
+    CLEAR_BIT_V(*enr, TIM_APB1ENR_TIM3EN);
   else if (timer == TIM4)
-  {
-    // Disable TIM4 clock
-    CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_TIM4EN);
-  }
+    CLEAR_BIT_V(*enr, TIM_APB1ENR_TIM4EN);
 }
+
+#undef TIM_APB1ENR_TIM2EN
+#undef TIM_APB1ENR_TIM3EN
+#undef TIM_APB1ENR_TIM4EN
+#undef TIM_APB1RSTR_TIM2RST
+#undef TIM_APB1RSTR_TIM3RST
+#undef TIM_APB1RSTR_TIM4RST
 
 }; // namespace Embys::Stm32::Base

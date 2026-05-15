@@ -4,9 +4,9 @@
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/sim/sim.hpp>
-#include <embys/stm32/uart/api.hpp>
 #include <embys/stm32/uart/bus.hpp>
 #include <embys/stm32/uart/diag.hpp>
+#include <embys/stm32/uart/hal.hpp>
 
 #include "test.hpp"
 
@@ -38,6 +38,7 @@ struct UartBaseFixture
   UartBaseFixture()
   {
     Sim::reset();
+
     // Point the uart simulation at USART2 for all Bus tests.
     // uart.cpp::reset() only puts usart1_instance in idle state; replicate
     // that for USART2 so TXE is high and the first TXE IRQ can fire.
@@ -87,8 +88,7 @@ struct UartRedeFixture : UartLoopFixture
 
   UartRedeFixture()
     : gpio_bus(&loop, dummy_pin_slots, 1),
-      rede(&gpio_bus, GPIOA, 5, Gpio::Mode::OUT_2, Gpio::Cnf::OUT_PP,
-           Gpio::PinCfg::NONE)
+      rede(&gpio_bus, GPIOA, 5, Gpio::PinCfg::OUT)
   {
   }
 };

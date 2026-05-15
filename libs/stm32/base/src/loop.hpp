@@ -31,7 +31,7 @@
 
 #include "cs.hpp"
 #include "event.hpp"
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 #include "timer.hpp"
 
 namespace Embys::Stm32::Base
@@ -93,6 +93,18 @@ public:
   stop(uint32_t us = 0);
 
   /**
+   * @brief Terminate the loop with a specified exit code and optional error
+   * context.
+   *
+   * @param code Exit code to indicate the reason for termination (e.g., 0 for
+   * normal exit, non-zero for errors).
+   * @param error_context Optional pointer to additional context about the error
+   * (can be nullptr if not applicable).
+   */
+  void
+  terminate(int code, void *error_context = nullptr);
+
+  /**
    * @brief Add event to scheduler and initialize it.
    *
    * @param event Pointer to the event to be added.
@@ -111,12 +123,35 @@ public:
   remove(Event *event);
 
   /**
-   * @brief Get the number of currently active events.
-   *
-   * @return size_t Number of active events
+   * @brief Check if the main loop is currently active.
+   * @return true if the loop is active, false otherwise
    */
-  size_t
-  count_events();
+  inline bool
+  is_active() const
+  {
+    return active;
+  }
+
+  /**
+   * @brief Get the exit code indicating the reason for loop termination.
+   * @return int Exit code (e.g., 0 for normal exit, non-zero for errors)
+   */
+  inline int
+  get_exit_code() const
+  {
+    return exit_code;
+  }
+
+  /**
+   * @brief Get the error context associated with the loop termination.
+   * @return void* Pointer to the error context (can be nullptr if not
+   * applicable)
+   */
+  inline void *
+  get_error_context() const
+  {
+    return error_context;
+  }
 
   /**
    * @brief Register a module callback for IRQ-triggered processing.
@@ -218,6 +253,17 @@ private:
    * @brief Indicates if the main loop is currently active
    */
   volatile bool active;
+
+  /**
+   * @brief Exit code to indicate the reason for loop termination (e.g., 0 for
+   * normal exit, non-zero for errors).
+   */
+  int exit_code = 0;
+
+  /**
+   * @brief Pointer to additional context about the error
+   */
+  void *error_context = nullptr;
 
   /**
    * @brief Activate expired events, run real-time events, update schedule

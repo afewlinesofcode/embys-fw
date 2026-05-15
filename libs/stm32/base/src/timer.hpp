@@ -36,9 +36,10 @@
 #include <stdint.h>
 
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/mcu_traits.hpp>
 #include <embys/stm32/types.hpp>
 
-#include "stm32f1xx.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::Base
 {
@@ -200,9 +201,10 @@ private:
   Callable<> cb;
 
   /**
-   * @brief Maximum auto-reload value in microseconds
+   * @brief Maximum auto-reload value in microseconds.
+   * Defaults to 16-bit on F1 (TIM2 is 16-bit) and 32-bit on F4/F7/H7.
    */
-  uint32_t arr_max = UINT16_MAX;
+  uint32_t arr_max = McuTraits::timer2_arr_max;
 
   /**
    * @brief Number of clock cycles per microsecond

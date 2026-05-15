@@ -4,3 +4,12 @@
 [submodule "third_party/cmsis-device-f1"]
 	path = third_party/cmsis-device-f1
 	url = git@github.com:STMicroelectronics/cmsis-device-f1.git
+[submodule "third_party/cmsis-device-f4"]
+	path = third_party/cmsis-device-f4
+	url = git@github.com:STMicroelectronics/cmsis-device-f4.git
+[submodule "third_party/cmsis-device-h7"]
+	path = third_party/cmsis-device-h7
+	url = git@github.com:STMicroelectronics/cmsis-device-h7.git
+[submodule "third_party/cmsis-device-f7"]
+	path = third_party/cmsis-device-f7
+	url = git@github.com:STMicroelectronics/cmsis-device-f7.git

@@ -110,7 +110,7 @@ Bus::handle_irq()
   uint32_t sr = read_sr(usart);
 
   // RX
-  if (sr & USART_SR_RXNE)
+  if (sr & SR_RXNE)
   {
     uint8_t byte = read_dr(usart); // read clears RXNE
 
@@ -128,7 +128,7 @@ Bus::handle_irq()
   }
 
   // TX
-  if ((sr & USART_SR_TXE) && (usart->CR1 & USART_CR1_TXEIE))
+  if ((sr & SR_TXE) && (usart->CR1 & USART_CR1_TXEIE))
   {
     if (tx_buffer_pos < tx_buffer_len)
     {
@@ -152,7 +152,7 @@ Bus::handle_irq()
   }
 
   // TC (transmission complete)
-  if ((sr & USART_SR_TC) && (usart->CR1 & USART_CR1_TCIE))
+  if ((sr & SR_TC) && (usart->CR1 & USART_CR1_TCIE))
   {
     disable_tc_irq(usart);
     clear_tc(usart);

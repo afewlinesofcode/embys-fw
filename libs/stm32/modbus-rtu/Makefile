@@ -5,7 +5,6 @@ APP_NAME := stm32-modbus-rtu
 PROJECT_ROOT := $(realpath $(shell pwd)/../../..)
 WORK_DIR := /work/libs/stm32/modbus-rtu
 BUILD_DIR := $(PROJECT_ROOT)/build
-BIN_DIR := $(BUILD_DIR)/$(TC)
 INCLUDE_DIR := $(BUILD_DIR)/include/embys/stm32/modbus-rtu
 INCLUDES += -Iinclude -I$(PROJECT_ROOT)/build/include
 LDLIBS = -lstm32-modbus -lstm32-uart -lstm32-base

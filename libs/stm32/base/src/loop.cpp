@@ -1,8 +1,5 @@
 #include "loop.hpp"
 
-#include "event.hpp"
-#include "stm32f1xx.hpp"
-
 namespace Embys::Stm32::Base
 {
 
@@ -94,6 +91,14 @@ Loop::stop(uint32_t us)
   return stop_event.enable(us);
 }
 
+void
+Loop::terminate(int code, void *error_context)
+{
+  this->exit_code = code;
+  this->error_context = error_context;
+  active = false;
+}
+
 int
 Loop::add(Event *event)
 {
@@ -162,20 +167,6 @@ void
 Loop::remove_module(Module *module)
 {
   module->cb.clear();
-}
-
-size_t
-Loop::count_events()
-{
-  size_t count = 0;
-  for (size_t i = 0; i < events_capacity; ++i)
-  {
-    if (events[i] != nullptr)
-    {
-      count++;
-    }
-  }
-  return count;
 }
 
 void

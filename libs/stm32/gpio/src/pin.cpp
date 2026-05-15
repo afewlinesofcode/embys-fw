@@ -2,17 +2,15 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "api.hpp"
 #include "bus.hpp"
 #include "diag.hpp"
+#include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
 {
 
-Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, uint32_t gpio_mode,
-         uint32_t gpio_cnf, uint8_t pin_cfg)
-  : enabled(false), bus(bus), port(port), index(index),
-    gpio_cfg(make_cfg(gpio_mode, gpio_cnf)), pin_cfg(pin_cfg)
+Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
+  : enabled(false), bus(bus), port(port), index(index), cfg(cfg)
 {
 }
 
@@ -30,27 +28,10 @@ Pin::enable()
   // Enable GPIO port clock
   TRY(enable_gpio(port));
 
-  // Configure GPIO pin mode and CNF
-  TRY(configure_pin(port, index, gpio_cfg));
+  TRY(configure_pin(port, index, cfg));
 
-  if ((gpio_cfg & 0b11) != Mode::IN)
+  if (has_cfg(cfg, PinCfg::OUT) && !has_any_role(cfg))
     TRY(write_pin(port, index, init_value));
-
-  // Configure pull resistors via ODR
-  if (pin_cfg & PinCfg::PULL_UP)
-  {
-    TRY(configure_pin_pull_up(port, index));
-  }
-  else if (pin_cfg & PinCfg::PULL_DOWN)
-  {
-    TRY(configure_pin_pull_down(port, index));
-  }
-
-  // Initialize interrupt if requested
-  if (pin_cfg & PinCfg::IRQ)
-  {
-    TRY(enable_pin_irq(port, index));
-  }
 
   TRY(bus->add(this));
 
@@ -74,12 +55,6 @@ Pin::disable()
 
   // Clear interrupt callback
   TRY(clear_callback());
-
-  // Clean up interrupt configuration
-  if (pin_cfg & PinCfg::IRQ)
-  {
-    disable_pin_irq(port, index);
-  }
 
   // Reset pin to safe state (input floating)
   reset_pin(port, index);
@@ -127,26 +102,20 @@ Pin::trigger()
 int
 Pin::validate_config()
 {
-  // Extract MODE and CNF fields
-  uint32_t mode = gpio_cfg & 0b11;
-  uint32_t cnf = (gpio_cfg & 0b1100) >> 2;
+  uint32_t role_bits = static_cast<uint32_t>(cfg) & all_roles_mask;
+  if (role_bits != 0 && (role_bits & (role_bits - 1U)) != 0)
+    return PIN_CONFIG_CONFLICT;
 
-  // Validate CNF based on MODE
-  if (mode == Mode::IN)
-  {
-    if (cnf > Cnf::IN_PU)
-      return PIN_CNF_CONFIG_FAILED; // Invalid input CNF
+  uint32_t speed_bits = static_cast<uint32_t>(cfg) & all_speed_mask;
+  if (speed_bits != 0 && (speed_bits & (speed_bits - 1U)) != 0)
+    return PIN_CONFIG_CONFLICT;
 
-    // Check pull configuration compatibility
-    // Pull-up/pull-down only valid with GPIO_CNF_IN_PU
-    if (cnf != Cnf::IN_PU &&
-        (pin_cfg & (PinCfg::PULL_UP | PinCfg::PULL_DOWN)) != 0)
-      return PIN_CONFIG_CONFLICT; // Conflicting input pull configuration
-  }
+  if (has_cfg(cfg, PinCfg::PU) && has_cfg(cfg, PinCfg::PD))
+    return PIN_CONFIG_CONFLICT;
 
-  // Check for conflicting pull settings
-  if ((pin_cfg & PinCfg::PULL_UP) && (pin_cfg & PinCfg::PULL_DOWN))
-    return PIN_CONFIG_CONFLICT; // Conflicting pull configuration
+  if (!has_any_role(cfg) && !has_cfg(cfg, PinCfg::IN) &&
+      !has_cfg(cfg, PinCfg::OUT) && !has_cfg(cfg, PinCfg::AF))
+    return PIN_CONFIG_CONFLICT;
 
   return 0;
 }

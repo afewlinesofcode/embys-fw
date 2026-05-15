@@ -5,7 +5,6 @@ APP_NAME := stm32-gpio
 PROJECT_ROOT := $(realpath $(shell pwd)/../../..)
 WORK_DIR := /work/libs/stm32/gpio
 BUILD_DIR := $(PROJECT_ROOT)/build
-BIN_DIR := $(BUILD_DIR)/$(TC)
 INCLUDE_DIR := $(BUILD_DIR)/include/embys/stm32/gpio
 INCLUDES += -Iinclude -I$(PROJECT_ROOT)/build/include
 LDLIBS = -lstm32-base

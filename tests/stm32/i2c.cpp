@@ -1,9 +1,9 @@
 #include <vector>
 
 #include <embys/stm32/base/loop.hpp>
-#include <embys/stm32/i2c/api.hpp>
 #include <embys/stm32/i2c/bus.hpp>
 #include <embys/stm32/i2c/def.hpp>
+#include <embys/stm32/i2c/hal.hpp>
 #include <embys/stm32/sim/sim.hpp>
 
 #include "test.hpp"
