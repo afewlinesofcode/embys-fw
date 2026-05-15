@@ -9,9 +9,7 @@
  * @copyright Copyright (c) 2026
  *
  */
-#ifdef STM32_SIM
-#include <embys/stm32/sim/sim.hpp>
-#elif defined(STM32F1xx)
+#if defined(STM32F1xx)
 #include <stm32f1xx.h>
 #elif defined(STM32F4xx)
 #include <stm32f4xx.h>
@@ -27,8 +25,12 @@
 // ── I2C HAL version ──────────────────────────────────────────────────────
 // V1: F1/F4 and sim (which emulates F1) — SR1/SR2/DR/CCR/TRISE.
 // V2: F7/H7 — ISR/ICR/RXDR/TXDR/TIMINGR.
-#if defined(STM32_SIM) || defined(STM32F1xx) || defined(STM32F4xx)
+#if defined(STM32F1xx) || defined(STM32F4xx)
 #define I2C_HAL_V1
 #elif defined(STM32F7xx) || defined(STM32H7xx)
 #define I2C_HAL_V2
+#endif
+
+#ifdef STM32_SIM
+#include <embys/stm32/sim/sim.hpp>
 #endif
