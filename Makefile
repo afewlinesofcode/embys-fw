@@ -35,12 +35,7 @@ all:
 	cd libs/stm32/modbus-rtu && $(MAKE) TC=$(TC) MCU=$(MCU) all
 
 examples:
-	cd examples/gpio_blink && $(MAKE) TC=$(TC) MCU=$(MCU) all
-	cd examples/gpio_btn_blink && $(MAKE) TC=$(TC) MCU=$(MCU) all
-	cd examples/uart_print && $(MAKE) TC=$(TC) MCU=$(MCU) all
-	cd examples/uart_echo && $(MAKE) TC=$(TC) MCU=$(MCU) all
-	cd examples/i2c_btn_blink && $(MAKE) TC=$(TC) MCU=$(MCU) all
-	cd examples/i2c_aht20 && $(MAKE) TC=$(TC) MCU=$(MCU) all
+	cd examples && $(MAKE) TC=$(TC) MCU=$(MCU) clean all
 
 clean:
 	cd libs/stm32/common && $(MAKE) TC=$(TC) MCU=$(MCU) clean
@@ -54,11 +49,5 @@ clean:
 	cd libs/stm32/i2c-aht20 && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 	cd libs/stm32/modbus && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 	cd libs/stm32/modbus-rtu && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/gpio_blink && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/gpio_btn_blink && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/uart_print && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/uart_echo && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/i2c_btn_blink && $(MAKE) TC=$(TC) MCU=$(MCU) clean
-	cd examples/i2c_aht20 && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 
 .PHONY: all test clean-tests examples clean

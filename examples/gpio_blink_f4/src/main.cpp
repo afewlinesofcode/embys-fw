@@ -12,6 +12,8 @@
  *
  */
 
+#ifdef STM32F4xx
+
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 
@@ -136,3 +138,13 @@ main()
 
   return 0;
 }
+
+#else
+
+int
+main()
+{
+  return 0;
+}
+
+#endif // STM32F4xx

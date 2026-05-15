@@ -88,8 +88,7 @@ struct UartRedeFixture : UartLoopFixture
 
   UartRedeFixture()
     : gpio_bus(&loop, dummy_pin_slots, 1),
-      rede(&gpio_bus, GPIOA, 5, Gpio::Mode::OUT_2, Gpio::Cnf::OUT_PP,
-           Gpio::PinCfg::NONE)
+      rede(&gpio_bus, GPIOA, 5, Gpio::PinCfg::OUT)
   {
   }
 };

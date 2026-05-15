@@ -20,7 +20,6 @@
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
-#include <embys/stm32/uart/api.hpp>
 #include <embys/stm32/uart/bus.hpp>
 
 #include "def.hpp"
@@ -108,10 +107,10 @@ main()
   // PA10 = RX: input floating
   Gpio::Pin *gpio_pin_slots[2];
   Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 2);
-  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9, Gpio::Mode::OUT_10,
-                   Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::NONE);
-  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                   Gpio::PinCfg::NONE);
+  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
+                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
+                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
 
   uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)

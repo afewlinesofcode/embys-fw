@@ -24,5 +24,6 @@ SIM_RESET()
   Embys::Stm32::Sim::register_int_signal();
 }
 #else
+#define SIM_LOG(str)
 #define SIM_RESET()
 #endif

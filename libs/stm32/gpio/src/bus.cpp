@@ -130,7 +130,7 @@ Bus::trigger_activated_pins()
     uint32_t pin_bit = (1 << pin_ptr->get_index());
 
     if ((activated_exti_lines & pin_bit) &&
-        (pin_ptr->get_pin_cfg() & PinCfg::IRQ))
+        has_cfg(pin_ptr->get_cfg(), PinCfg::LISTEN))
     {
       cs_begin();
       CLEAR_BIT_V(activated_exti_lines, pin_bit);

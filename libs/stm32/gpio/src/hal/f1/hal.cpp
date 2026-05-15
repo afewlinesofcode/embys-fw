@@ -134,53 +134,70 @@ disable_exti_source_clock()
 // ── Pin configuration
 // ─────────────────────────────────────────────────────────
 
-static uint32_t
-mode_bits(Mode mode)
-{
-  switch (mode)
-  {
-    case Mode::IN:
-      return 0b00;
-    case Mode::OUT_10:
-      return 0b01;
-    case Mode::OUT_2:
-      return 0b10;
-    case Mode::OUT_50:
-      return 0b11;
-    default:
-      return 0b00;
-  }
-}
-
-static uint32_t
-cnf_bits(Cnf cnf)
-{
-  switch (cnf)
-  {
-    case Cnf::IN_AN:
-      return 0b00;
-    case Cnf::IN_FL:
-      return 0b01;
-    case Cnf::IN_PU:
-      return 0b10;
-    case Cnf::OUT_PP:
-      return 0b00;
-    case Cnf::OUT_OD:
-      return 0b01;
-    case Cnf::OUT_PP_AF:
-      return 0b10;
-    case Cnf::OUT_OD_AF:
-      return 0b11;
-    default:
-      return 0b00;
-  }
-}
-
 int
-configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
+configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
 {
-  // Pack mode and cnf into the F1 4-bit nibble: [CNF1:CNF0:MODE1:MODE0]
-  uint32_t nibble = (cnf_bits(cnf) << 2) | mode_bits(mode);
+  PinCfg effective_cfg = cfg;
+
+  if (has_cfg(cfg, PinCfg::I2C))
+  {
+    // F1 I2C: AF open-drain output (MAPR remap, if needed, is handled
+    // elsewhere).
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF | PinCfg::OD);
+  }
+  else if (has_cfg(cfg, PinCfg::UART))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+  }
+  else if (has_cfg(cfg, PinCfg::SPI))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+  }
+  else if (has_cfg(cfg, PinCfg::PWM))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+  }
+  else if (has_cfg(cfg, PinCfg::ANALOG))
+  {
+    effective_cfg = PinCfg::ANALOG;
+  }
+
+  uint32_t output_mode_bits = 0b11U; // default 50MHz
+  if (has_cfg(cfg, PinCfg::LOW))
+    output_mode_bits = 0b10U; // 2MHz
+  else if (has_cfg(cfg, PinCfg::MEDIUM))
+    output_mode_bits = 0b01U; // 10MHz
+  else if (has_cfg(cfg, PinCfg::HIGH) || has_cfg(cfg, PinCfg::VHIGH))
+    output_mode_bits = 0b11U; // 50MHz
+
+  uint32_t mode = 0b00U;
+  uint32_t cnf = 0b01U; // default input floating
+
+  if (has_cfg(effective_cfg, PinCfg::ANALOG))
+  {
+    mode = 0b00U;
+    cnf = 0b00U;
+  }
+  else if (has_cfg(effective_cfg, PinCfg::AF))
+  {
+    mode = output_mode_bits;
+    cnf = has_cfg(effective_cfg, PinCfg::OD) ? 0b11U : 0b10U;
+  }
+  else if (has_cfg(effective_cfg, PinCfg::OUT))
+  {
+    mode = output_mode_bits;
+    cnf = has_cfg(effective_cfg, PinCfg::OD) ? 0b01U : 0b00U;
+  }
+  else if (has_cfg(effective_cfg, PinCfg::IN))
+  {
+    mode = 0b00U;
+    cnf = (has_cfg(effective_cfg, PinCfg::PU) ||
+           has_cfg(effective_cfg, PinCfg::PD))
+              ? 0b10U
+              : 0b01U;
+  }
+
+  uint32_t nibble = (cnf << 2) | mode;
 
   volatile uint32_t *cr = pin_cr(port, index);
   uint8_t shift = (index & 0x7U) << 2;
@@ -191,24 +208,14 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
   if (((*cr >> shift) & 0xFU) != nibble)
     return PIN_CONFIG_FAILED;
 
-  return 0;
-}
+  if (!has_any_role(cfg) && has_cfg(cfg, PinCfg::LISTEN))
+    TRY(enable_pin_irq(port, index));
 
-int
-configure_pin_i2c(GPIO_TypeDef *port, uint8_t index)
-{
-  // Ignored on F1
-  (void)port;
-  (void)index;
-  return 0;
-}
+  if (has_cfg(effective_cfg, PinCfg::PU))
+    return configure_pin_pull_up(port, index);
+  if (has_cfg(effective_cfg, PinCfg::PD))
+    return configure_pin_pull_down(port, index);
 
-int
-configure_pin_uart(GPIO_TypeDef *port, uint8_t index)
-{
-  // Ignored on F1: USART1 default mapping (PA9/PA10) needs no AFIO remap.
-  (void)port;
-  (void)index;
   return 0;
 }
 
@@ -235,6 +242,8 @@ configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index)
 int
 reset_pin(GPIO_TypeDef *port, uint8_t index)
 {
+  disable_pin_irq(port, index);
+
   volatile uint32_t *cr = pin_cr(port, index);
   uint8_t shift = (index & 0x7U) << 2;
 

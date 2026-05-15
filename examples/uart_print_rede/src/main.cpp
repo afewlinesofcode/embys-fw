@@ -158,19 +158,19 @@ main()
   Gpio::Pin *gpio_pin_slots[4];
   Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 4);
   // PC13: LED (output push-pull, 2 MHz, active-low)
-  Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, Gpio::Mode::OUT_2, Gpio::Cnf::OUT_PP,
-                    Gpio::PinCfg::NONE);
+  Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
+                    Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
   led_pin.set_init_value(1); // start with LED off
   // PA8: RE/DE (output push-pull, 50 MHz) — MAX485 direction control
-  Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8, Gpio::Mode::OUT_50,
-                      Gpio::Cnf::OUT_PP, Gpio::PinCfg::NONE);
+  Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8,
+                      Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
   uart_rede.set_init_value(0); // start in receive mode
   // USART1: PA9/PA10 use AF7 via PinCfg::UART on F4/F7/H7; it is a no-op on
   // F1, where USART1 stays on the default pin mapping.
-  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9, Gpio::Mode::OUT_10,
-                   Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::UART);
-  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::OUT_10,
-                   Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::UART);
+  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
+                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
+                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
 
   uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)

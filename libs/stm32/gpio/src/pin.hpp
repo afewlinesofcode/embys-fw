@@ -24,8 +24,7 @@ class Api;
 class Pin
 {
 public:
-  Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, Mode gpio_mode, Cnf gpio_cnf,
-      uint8_t pin_cfg);
+  Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
 
   inline GPIO_TypeDef *
   get_port() const
@@ -39,22 +38,10 @@ public:
     return index;
   }
 
-  inline Mode
-  get_mode() const
+  inline PinCfg
+  get_cfg() const
   {
-    return mode;
-  }
-
-  inline Cnf
-  get_cnf() const
-  {
-    return cnf;
-  }
-
-  inline uint8_t
-  get_pin_cfg() const
-  {
-    return pin_cfg;
+    return cfg;
   }
 
   inline bool
@@ -120,9 +107,7 @@ private:
   Api *api; ///< GPIO bus API
   GPIO_TypeDef *port;
   uint8_t index;
-  Mode mode;
-  Cnf cnf;
-  uint8_t pin_cfg;
+  PinCfg cfg;
   Callable<uint8_t> cb;   ///< Interrupt event callback
   uint8_t init_value = 0; ///< Initial output value
 

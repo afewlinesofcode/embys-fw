@@ -18,14 +18,18 @@ namespace Embys::Stm32::Gpio
 // ── Internal helpers
 // ──────────────────────────────────────────────────────────
 
-// Modify a multi-bit field inside a 32-bit register.
-// field_shift: bit position of the LSB; field_width: number of bits.
-static inline void
-modify_field(volatile uint32_t &reg, uint8_t field_shift, uint32_t field_mask,
-             uint32_t value)
+static inline uint32_t
+speed_bits(PinCfg cfg)
 {
-  reg = (reg & ~(field_mask << field_shift)) |
-        ((value & field_mask) << field_shift);
+  if (has_cfg(cfg, PinCfg::LOW))
+    return 0b00U;
+  if (has_cfg(cfg, PinCfg::MEDIUM))
+    return 0b01U;
+  if (has_cfg(cfg, PinCfg::HIGH))
+    return 0b10U;
+  if (has_cfg(cfg, PinCfg::VHIGH))
+    return 0b11U;
+  return 0b11U;
 }
 
 static uint8_t
@@ -162,87 +166,79 @@ disable_exti_source_clock()
 // ─────────────────────────────────────────────────────────
 
 int
-configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
+configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
 {
-  // MODER: 00=input, 01=output, 10=AF, 11=analog
-  uint32_t moder = 0;
-  switch (cnf)
+  PinCfg effective_cfg = cfg;
+  uint8_t af_num = 0xFF;
+
+  if (has_cfg(cfg, PinCfg::I2C))
   {
-    case Cnf::IN_AN:
-      moder = 0b11;
-      break;
-    case Cnf::IN_FL:
-    case Cnf::IN_PU:
-      moder = 0b00;
-      break;
-    case Cnf::OUT_PP:
-    case Cnf::OUT_OD:
-      moder = 0b01;
-      break;
-    case Cnf::OUT_PP_AF:
-    case Cnf::OUT_OD_AF:
-      moder = 0b10;
-      break;
-    default:
-      moder = 0b00;
-      break;
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF | PinCfg::OD);
+    af_num = 4;
   }
-  modify_field(port->MODER, index * 2U, 0b11U, moder);
+  else if (has_cfg(cfg, PinCfg::UART))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+    af_num = 7;
+  }
+  else if (has_cfg(cfg, PinCfg::SPI))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+    af_num = 5;
+  }
+  else if (has_cfg(cfg, PinCfg::PWM))
+  {
+    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
+    af_num = 1;
+  }
+  else if (has_cfg(cfg, PinCfg::ANALOG))
+  {
+    effective_cfg = PinCfg::ANALOG;
+  }
+
+  // MODER: 00=input, 01=output, 10=AF, 11=analog
+  uint32_t moder = 0b00;
+  if (has_cfg(effective_cfg, PinCfg::ANALOG))
+    moder = 0b11;
+  else if (has_cfg(effective_cfg, PinCfg::AF))
+    moder = 0b10;
+  else if (has_cfg(effective_cfg, PinCfg::OUT))
+    moder = 0b01;
+
+  MOD_BIT_V(port->MODER, index * 2U, 0b11U, moder);
 
   // OTYPER: 0=push-pull, 1=open-drain
   if (moder == 0b01 || moder == 0b10) // output or AF
   {
-    uint32_t otyper = (cnf == Cnf::OUT_OD || cnf == Cnf::OUT_OD_AF) ? 1U : 0U;
-    modify_field(port->OTYPER, index, 0b1U, otyper);
+    uint32_t otyper = has_cfg(effective_cfg, PinCfg::OD) ? 1U : 0U;
+    MOD_BIT_V(port->OTYPER, index, 0b1U, otyper);
 
-    // OSPEEDR: 00=low, 01=medium, 10=fast, 11=high
-    uint32_t ospeedr = 0b10; // fast default (for AF)
-    switch (mode)
-    {
-      case Mode::OUT_2:
-        ospeedr = 0b00;
-        break;
-      case Mode::OUT_10:
-        ospeedr = 0b01;
-        break;
-      case Mode::OUT_50:
-        ospeedr = 0b11;
-        break;
-      default:
-        ospeedr = 0b10;
-        break;
-    }
-    modify_field(port->OSPEEDR, index * 2U, 0b11U, ospeedr);
+    // OSPEEDR: 00=low, 01=medium, 10=high, 11=very high.
+    MOD_BIT_V(port->OSPEEDR, index * 2U, 0b11U, speed_bits(cfg));
+
+    if (af_num != 0xFF)
+      MOD_BIT_V(port->AFR[index / 8U], (index % 8U) * 4U, 0xFU, af_num);
   }
 
+  // PUPDR: 00=none, 01=pull-up, 10=pull-down
+  uint32_t pupdr = 0b00;
+  if (has_cfg(effective_cfg, PinCfg::PU))
+    pupdr = 0b01;
+  else if (has_cfg(effective_cfg, PinCfg::PD))
+    pupdr = 0b10;
+  MOD_BIT_V(port->PUPDR, index * 2U, 0b11U, pupdr);
+
+  if (!has_any_role(cfg) && has_cfg(cfg, PinCfg::LISTEN))
+    TRY(enable_pin_irq(port, index));
+
   return 0;
-}
-
-int
-configure_pin_af(GPIO_TypeDef *port, uint8_t index, uint8_t af_num)
-{
-  // AFR[0] covers pins 0-7, AFR[1] covers pins 8-15; each AF field is 4 bits
-  modify_field(port->AFR[index / 8U], (index % 8U) * 4U, 0xFU, af_num);
-  return 0;
-}
-
-int
-configure_pin_i2c(GPIO_TypeDef *port, uint8_t index)
-{
-  return configure_pin_af(port, index, 4); // AF4 = I2C on F4/F7/H7
-}
-
-int
-configure_pin_uart(GPIO_TypeDef *port, uint8_t index)
-{
-  return configure_pin_af(port, index, 7); // AF7 = USART1/2/3 on F7
 }
 
 int
 configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index)
 {
   // PUPDR: 01 = pull-up
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b01U);
+  MOD_BIT_V(port->PUPDR, index * 2U, 0b11U, 0b01U);
   return 0;
 }
 
@@ -250,18 +246,20 @@ int
 configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index)
 {
   // PUPDR: 10 = pull-down
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b10U);
+  MOD_BIT_V(port->PUPDR, index * 2U, 0b11U, 0b10U);
   return 0;
 }
 
 int
 reset_pin(GPIO_TypeDef *port, uint8_t index)
 {
+  disable_pin_irq(port, index);
+
   // Input floating: MODER=00, OSPEEDR=00, OTYPER=0, PUPDR=00
-  modify_field(port->MODER, index * 2U, 0b11U, 0b00U);
-  modify_field(port->OSPEEDR, index * 2U, 0b11U, 0b00U);
-  modify_field(port->OTYPER, index, 0b1U, 0b0U);
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b00U);
+  MOD_BIT_V(port->MODER, index * 2U, 0b11U, 0b00U);
+  MOD_BIT_V(port->OSPEEDR, index * 2U, 0b11U, 0b00U);
+  MOD_BIT_V(port->OTYPER, index, 0b1U, 0b0U);
+  MOD_BIT_V(port->PUPDR, index * 2U, 0b11U, 0b00U);
 
   return 0;
 }
