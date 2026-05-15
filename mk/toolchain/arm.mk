@@ -90,7 +90,7 @@ $(BIN): $(TARGET)
 
 flash:
 	@echo "Flashing $(BIN) to device..."
-	st-flash write $(BIN) 0x8000000
+	st-flash --connect-under-reset write $(BIN) 0x8000000
 
 chipinfo:
 	st-info --chipid

@@ -41,10 +41,14 @@ get_port_num(GPIO_TypeDef *port)
     return 3;
   if (port == GPIOE)
     return 4;
+#ifdef GPIOF
   if (port == GPIOF)
     return 5;
+#endif
+#ifdef GPIOG
   if (port == GPIOG)
     return 6;
+#endif
   if (port == GPIOH)
     return 7;
   return 0xFF;
@@ -66,10 +70,14 @@ gpio_ahb1_en_mask(GPIO_TypeDef *port)
     return RCC_AHB1ENR_GPIODEN;
   if (port == GPIOE)
     return RCC_AHB1ENR_GPIOEEN;
+#ifdef GPIOF
   if (port == GPIOF)
     return RCC_AHB1ENR_GPIOFEN;
+#endif
+#ifdef GPIOG
   if (port == GPIOG)
     return RCC_AHB1ENR_GPIOGEN;
+#endif
   if (port == GPIOH)
     return RCC_AHB1ENR_GPIOHEN;
   return 0;
@@ -88,10 +96,14 @@ gpio_ahb1_rst_mask(GPIO_TypeDef *port)
     return RCC_AHB1RSTR_GPIODRST;
   if (port == GPIOE)
     return RCC_AHB1RSTR_GPIOERST;
+#ifdef GPIOF
   if (port == GPIOF)
     return RCC_AHB1RSTR_GPIOFRST;
+#endif
+#ifdef GPIOG
   if (port == GPIOG)
     return RCC_AHB1RSTR_GPIOGRST;
+#endif
   if (port == GPIOH)
     return RCC_AHB1RSTR_GPIOHRST;
   return 0;
@@ -187,7 +199,7 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
       moder = 0b00;
       break;
   }
-  modify_field(port->MODER, index * 2U, 0b11U, moder);
+  modify_field(port->MODER, index << 1, 0b11U, moder);
 
   // OTYPER: 0=push-pull, 1=open-drain
   if (moder == 0b01 || moder == 0b10) // output or AF
@@ -212,17 +224,37 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
         ospeedr = 0b10;
         break;
     }
-    modify_field(port->OSPEEDR, index * 2U, 0b11U, ospeedr);
+    modify_field(port->OSPEEDR, index << 1, 0b11U, ospeedr);
   }
 
   return 0;
 }
 
 int
+configure_pin_af(GPIO_TypeDef *port, uint8_t index, uint8_t af_num)
+{
+  // AFR[0] covers pins 0-7, AFR[1] covers pins 8-15; each AF field is 4 bits
+  modify_field(port->AFR[index / 8U], (index % 8U) * 4U, 0xFU, af_num);
+  return 0;
+}
+
+int
+configure_pin_i2c(GPIO_TypeDef *port, uint8_t index)
+{
+  return configure_pin_af(port, index, 4); // AF4 = I2C on F4/F7/H7
+}
+
+int
+configure_pin_uart(GPIO_TypeDef *port, uint8_t index)
+{
+  return configure_pin_af(port, index, 7); // AF7 = USART1/2/3 on F4
+}
+
+int
 configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index)
 {
   // PUPDR: 01 = pull-up
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b01U);
+  modify_field(port->PUPDR, index << 1, 0b11U, 0b01U);
   return 0;
 }
 
@@ -230,7 +262,7 @@ int
 configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index)
 {
   // PUPDR: 10 = pull-down
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b10U);
+  modify_field(port->PUPDR, index << 1, 0b11U, 0b10U);
   return 0;
 }
 
@@ -238,10 +270,10 @@ int
 reset_pin(GPIO_TypeDef *port, uint8_t index)
 {
   // Input floating: MODER=00, OSPEEDR=00, OTYPER=0, PUPDR=00
-  modify_field(port->MODER, index * 2U, 0b11U, 0b00U);
-  modify_field(port->OSPEEDR, index * 2U, 0b11U, 0b00U);
+  modify_field(port->MODER, index << 1, 0b11U, 0b00U);
+  modify_field(port->OSPEEDR, index << 1, 0b11U, 0b00U);
   modify_field(port->OTYPER, index, 0b1U, 0b0U);
-  modify_field(port->PUPDR, index * 2U, 0b11U, 0b00U);
+  modify_field(port->PUPDR, index << 1, 0b11U, 0b00U);
 
   return 0;
 }

@@ -38,6 +38,7 @@ struct UartBaseFixture
   UartBaseFixture()
   {
     Sim::reset();
+
     // Point the uart simulation at USART2 for all Bus tests.
     // uart.cpp::reset() only puts usart1_instance in idle state; replicate
     // that for USART2 so TXE is high and the first TXE IRQ can fire.

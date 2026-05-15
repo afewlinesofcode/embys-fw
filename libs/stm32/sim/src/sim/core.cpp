@@ -32,7 +32,9 @@ TIM_TypeDef tim3_instance = {};
 TIM_TypeDef tim4_instance = {};
 RCC_TypeDef rcc_instance = {};
 EXTI_TypeDef exti_instance = {};
+#ifdef MCU_HAS_AFIO
 AFIO_TypeDef afio_instance = {};
+#endif
 GPIO_TypeDef gpioa_instance = {};
 GPIO_TypeDef gpiob_instance = {};
 GPIO_TypeDef gpioc_instance = {};
@@ -55,7 +57,9 @@ TIM_TypeDef *tim3 = &tim3_instance;
 TIM_TypeDef *tim4 = &tim4_instance;
 RCC_TypeDef *rcc = &rcc_instance;
 EXTI_TypeDef *exti = &exti_instance;
+#ifdef MCU_HAS_AFIO
 AFIO_TypeDef *afio = &afio_instance;
+#endif
 GPIO_TypeDef *gpioa = &gpioa_instance;
 GPIO_TypeDef *gpiob = &gpiob_instance;
 GPIO_TypeDef *gpioc = &gpioc_instance;
@@ -114,7 +118,9 @@ reset()
   memset(static_cast<void *>(&scb_instance), 0, sizeof(scb_instance));
   memset(&rcc_instance, 0, sizeof(rcc_instance));
   memset(&exti_instance, 0, sizeof(exti_instance));
+#ifdef MCU_HAS_AFIO
   memset(&afio_instance, 0, sizeof(afio_instance));
+#endif
   memset(&gpioa_instance, 0, sizeof(gpioa_instance));
   memset(&gpiob_instance, 0, sizeof(gpiob_instance));
   memset(&gpioc_instance, 0, sizeof(gpioc_instance));

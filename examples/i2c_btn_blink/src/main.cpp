@@ -1,5 +1,17 @@
 #include <stddef.h>
+
+#ifdef STM32F1xx
 #include <stm32f1xx.h>
+#elif defined(STM32F4xx)
+#include <stm32f4xx.h>
+#elif defined(STM32F7xx)
+#include <stm32f7xx.h>
+#elif defined(STM32H7xx)
+#include <stm32h7xx.h>
+#else
+#error                                                                         \
+    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
@@ -31,6 +43,9 @@ Embys::Stm32::I2c::Bus *i2c_bus_ptr = nullptr;
 // Interrupt handlers for each peripheral used in the example
 extern "C"
 {
+  void
+  panic(int code);
+
   void
   TIM2_IRQHandler()
   {
@@ -193,11 +208,11 @@ main()
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
   Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+                                  GpioCnf::OUT_OD_AF, PinCfg::I2C);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
   Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7, GpioMode::OUT_50,
-                                  GpioCnf::OUT_OD_AF, PinCfg::NONE);
+                                  GpioCnf::OUT_OD_AF, PinCfg::I2C);
 
   Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
 
@@ -235,7 +250,7 @@ main()
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
   // Schedule startup event
-  startup_event.enable(0);
+  startup_event.enable(1000000);
 
   // Run main loop
   loop.run();

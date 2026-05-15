@@ -9,9 +9,7 @@
  * @copyright Copyright (c) 2026
  *
  */
-#ifdef STM32_SIM
-#include <embys/stm32/sim/sim.hpp>
-#elif defined(STM32F1xx)
+#if defined(STM32F1xx)
 #include <stm32f1xx.h>
 #elif defined(STM32F4xx)
 #include <stm32f4xx.h>
@@ -22,4 +20,8 @@
 #else
 #error                                                                         \
     "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
+
+#ifdef STM32_SIM
+#include <embys/stm32/sim/sim.hpp>
 #endif

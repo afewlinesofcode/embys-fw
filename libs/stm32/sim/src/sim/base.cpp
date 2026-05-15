@@ -329,8 +329,11 @@ reset()
   tim4_cyc = 0;
   mock_primask = 0;
   interrupted = false;
-  SET_BIT_V(RCC->CFGR, RCC_CFGR_PPRE1_DIV2); // Simulate APB1 at half core clock
-                                             // for correct timer frequencies
+
+  // Set PPRE1 = DIV2 so pclk1_hz() returns SystemCoreClock/2.
+  // USART2 is on APB1; enable_uart() computes BRR = pclk1_hz() / baud.
+  // Tests that check BRR expect SystemCoreClock / 2 / baud.
+  SET_BIT_V(RCC->CFGR, RCC_CFGR_PPRE1_DIV2);
 }
 
 void

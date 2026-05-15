@@ -18,7 +18,18 @@
  */
 
 #ifndef STM32_SIM
+#ifdef STM32F1xx
 #include <stm32f1xx.h>
+#elif defined(STM32F4xx)
+#include <stm32f4xx.h>
+#elif defined(STM32F7xx)
+#include <stm32f7xx.h>
+#elif defined(STM32H7xx)
+#include <stm32h7xx.h>
+#else
+#error                                                                         \
+    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
 #endif
 
 #include <embys/stm32/base/loop.hpp>
@@ -27,13 +38,11 @@
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
-#include <embys/stm32/i2c/api.hpp>
 #include <embys/stm32/i2c/bus.hpp>
 #include <embys/stm32/modbus-rtu/server.hpp>
 #include <embys/stm32/modbus/def.hpp>
 #include <embys/stm32/modbus/handler.hpp>
 #include <embys/stm32/modbus/store.hpp>
-#include <embys/stm32/uart/api.hpp>
 #include <embys/stm32/uart/bus.hpp>
 
 #include "def.hpp"
@@ -114,6 +123,7 @@ on_request(void *ctx, const uint8_t *buf, uint16_t len)
     return;
 
   auto *context = static_cast<AppContext *>(ctx);
+  blink(context);
 
   uint8_t fc = buf[1];
   uint16_t addr =
@@ -155,8 +165,6 @@ on_request(void *ctx, const uint8_t *buf, uint16_t len)
   }
 
   SIM_LOG("[Modbus] " << op << " " << type << " 0x" << std::hex << addr);
-
-  blink(context);
 
   // Update LCD
   context->lcd->show_operation(op, type, addr);
@@ -217,12 +225,12 @@ main()
   uart_rede.set_init_value(0); // start in receive mode
 
   // PA9: TX (AF push-pull, 50 MHz)
-  Gpio::Pin uart_tx(&gpio_bus, GPIOA, 9, Gpio::Mode::OUT_50,
-                    Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::NONE);
+  Gpio::Pin uart_tx(&gpio_bus, GPIOA, 9, Gpio::Mode::OUT_10,
+                    Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::UART);
 
-  // PA10: RX (input floating)
-  Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::IN, Gpio::Cnf::IN_FL,
-                    Gpio::PinCfg::NONE);
+  // PA10: RX (AF7 on F4/F7/H7; no-op on F1)
+  Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10, Gpio::Mode::OUT_10,
+                    Gpio::Cnf::OUT_PP_AF, Gpio::PinCfg::UART);
 
   static uint8_t uart_rx_buf[Modbus::kFrameSize];
   Uart::Bus uart_bus(USART1, &loop, uart_rx_buf, sizeof(uart_rx_buf));
@@ -251,11 +259,11 @@ main()
 
   // PB6: SCL (open-drain AF, 50 MHz)
   Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6, Gpio::Mode::OUT_50,
-                    Gpio::Cnf::OUT_OD_AF, Gpio::PinCfg::NONE);
+                    Gpio::Cnf::OUT_OD_AF, Gpio::PinCfg::I2C);
 
   // PB7: SDA (open-drain AF, 50 MHz)
   Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7, Gpio::Mode::OUT_50,
-                    Gpio::Cnf::OUT_OD_AF, Gpio::PinCfg::NONE);
+                    Gpio::Cnf::OUT_OD_AF, Gpio::PinCfg::I2C);
 
   I2c::Bus i2c_bus(I2C1, &loop);
   ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
@@ -298,7 +306,7 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  startup_event.enable(0);
+  startup_event.enable(1000000);
 
   loop.run();
 

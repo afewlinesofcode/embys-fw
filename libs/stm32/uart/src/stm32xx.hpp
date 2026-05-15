@@ -9,9 +9,8 @@
  * @copyright Copyright (c) 2026
  *
  */
-#ifdef STM32_SIM
-#include <embys/stm32/sim/sim.hpp>
-#elif defined(STM32F1xx)
+
+#if defined(STM32F1xx)
 #include <stm32f1xx.h>
 #elif defined(STM32F4xx)
 #include <stm32f4xx.h>
@@ -22,4 +21,17 @@
 #else
 #error                                                                         \
     "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
+
+#ifdef STM32_SIM
+#include <embys/stm32/sim/sim.hpp>
+#endif
+
+// ── UART HAL version ──────────────────────────────────────────────────────
+// V1: F1/F4 and sim (which emulates F1) — SR/DR register layout.
+// V2: F7/H7 — ISR/RDR/TDR/ICR register layout.
+#if defined(STM32F1xx) || defined(STM32F4xx)
+#define UART_HAL_V1
+#elif defined(STM32F7xx) || defined(STM32H7xx)
+#define UART_HAL_V2
 #endif

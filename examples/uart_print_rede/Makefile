@@ -2,11 +2,11 @@ TC ?= arm
 .DEFAULT_GOAL := all
 $(info Using toolchain: $(TC))
 
-APP_NAME		 := gpio_blink
+APP_NAME     := uart_print_rede
 PROJECT_ROOT := $(realpath $(shell pwd)/../..)
-WORK_DIR     := /work/examples/gpio_blink
+WORK_DIR     := /work/examples/$(APP_NAME)
 
-LDLIBS = -lstm32-base
+LDLIBS = -lstm32-uart -lstm32-gpio -lstm32-base
 
 ifeq ($(TC),sim)
 	LDLIBS += -lstm32-sim

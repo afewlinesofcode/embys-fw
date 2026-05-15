@@ -1,3 +1,4 @@
+#include <stm32f1xx.h>
 #include "isr_vector.h"
 #include "clock_init.h"
 #include "panic.h"

@@ -1,3 +1,4 @@
+#include <stm32f7xx.h>
 #include "isr_vector.h"
 #include "clock_init.h"
 #include "panic.h"
@@ -7,26 +8,63 @@ extern uint32_t _sdata;
 extern uint32_t _edata;
 extern uint32_t _sbss;
 extern uint32_t _ebss;
+extern void (*__preinit_array_start [])(void) __attribute__((weak));
+extern void (*__preinit_array_end [])(void) __attribute__((weak));
+extern void (*__init_array_start [])(void) __attribute__((weak));
+extern void (*__init_array_end [])(void) __attribute__((weak));
+extern void (*__fini_array_start [])(void) __attribute__((weak));
+extern void (*__fini_array_end [])(void) __attribute__((weak));
 
 extern int
 main(void);
 
 void
+__libc_fini_array(void)
+{
+  void (**p)(void);
+  for (p = __fini_array_end - 1; p >= __fini_array_start; p--)
+    (*p)();
+}
+
+void
+__cxa_pure_virtual(void)
+{
+  for (;;)
+    __asm volatile("bkpt #0");
+}
+
+void
 Reset_Handler(void)
 {
+  // Delay for debugger attach and power stabilisation
+  for (volatile int i = 0; i < 1000000; i++) {}
+
+  // Copy .data from flash to SRAM
   uint32_t *src = &_sidata;
   uint32_t *dst = &_sdata;
   while (dst < &_edata)
     *dst++ = *src++;
 
+  // Zero .bss
   dst = &_sbss;
   while (dst < &_ebss)
     *dst++ = 0;
 
-  SystemInit();
   clock_init_216mhz();
-  main();
-  while (1) {}
+  SystemInit();
+  SystemCoreClockUpdate();
+
+  // Call global constructors
+  void (**p)(void);
+  for (p = __preinit_array_start; p < __preinit_array_end; p++)
+    (*p)();
+  for (p = __init_array_start; p < __init_array_end; p++)
+    (*p)();
+
+  panic(main());
+
+  while (1)
+    __asm volatile("wfi");
 }
 
 void

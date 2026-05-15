@@ -12,7 +12,7 @@
 
 #include <iostream> // Provide std::cout during simulation
 
-#include "def.hpp"
+#include "stm32xx.hpp"
 
 namespace Embys::Stm32::Sim
 {
@@ -27,7 +27,9 @@ extern TIM_TypeDef tim3_instance;
 extern TIM_TypeDef tim4_instance;
 extern RCC_TypeDef rcc_instance;
 extern EXTI_TypeDef exti_instance;
+#ifdef MCU_HAS_AFIO
 extern AFIO_TypeDef afio_instance;
+#endif
 extern GPIO_TypeDef gpioa_instance;
 extern GPIO_TypeDef gpiob_instance;
 extern GPIO_TypeDef gpioc_instance;
@@ -55,7 +57,9 @@ extern TIM_TypeDef *tim3;
 extern TIM_TypeDef *tim4;
 extern RCC_TypeDef *rcc;
 extern EXTI_TypeDef *exti;
+#ifdef MCU_HAS_AFIO
 extern AFIO_TypeDef *afio;
+#endif
 extern GPIO_TypeDef *gpioa;
 extern GPIO_TypeDef *gpiob;
 extern GPIO_TypeDef *gpioc;

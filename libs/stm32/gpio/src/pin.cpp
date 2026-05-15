@@ -33,8 +33,11 @@ Pin::enable()
   // Configure GPIO pin mode and CNF
   TRY(configure_pin(port, index, mode, cnf));
 
-  if (mode != Mode::IN)
-    TRY(write_pin(port, index, init_value));
+  if (pin_cfg & PinCfg::I2C)
+    TRY(configure_pin_i2c(port, index));
+
+  if (pin_cfg & PinCfg::UART)
+    TRY(configure_pin_uart(port, index));
 
   // Configure pull resistors via ODR
   if (pin_cfg & PinCfg::PULL_UP)
@@ -51,6 +54,9 @@ Pin::enable()
   {
     TRY(enable_pin_irq(port, index));
   }
+
+  if (mode != Mode::IN)
+    TRY(write_pin(port, index, init_value));
 
   TRY(bus->add(this));
 

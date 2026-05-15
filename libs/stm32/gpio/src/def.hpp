@@ -48,10 +48,23 @@ enum Cnf : uint8_t
  */
 struct PinCfg
 {
+  // Default
   static constexpr uint8_t NONE = 0b0000;
+
+  // Pull-up/pull-down configuration (input mode only; invalid if both set)
   static constexpr uint8_t PULL_UP = 0b0001;
   static constexpr uint8_t PULL_DOWN = 0b0010;
+
+  // Interrupt request enable (input mode only)
   static constexpr uint8_t IRQ = 0b0100;
+
+  // Required by F4/F7/H7 HAL to identify I2C pins for correct AF selection;
+  // ignored on F1.
+  static constexpr uint8_t I2C = 0b1000;
+
+  // Required by F4/F7/H7 HAL to select AF7 (USART1/2/3) on USART pins;
+  // ignored on F1.
+  static constexpr uint8_t UART = 0b10000;
 };
 
 

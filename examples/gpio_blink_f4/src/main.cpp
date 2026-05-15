@@ -2,9 +2,10 @@
  * @file main.cpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
  * @brief A simple GPIO blinking example using the Base Loop and Timer
- * abstractions. This example demonstrates how to configure a GPIO pin for
- * output and toggle it at regular intervals using a timer and the main loop,
- * and how to print the LED state when built in the simulation environment.
+ * abstractions for STM32F1. This example demonstrates how to configure a GPIO
+ * pin for output and toggle it at regular intervals using a timer and the main
+ * loop, and how to print the LED state when built in the simulation
+ * environment.
  * @version 0.1
  * @date 2026-03-17
  * @copyright Copyright (c) 2026
@@ -50,11 +51,12 @@ void
 configure_led()
 {
   // Configure GPIO pin for LED (assuming it's on GPIOC pin 13)
-  SET_BIT_V(RCC->APB2ENR, RCC_APB2ENR_IOPCEN);
-  CLEAR_BIT_V(GPIOC->CRH, GPIO_CRH_MODE13 | GPIO_CRH_CNF13);
+  SET_BIT_V(RCC->AHB1ENR, RCC_AHB1ENR_GPIOCEN);
+  CLEAR_BIT_V(GPIOC->MODER, GPIO_MODER_MODE13);
   // Output mode, max speed 2 MHz, push-pull
-  SET_BIT_V(GPIOC->CRH, GPIO_CRH_MODE13_1);
-  SET_BIT_V(GPIOC->BSRR, GPIO_BSRR_BS13);
+  SET_BIT_V(GPIOC->MODER, GPIO_MODER_MODE13_0);
+  // Set pin low to turn on LED (active low)
+  SET_BIT_V(GPIOC->BSRR, GPIO_BSRR_BR13);
 }
 
 /**
@@ -95,6 +97,9 @@ main()
 {
   SIM_RESET();
 
+  // Configure GPIO for LED control
+  configure_led();
+
   AppContext context;
 
   // Initialize timer instance and update global pointer for interrupt handler
@@ -115,9 +120,6 @@ main()
   // Create an event to toggle the LED
   Embys::Stm32::Base::Event toggle_led_event(
       &loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &context});
-
-  // Configure GPIO for LED control
-  configure_led();
 
   // Set global pointer for timer interrupt handler
   timer_ptr = &timer;

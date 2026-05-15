@@ -1,4 +1,15 @@
+#ifdef STM32F1xx
 #include <stm32f1xx.h>
+#elif defined(STM32F4xx)
+#include <stm32f4xx.h>
+#elif defined(STM32F7xx)
+#include <stm32f7xx.h>
+#elif defined(STM32H7xx)
+#include <stm32h7xx.h>
+#else
+#error                                                                         \
+    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
+#endif
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
@@ -21,6 +32,9 @@ Embys::Stm32::Gpio::Bus *gpio_ptr = nullptr;
 
 extern "C"
 {
+  void
+  panic(int code);
+
   void
   TIM2_IRQHandler()
   {
@@ -193,6 +207,8 @@ main()
   // Set up context
   context.blink_event = &blink_event;
   context.led = &led_pin;
+  context.blink_on = true;
+  context.blink_event->enable(LED_BLINK_INTERVAL_US);
 
   // Enable peripherals before starting main loop
   TRY(gpio_bus.enable());

@@ -232,6 +232,26 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
 }
 
 int
+configure_pin_af(GPIO_TypeDef *port, uint8_t index, uint8_t af_num)
+{
+  // AFR[0] covers pins 0-7, AFR[1] covers pins 8-15; each AF field is 4 bits
+  modify_field(port->AFR[index / 8U], (index % 8U) * 4U, 0xFU, af_num);
+  return 0;
+}
+
+int
+configure_pin_i2c(GPIO_TypeDef *port, uint8_t index)
+{
+  return configure_pin_af(port, index, 4); // AF4 = I2C on F4/F7/H7
+}
+
+int
+configure_pin_uart(GPIO_TypeDef *port, uint8_t index)
+{
+  return configure_pin_af(port, index, 7); // AF7 = USART1/2/3 on H7
+}
+
+int
 configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index)
 {
   modify_field(port->PUPDR, index * 2U, 0b11U, 0b01U);

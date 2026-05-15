@@ -40,6 +40,12 @@ int
 configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf);
 
 int
+configure_pin_i2c(GPIO_TypeDef *port, uint8_t index);
+
+int
+configure_pin_uart(GPIO_TypeDef *port, uint8_t index);
+
+int
 configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index);
 
 int

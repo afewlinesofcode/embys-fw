@@ -1,7 +1,11 @@
 /**
  * @file hal.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
- * @brief UART public API types and low-level peripheral operations
+ * @brief UART HAL shim — selects the versioned register-level helpers.
+ *
+ * Delegates to hal/v1/hal.hpp (F1/F4/sim, SR/DR layout) or
+ * hal/v2/hal.hpp (F7/H7, ISR/RDR/TDR/ICR layout) based on UART_HAL_V1/V2
+ * macros defined in stm32xx.hpp.
  *
  * @version 0.1
  * @date 2026-04-29
@@ -17,14 +21,16 @@
 #include "def.hpp"
 #include "stm32xx.hpp"
 
+#if defined(UART_HAL_V1)
+#include "hal/v1/hal.hpp"
+#elif defined(UART_HAL_V2)
+#include "hal/v2/hal.hpp"
+#else
+#error "No UART HAL version selected. Check stm32xx.hpp."
+#endif
+
 namespace Embys::Stm32::Uart
 {
-
-/**
- * @brief Error flag mask covering all USART receive error bits.
- */
-static constexpr uint32_t err_mask =
-    USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE;
 
 /**
  * @brief Enable USART clock, reset peripheral, and configure CR1/CR2/BRR.
@@ -45,109 +51,16 @@ disable_uart(USART_TypeDef *usart);
 /**
  * @brief Return total frame bits for a given configuration.
  * Includes start bit, data bits, and stop bits. Parity is encoded inside
- * the data word on STM32F1 (uses one of the data bits), so it is not
+ * the data word on STM32 (uses one of the data bits), so it is not
  * counted separately.
  */
-uint32_t
-calc_frame_bits(WordLength word_length, StopBits stop_bits);
-
-// ── interrupt-enable helpers ─────────────────────────────────────────────
-
-inline void
-enable_rxne_irq(USART_TypeDef *usart)
-{
-  SET_BIT_V(usart->CR1, USART_CR1_RXNEIE);
-}
-
-inline void
-disable_rxne_irq(USART_TypeDef *usart)
-{
-  CLEAR_BIT_V(usart->CR1, USART_CR1_RXNEIE);
-}
-
-inline void
-enable_txe_irq(USART_TypeDef *usart)
-{
-  SET_BIT_V(usart->CR1, USART_CR1_TXEIE);
-}
-
-inline void
-disable_txe_irq(USART_TypeDef *usart)
-{
-  CLEAR_BIT_V(usart->CR1, USART_CR1_TXEIE);
-}
-
-inline void
-enable_tc_irq(USART_TypeDef *usart)
-{
-  SET_BIT_V(usart->CR1, USART_CR1_TCIE);
-}
-
-inline void
-disable_tc_irq(USART_TypeDef *usart)
-{
-  CLEAR_BIT_V(usart->CR1, USART_CR1_TCIE);
-}
-
-// ── status register helpers ──────────────────────────────────────────────
-
 inline uint32_t
-read_sr(USART_TypeDef *usart)
+calc_frame_bits(WordLength word_length, StopBits stop_bits)
 {
-  uint32_t val = usart->SR;
-#ifdef STM32_SIM
-  ::Embys::Stm32::Sim::Base::trigger_test_hook("uart_read_sr");
-#endif
-  return val;
-}
-
-inline uint8_t
-read_dr(USART_TypeDef *usart)
-{
-  uint8_t val = static_cast<uint8_t>(usart->DR);
-#ifdef STM32_SIM
-  ::Embys::Stm32::Sim::Base::trigger_test_hook("uart_read_dr");
-#endif
-  return val;
-}
-
-inline void
-write_dr(USART_TypeDef *usart, uint8_t data)
-{
-  usart->DR = static_cast<uint32_t>(data);
-#ifdef STM32_SIM
-  ::Embys::Stm32::Sim::Base::trigger_test_hook("uart_write_dr");
-#endif
-}
-
-inline bool
-is_rxne(USART_TypeDef *usart)
-{
-  return (usart->SR & USART_SR_RXNE) != 0;
-}
-
-inline bool
-is_txe(USART_TypeDef *usart)
-{
-  return (usart->SR & USART_SR_TXE) != 0;
-}
-
-inline bool
-is_tc(USART_TypeDef *usart)
-{
-  return (usart->SR & USART_SR_TC) != 0;
-}
-
-inline void
-clear_tc(USART_TypeDef *usart)
-{
-  CLEAR_BIT_V(usart->SR, USART_SR_TC);
-}
-
-inline bool
-has_error(USART_TypeDef *usart)
-{
-  return (usart->SR & err_mask) != 0;
+  uint32_t bits = 1u; // start bit
+  bits += (word_length == WordLength::W9) ? 9u : 8u;
+  bits += (stop_bits == StopBits::Two) ? 2u : 1u;
+  return bits;
 }
 
 }; // namespace Embys::Stm32::Uart

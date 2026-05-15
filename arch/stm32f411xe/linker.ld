@@ -1,17 +1,18 @@
-/* Linker script for STM32F411xE — 512KB Flash, 128KB SRAM at 0x20000000 */
+/* Linker script for STM32F411xE — 512KB Flash, 128KB SRAM */
 
 ENTRY(Reset_Handler)
-
-_estack = ORIGIN(RAM) + LENGTH(RAM);
-
-_Min_Heap_Size  = 0x0;
-_Min_Stack_Size = 0x800;
 
 MEMORY
 {
   FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 512K
   RAM   (xrw) : ORIGIN = 0x20000000, LENGTH = 128K
 }
+
+/* Main stack pointer starts at the top of RAM */
+_estack = ORIGIN(RAM) + LENGTH(RAM);
+
+/* Reserved stack size for link-time RAM overflow check only */
+_Min_Stack_Size = 0x800;
 
 SECTIONS
 {
@@ -25,56 +26,44 @@ SECTIONS
   .text :
   {
     . = ALIGN(4);
-    *(.text)
+
     *(.text*)
-    *(.glue_7)
-    *(.glue_7t)
-    *(.eh_frame_hdr)
-    *(.eh_frame)
-    KEEP (*(.init))
-    KEEP (*(.fini))
+    *(.rodata*)
+
+    KEEP(*(.init))
+    KEEP(*(.fini))
+
     . = ALIGN(4);
     _etext = .;
   } >FLASH
 
-  .rodata :
-  {
-    . = ALIGN(4);
-    *(.rodata)
-    *(.rodata*)
-    *(.gcc_except_table)
-    *(.gcc_except_table*)
-    . = ALIGN(4);
-  } >FLASH
-
   .preinit_array :
   {
-    PROVIDE_HIDDEN (__preinit_array_start = .);
-    KEEP (*(.preinit_array*))
-    PROVIDE_HIDDEN (__preinit_array_end = .);
+    . = ALIGN(4);
+    PROVIDE_HIDDEN(__preinit_array_start = .);
+    KEEP(*(.preinit_array*))
+    PROVIDE_HIDDEN(__preinit_array_end = .);
+    . = ALIGN(4);
   } >FLASH
 
   .init_array :
   {
-    PROVIDE_HIDDEN (__init_array_start = .);
-    KEEP (*(SORT(.init_array.*)))
-    KEEP (*(.init_array*))
-    PROVIDE_HIDDEN (__init_array_end = .);
+    . = ALIGN(4);
+    PROVIDE_HIDDEN(__init_array_start = .);
+    KEEP(*(SORT(.init_array.*)))
+    KEEP(*(.init_array*))
+    PROVIDE_HIDDEN(__init_array_end = .);
+    . = ALIGN(4);
   } >FLASH
 
   .fini_array :
   {
-    PROVIDE_HIDDEN (__fini_array_start = .);
-    KEEP (*(SORT(.fini_array.*)))
-    KEEP (*(.fini_array*))
-    PROVIDE_HIDDEN (__fini_array_end = .);
-  } >FLASH
-
-  .ARM.exidx :
-  {
-    __exidx_start = .;
-    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    __exidx_end = .;
+    . = ALIGN(4);
+    PROVIDE_HIDDEN(__fini_array_start = .);
+    KEEP(*(SORT(.fini_array.*)))
+    KEEP(*(.fini_array*))
+    PROVIDE_HIDDEN(__fini_array_end = .);
+    . = ALIGN(4);
   } >FLASH
 
   _sidata = LOADADDR(.data);
@@ -83,39 +72,58 @@ SECTIONS
   {
     . = ALIGN(4);
     _sdata = .;
-    *(.data)
+
     *(.data*)
+
     . = ALIGN(4);
     _edata = .;
-  } >RAM AT> FLASH
+  } >RAM AT>FLASH
 
-  . = ALIGN(4);
   .bss (NOLOAD) :
   {
+    . = ALIGN(4);
     _sbss = .;
     __bss_start__ = _sbss;
-    *(.bss)
+
     *(.bss*)
     *(COMMON)
+
     . = ALIGN(4);
     _ebss = .;
     __bss_end__ = _ebss;
   } >RAM
 
-  ._user_heap_stack :
+  .noinit (NOLOAD) :
   {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = _ebss );
-    . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
-    . = ALIGN(8);
+    . = ALIGN(4);
+    _snoinit = .;
+
+    *(.noinit*)
+    *(.noinit.*)
+
+    . = ALIGN(4);
+    _enoinit = .;
   } >RAM
 
-  .noinit (NOLOAD) : { *(.noinit*) } >RAM
+  . = ALIGN(8);
+  _end = .;
+  end = .;
 
-  .ARM.attributes 0 : { *(.ARM.attributes) }
+  .ARM.attributes 0 :
+  {
+    *(.ARM.attributes)
+  }
+
+  /DISCARD/ :
+  {
+    *(.eh_frame*)
+    *(.gcc_except_table*)
+    *(.ARM.extab*)
+    *(.ARM.exidx*)
+    *(.comment*)
+    *(.note*)
+  }
 }
 
 ASSERT(_etext <= ORIGIN(FLASH) + LENGTH(FLASH), "FLASH overflow");
-ASSERT(.      <= ORIGIN(RAM)   + LENGTH(RAM),   "RAM overflow (heap/stack)");
+ASSERT(_end + _Min_Stack_Size <= ORIGIN(RAM) + LENGTH(RAM), "RAM overflow: .data/.bss/.noinit + reserved stack exceed RAM");

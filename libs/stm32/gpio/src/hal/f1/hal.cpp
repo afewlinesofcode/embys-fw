@@ -195,6 +195,24 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, Mode mode, Cnf cnf)
 }
 
 int
+configure_pin_i2c(GPIO_TypeDef *port, uint8_t index)
+{
+  // Ignored on F1
+  (void)port;
+  (void)index;
+  return 0;
+}
+
+int
+configure_pin_uart(GPIO_TypeDef *port, uint8_t index)
+{
+  // Ignored on F1: USART1 default mapping (PA9/PA10) needs no AFIO remap.
+  (void)port;
+  (void)index;
+  return 0;
+}
+
+int
 configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index)
 {
   // On F1, pull-up is selected by writing 1 to the ODR bit when CNF is IN_PU.
