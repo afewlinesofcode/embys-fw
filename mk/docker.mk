@@ -42,7 +42,7 @@ MCU ?= stm32f103xb
 	@echo "Running 'make $*' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
 	cd $(PROJECT_ROOT) && \
-	docker run --name $(DOCKER_NAME) --rm -it \
+	docker run --name $(DOCKER_NAME) --rm -t \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
