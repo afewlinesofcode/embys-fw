@@ -15,7 +15,7 @@ ifeq ($(DOCKER_CONTAINER),true)
     INSIDE_DOCKER := true
 endif
 
-.docker: $(PROJECT_ROOT)/Dockerfile
+$(PROJECT_ROOT)/.docker: $(PROJECT_ROOT)/Dockerfile
 	@echo "Building Docker image: $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)"
 	cd $(PROJECT_ROOT) && \
 	docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) . && \
