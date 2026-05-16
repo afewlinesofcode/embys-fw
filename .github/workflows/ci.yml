@@ -32,20 +32,20 @@ jobs:
 
       - name: Build libraries for simulation
         run: |
-          docker run --rm -v "$PWD:/work" embys-fw-ci make TC=sim
+          make TC=sim
 
       - name: Run tests
         run: |
-          docker run --rm -v "$PWD:/work" embys-fw-ci make test
+          make test
 
       - name: Build examples for simulation
         run: |
-          docker run --rm -v "$PWD:/work" embys-fw-ci make examples TC=sim
+          make examples TC=sim
 
       - name: Build libraries for ARM STM32F103xB
         run: |
-          docker run --rm -v "$PWD:/work" embys-fw-ci make TC=arm MCU=stm32f103xb
+          make TC=arm MCU=stm32f103xb
 
       - name: Build examples for ARM STM32F103xB
         run: |
-          docker run --rm -v "$PWD:/work" embys-fw-ci make examples TC=arm MCU=stm32f103xb
+          make examples TC=arm MCU=stm32f103xb

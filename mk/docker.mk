@@ -4,7 +4,7 @@
 
 DOCKER_IMAGE_NAME = embys-fw-dev
 DOCKER_TAG ?= latest
-DOCKER_NAME ?= embys-fw-dev-container
+DOCKER_NAME ?= embys-fw-ci
 PROJECT_ROOT ?= $(shell pwd)
 WORK_DIR ?= /work
 
