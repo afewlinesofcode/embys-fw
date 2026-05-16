@@ -28,7 +28,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t embys-fw-ci .
+          docker build -t embys-fw-dev:latest .
 
       - name: Build libraries for simulation
         run: |

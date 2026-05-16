@@ -7,6 +7,7 @@ DOCKER_TAG ?= latest
 DOCKER_NAME ?= embys-fw-ci
 PROJECT_ROOT ?= $(shell pwd)
 WORK_DIR ?= /work
+DOCKER_USER := $(shell id -u):$(shell id -g)
 
 # Detect if we're running inside Docker container
 # Check for /.dockerenv file (created by Docker) or DOCKER_CONTAINER environment variable
@@ -31,6 +32,8 @@ in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Project root: $(PROJECT_ROOT)"
 	cd $(PROJECT_ROOT) && \
 	docker run --name $(DOCKER_NAME) --rm -it \
+		--user $(DOCKER_USER) \
+		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -43,6 +46,8 @@ MCU ?= stm32f103xb
 	@echo "Project root: $(PROJECT_ROOT)"
 	cd $(PROJECT_ROOT) && \
 	docker run --name $(DOCKER_NAME) --rm -t \
+		--user $(DOCKER_USER) \
+		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -52,6 +57,8 @@ docker-shell:
 	@echo "Starting interactive shell in Docker container"
 	cd $(PROJECT_ROOT) && \
 	docker run --name $(DOCKER_NAME) --rm -it \
+		--user $(DOCKER_USER) \
+		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
@@ -61,6 +68,8 @@ docker-cmd:
 	@echo "Running command in Docker container: $(CMD)"
 	cd $(PROJECT_ROOT) && \
 	docker run --rm -it \
+		--user $(DOCKER_USER) \
+		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
