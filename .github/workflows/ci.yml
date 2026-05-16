@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure HTTPS for Git submodules
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - name: Checkout submodules
+        run: |
+          git submodule update --init --recursive
+
+      - name: Build Docker image
+        run: |
+          docker build -t embys-fw-ci .
+
+      - name: Build libraries for simulation
+        run: |
+          docker run --rm -v "$PWD:/work" embys-fw-ci make TC=sim
+
+      - name: Run tests
+        run: |
+          docker run --rm -v "$PWD:/work" embys-fw-ci make test
+
+      - name: Build examples for simulation
+        run: |
+          docker run --rm -v "$PWD:/work" embys-fw-ci make examples TC=sim
+
+      - name: Build libraries for ARM STM32F103xB
+        run: |
+          docker run --rm -v "$PWD:/work" embys-fw-ci make TC=arm MCU=stm32f103xb
+
+      - name: Build examples for ARM STM32F103xB
+        run: |
+          docker run --rm -v "$PWD:/work" embys-fw-ci make examples TC=arm MCU=stm32f103xb
