@@ -1,3 +1,5 @@
+[![CI](https://github.com/afewlinesofcode/embys-fw/actions/workflows/ci.yml/badge.svg)](https://github.com/afewlinesofcode/embys-fw/actions/workflows/ci.yml)
+
 # Embys FW
 
 Embys FW is a modular C++ firmware foundation for STM32-based systems, built around an interrupt-driven event loop, deterministic scheduling, peripheral drivers, and lightweight simulation for testing firmware logic on x86.
@@ -590,5 +592,3 @@ make read-coils     # FC 0x01 — read 10 coils at address 0x1000
 make write-coil     # FC 0x05 — write single coil at 0x1000 ON
 make read-holding   # FC 0x03 — read 10 holding registers at 0x1000
 ```
-
-[![CI](https://github.com/afewlinesofcode/embys-fw/actions/workflows/ci.yml/badge.svg)](https://github.com/afewlinesofcode/embys-fw/actions/workflows/ci.yml)
