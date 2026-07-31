@@ -47,6 +47,12 @@ namespace Embys::Stm32::Base
 class Timer
 {
 public:
+  enum Mode : uint8_t
+  {
+    MODE_ONESHOT = 0,
+    MODE_PWM = 1,
+  };
+
   // Deleted constructors and assignment operators to enforce unique ownership
   Timer() = delete;
   Timer(const Timer &) = delete;
@@ -63,9 +69,35 @@ public:
   Timer(TIM_TypeDef *timer);
 
   /**
+   * @brief Initialize a Timer in PWM mode for a specific channel.
+   * The timer is configured but remains stopped until pwm_start() is called.
+   * @param timer Pointer to the timer peripheral instance
+   * @param channel PWM channel number in range [1..4]
+   */
+  Timer(TIM_TypeDef *timer, uint8_t channel);
+
+  /**
    * @brief Destroy the Timer object and deinitialize the timer peripheral
    */
   ~Timer();
+
+  inline TIM_TypeDef *
+  get_peripheral() const
+  {
+    return timer;
+  }
+
+  inline Mode
+  get_mode() const
+  {
+    return mode;
+  }
+
+  inline uint8_t
+  get_pwm_channel() const
+  {
+    return pwm_channel;
+  }
 
   /**
    * @brief Invoke the timer callback
@@ -116,11 +148,17 @@ public:
   schedule_us(uint32_t us, uint32_t jitter_us, bool start);
 
   /**
-   * @brief Restart the timer with current ARR
+   * @brief Start or restart the timer with current ARR
    * Will enable timer if it's disabled
    */
   void
-  restart();
+  start();
+
+  /**
+   * @brief Stop the timer
+   */
+  void
+  stop();
 
   /**
    * @brief Reset the timer counter
@@ -128,6 +166,18 @@ public:
    */
   void
   reset();
+
+  /**
+   * @brief Set PWM period in microseconds.
+   */
+  void
+  set_pwm_us(uint32_t period_us);
+
+  /**
+   * @brief Set PWM duty cycle in permille (0..1000).
+   */
+  void
+  set_pwm_duty(uint16_t duty_permille);
 
   /**
    * @brief Check if the timer is enabled
@@ -195,6 +245,9 @@ private:
    */
   TIM_TypeDef *timer;
 
+  Mode mode = MODE_ONESHOT;
+  uint8_t pwm_channel = 0;
+
   /**
    * @brief Callable object representing the callback function and context
    */
@@ -215,7 +268,16 @@ private:
   init_peripheral();
 
   void
+  init_common();
+
+  void
+  init_pwm_channel();
+
+  void
   deinit_peripheral();
+
+  volatile uint32_t *
+  pwm_ccr();
 };
 
 

@@ -3,7 +3,7 @@
 #include <embys/stm32/def.hpp>
 
 #include "bus.hpp"
-#include "diag.hpp"
+#include "def.hpp"
 #include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
@@ -12,6 +12,40 @@ namespace Embys::Stm32::Gpio
 Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
   : enabled(false), bus(bus), port(port), index(index), cfg(cfg)
 {
+}
+
+Pin::~Pin()
+{
+  if (enabled)
+  {
+    disable();
+  }
+}
+
+void
+Pin::set_init_value(uint8_t value)
+{
+  init_value = value ? 1 : 0;
+  has_init_value = true;
+}
+
+void
+Pin::bind_pwm(Base::Timer *timer, uint8_t channel)
+{
+  pwm.timer = timer;
+  pwm.channel = channel;
+}
+
+void
+Pin::set_callback(Callable<uint8_t> cb)
+{
+  this->cb = cb;
+}
+
+void
+Pin::clear_callback()
+{
+  cb.clear();
 }
 
 int
@@ -23,15 +57,12 @@ Pin::enable()
     return 0;
   }
 
-  TRY(validate_config());
+  TRY(validate_pin_config(port, index, cfg, &pwm));
 
-  // Enable GPIO port clock
-  TRY(enable_gpio(port));
+  TRY(configure_pin(port, index, cfg, &pwm));
 
-  TRY(configure_pin(port, index, cfg));
-
-  if (has_cfg(cfg, PinCfg::OUT) && !has_any_role(cfg))
-    TRY(write_pin(port, index, init_value));
+  if (has_init_value)
+    TRY(write(init_value));
 
   TRY(bus->add(this));
 
@@ -54,10 +85,10 @@ Pin::disable()
   enabled = false;
 
   // Clear interrupt callback
-  TRY(clear_callback());
+  clear_callback();
 
   // Reset pin to safe state (input floating)
-  reset_pin(port, index);
+  reset_pin(port, index, cfg, &pwm);
 
   return 0;
 }
@@ -74,20 +105,6 @@ Pin::write(uint8_t value)
   return write_pin(port, index, value);
 }
 
-int
-Pin::set_callback(Callable<uint8_t> cb)
-{
-  this->cb = cb;
-  return 0;
-}
-
-int
-Pin::clear_callback()
-{
-  cb.clear();
-  return 0;
-}
-
 void
 Pin::trigger()
 {
@@ -97,27 +114,6 @@ Pin::trigger()
     return; // Failed to read pin state, can't trigger callback
 
   cb(value);
-}
-
-int
-Pin::validate_config()
-{
-  uint32_t role_bits = static_cast<uint32_t>(cfg) & all_roles_mask;
-  if (role_bits != 0 && (role_bits & (role_bits - 1U)) != 0)
-    return PIN_CONFIG_CONFLICT;
-
-  uint32_t speed_bits = static_cast<uint32_t>(cfg) & all_speed_mask;
-  if (speed_bits != 0 && (speed_bits & (speed_bits - 1U)) != 0)
-    return PIN_CONFIG_CONFLICT;
-
-  if (has_cfg(cfg, PinCfg::PU) && has_cfg(cfg, PinCfg::PD))
-    return PIN_CONFIG_CONFLICT;
-
-  if (!has_any_role(cfg) && !has_cfg(cfg, PinCfg::IN) &&
-      !has_cfg(cfg, PinCfg::OUT) && !has_cfg(cfg, PinCfg::AF))
-    return PIN_CONFIG_CONFLICT;
-
-  return 0;
 }
 
 }; // namespace Embys::Stm32::Gpio

@@ -2,7 +2,6 @@
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/gpio/bus.hpp>
-#include <embys/stm32/gpio/diag.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/sim/sim.hpp>
 
@@ -105,7 +104,7 @@ TEST_SUITE("gpio")
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
-                    "Pin: enable accepts input pull-up via unified PinCfg")
+                    "ONLY Pin: enable accepts input pull-up via unified PinCfg")
   {
     bus.enable();
 

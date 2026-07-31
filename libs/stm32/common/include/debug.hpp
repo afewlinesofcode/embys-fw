@@ -10,6 +10,25 @@
  */
 #pragma once
 
+#define EMBYS_LOG_LEVEL_NONE 0
+#define EMBYS_LOG_LEVEL_ERROR 1
+#define EMBYS_LOG_LEVEL_WARN 2
+#define EMBYS_LOG_LEVEL_INFO 3
+#define EMBYS_LOG_LEVEL_DEBUG 4
+#define EMBYS_LOG_LEVEL_TRACE 5
+
+#ifdef EMBYS_LOG_LEVEL
+#include <cstdio>
+#else
+#define EMBYS_LOG_LEVEL 0
+#endif
+
+#if EMBYS_LOG_LEVEL >= EMBYS_LOG_LEVEL_DEBUG
+#define EMBYS_DEBUG(...) std::printf(__VA_ARGS__)
+#else
+#define EMBYS_DEBUG(...)
+#endif
+
 namespace Embys
 {
 

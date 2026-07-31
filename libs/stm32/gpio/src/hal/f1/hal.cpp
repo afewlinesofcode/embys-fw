@@ -4,8 +4,9 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "../../diag.hpp"
+#include "../../def.hpp"
 #include "../../stm32xx.hpp"
+#include "utility.hpp"
 
 // F1-specific GPIO HAL implementation.
 // GPIO clocks are on APB2. EXTI source routing is via AFIO->EXTICR.
@@ -15,8 +16,14 @@
 namespace Embys::Stm32::Gpio
 {
 
-// ── Internal helpers
-// ──────────────────────────────────────────────────────────
+int
+configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index);
+int
+configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index);
+int
+configure_pin_irq(GPIO_TypeDef *port, uint8_t index);
+int
+reset_pin_irq(GPIO_TypeDef *, uint8_t pin_index);
 
 static constexpr volatile uint32_t *
 pin_cr(GPIO_TypeDef *port, uint8_t index)
@@ -37,9 +44,6 @@ get_port_num(GPIO_TypeDef *port)
     return 3;
   return 0xFF;
 }
-
-// ── GPIO port clock
-// ───────────────────────────────────────────────────────────
 
 int
 enable_gpio(GPIO_TypeDef *port)
@@ -104,10 +108,8 @@ disable_gpio(GPIO_TypeDef *port)
   return 0;
 }
 
-// ── EXTI source clock (AFIO on F1) ───────────────────────────────────────────
-
 int
-enable_exti_source_clock()
+enable_exti()
 {
   if (RCC->APB2ENR & RCC_APB2ENR_AFIOEN)
     return 0; // Already enabled
@@ -122,7 +124,7 @@ enable_exti_source_clock()
 }
 
 int
-disable_exti_source_clock()
+disable_exti()
 {
   CLEAR_BIT_V(RCC->APB2ENR, RCC_APB2ENR_AFIOEN);
   (void)RCC->APB2ENR;
@@ -131,44 +133,13 @@ disable_exti_source_clock()
   return 0;
 }
 
-// ── Pin configuration
-// ─────────────────────────────────────────────────────────
-
 int
-configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
+configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
+              [[maybe_unused]] const PwmBinding *pwm)
 {
-  PinCfg effective_cfg = cfg;
+  PinCfg effective_cfg = get_effective_pin_cfg(cfg);
 
-  if (has_cfg(cfg, PinCfg::I2C))
-  {
-    // F1 I2C: AF open-drain output (MAPR remap, if needed, is handled
-    // elsewhere).
-    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF | PinCfg::OD);
-  }
-  else if (has_cfg(cfg, PinCfg::UART))
-  {
-    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
-  }
-  else if (has_cfg(cfg, PinCfg::SPI))
-  {
-    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
-  }
-  else if (has_cfg(cfg, PinCfg::PWM))
-  {
-    effective_cfg = static_cast<PinCfg>(PinCfg::OUT | PinCfg::AF);
-  }
-  else if (has_cfg(cfg, PinCfg::ANALOG))
-  {
-    effective_cfg = PinCfg::ANALOG;
-  }
-
-  uint32_t output_mode_bits = 0b11U; // default 50MHz
-  if (has_cfg(cfg, PinCfg::LOW))
-    output_mode_bits = 0b10U; // 2MHz
-  else if (has_cfg(cfg, PinCfg::MEDIUM))
-    output_mode_bits = 0b01U; // 10MHz
-  else if (has_cfg(cfg, PinCfg::HIGH) || has_cfg(cfg, PinCfg::VHIGH))
-    output_mode_bits = 0b11U; // 50MHz
+  TRY(enable_gpio(port));
 
   uint32_t mode = 0b00U;
   uint32_t cnf = 0b01U; // default input floating
@@ -180,21 +151,18 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
   }
   else if (has_cfg(effective_cfg, PinCfg::AF))
   {
-    mode = output_mode_bits;
+    mode = get_output_mode_bits(effective_cfg);
     cnf = has_cfg(effective_cfg, PinCfg::OD) ? 0b11U : 0b10U;
   }
   else if (has_cfg(effective_cfg, PinCfg::OUT))
   {
-    mode = output_mode_bits;
+    mode = get_output_mode_bits(effective_cfg);
     cnf = has_cfg(effective_cfg, PinCfg::OD) ? 0b01U : 0b00U;
   }
   else if (has_cfg(effective_cfg, PinCfg::IN))
   {
     mode = 0b00U;
-    cnf = (has_cfg(effective_cfg, PinCfg::PU) ||
-           has_cfg(effective_cfg, PinCfg::PD))
-              ? 0b10U
-              : 0b01U;
+    cnf = has_cfg(effective_cfg, PinCfg::PU | PinCfg::PD) ? 0b10U : 0b01U;
   }
 
   uint32_t nibble = (cnf << 2) | mode;
@@ -208,13 +176,14 @@ configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
   if (((*cr >> shift) & 0xFU) != nibble)
     return PIN_CONFIG_FAILED;
 
-  if (!has_any_role(cfg) && has_cfg(cfg, PinCfg::LISTEN))
-    TRY(enable_pin_irq(port, index));
-
   if (has_cfg(effective_cfg, PinCfg::PU))
-    return configure_pin_pull_up(port, index);
+    TRY(configure_pin_pull_up(port, index));
+
   if (has_cfg(effective_cfg, PinCfg::PD))
-    return configure_pin_pull_down(port, index);
+    TRY(configure_pin_pull_down(port, index));
+
+  if (has_cfg(effective_cfg, PinCfg::IN) && has_cfg(cfg, PinCfg::LISTEN))
+    TRY(configure_pin_irq(port, index));
 
   return 0;
 }
@@ -240,27 +209,10 @@ configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index)
 }
 
 int
-reset_pin(GPIO_TypeDef *port, uint8_t index)
+configure_pin_irq(GPIO_TypeDef *port, uint8_t pin_index)
 {
-  disable_pin_irq(port, index);
+  TRY(enable_exti());
 
-  volatile uint32_t *cr = pin_cr(port, index);
-  uint8_t shift = (index & 0x7U) << 2;
-
-  // Input floating: CNF=01 MODE=00 → nibble = 0b0100
-  uint32_t input_floating = 0b0100U;
-  CLEAR_BIT_V(*cr, 0xFU << shift);
-  SET_BIT_V(*cr, input_floating << shift);
-  CLEAR_BIT_V(port->ODR, 1U << index);
-
-  return 0;
-}
-
-// ── EXTI interrupt routing (via AFIO->EXTICR) ────────────────────────────────
-
-int
-enable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index)
-{
   uint8_t port_num = get_port_num(port);
 
   if (port_num == 0xFF)
@@ -284,8 +236,31 @@ enable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index)
   return 0;
 }
 
+// Reset previously configured pin to a safe state (input floating) and disable
+// IRQ if applicable.
 int
-disable_pin_irq(GPIO_TypeDef *, uint8_t pin_index)
+reset_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
+          [[maybe_unused]] const PwmBinding *pwm)
+{
+  PinCfg effective_cfg = get_effective_pin_cfg(cfg);
+
+  if (has_cfg(effective_cfg, PinCfg::IN) && has_cfg(cfg, PinCfg::LISTEN))
+    reset_pin_irq(port, index);
+
+  volatile uint32_t *cr = pin_cr(port, index);
+  uint8_t shift = (index & 0x7U) << 2;
+
+  // Input floating: CNF=01 MODE=00 → nibble = 0b0100
+  uint32_t input_floating = 0b0100U;
+  CLEAR_BIT_V(*cr, 0xFU << shift);
+  SET_BIT_V(*cr, input_floating << shift);
+  CLEAR_BIT_V(port->ODR, 1U << index);
+
+  return 0;
+}
+
+int
+reset_pin_irq(GPIO_TypeDef *, uint8_t pin_index)
 {
   uint32_t pin_bit = (1U << pin_index);
 
@@ -299,6 +274,32 @@ disable_pin_irq(GPIO_TypeDef *, uint8_t pin_index)
   CLEAR_BIT_V(AFIO->EXTICR[exticr_index], 0xFU << exticr_shift);
 
   return 0;
+}
+
+bool
+is_valid_pwm_binding(const PwmBinding *binding)
+{
+  if (!binding || !binding->timer || binding->channel == 0)
+  {
+    return false;
+  }
+
+  auto timer = binding->timer->get_peripheral();
+  auto channel = binding->channel;
+
+  if (timer == TIM1)
+    return channel >= 1U && channel <= 4U;
+  else if (timer == TIM2)
+    return channel >= 1U && channel <= 4U;
+  else if (timer == TIM3)
+    return channel >= 1U && channel <= 4U;
+  else if (timer == TIM4)
+    return channel >= 1U && channel <= 4U;
+#ifdef TIM5
+  else if (timer == TIM5)
+    return channel >= 1U && channel <= 4U;
+#endif
+  return false;
 }
 
 bool

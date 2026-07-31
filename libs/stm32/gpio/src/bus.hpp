@@ -25,7 +25,6 @@ namespace Embys::Stm32::Gpio
 /**
  * @class Bus
  * @brief STM32F10x GPIO Controller
- *
  * Central management for GPIO pins and EXTI interrupts with Base system
  * coordination for precise timing.
  * Requires module slot in Base loop for event notifications.
@@ -33,30 +32,58 @@ namespace Embys::Stm32::Gpio
 class Bus
 {
 public:
-  /** @brief Initialize GPIO controller and hardware */
+  /**
+   * @brief Initialize GPIO bus with given Base loop and pin registry
+   * @param base Pointer to the Base loop for event scheduling
+   * @param pin_slots Array of pointers to GPIO pins
+   * @param pins_capacity Capacity of the pin registry
+   */
   Bus(Base::Loop *base, Pin **pin_slots, size_t pins_capacity);
 
-  /** @brief Clean up GPIO controller resources */
+  /**
+   * @brief Clean up GPIO bus resources
+   */
   ~Bus();
 
+  /**
+   * @brief Check if the GPIO bus is enabled
+   * @return true if the bus is enabled, false otherwise
+   */
   inline bool
   is_enabled() const
   {
     return enabled;
   }
 
+  /**
+   * @brief Get the Base loop associated with this GPIO bus
+   * @return Base::Loop* Pointer to the Base loop
+   */
   inline Base::Loop *
   get_base() const
   {
     return base;
   }
 
+  /**
+   * @brief Enable the GPIO bus and prepare for pin management
+   * @return int Status code indicating success or failure
+   */
   int
   enable();
 
+  /**
+   * @brief Disable the GPIO bus and clean up resources
+   * @return int Status code indicating success or failure
+   */
   int
   disable();
 
+  /**
+   * @brief Handle GPIO interrupt request for a range of pins
+   * @param start Starting pin index
+   * @param end Ending pin index
+   */
   void
   handle_irq(uint8_t start, uint8_t end);
 
@@ -95,7 +122,6 @@ private:
 
   /**
    * @brief Add and initialize GPIO pin
-   *
    * @param pin GPIO pin to add
    * @return int Status code
    */
@@ -104,7 +130,6 @@ private:
 
   /**
    * @brief Remove GPIO pin and clean up resources
-   *
    * @param pin GPIO pin to remove
    * @return int Status code
    */
@@ -115,7 +140,6 @@ private:
    * @brief Mark EXTI line as activated and notify main loop.
    * This should be called from the EXTI IRQ handler when a GPIO interrupt is
    * detected.
-   *
    * @param pin_bit Bitmask of the activated EXTI line
    */
   void
@@ -125,12 +149,15 @@ private:
    * @brief Process all activated EXTI lines and trigger corresponding pin
    * callbacks. This should be called from the main loop context to ensure that
    * pin callbacks are executed outside of the interrupt context.
-   *
    * @return int Status code
    */
   int
   trigger_activated_pins();
 
+  /**
+   * @brief Check if the GPIO bus is enabled before performing operations
+   * @return int Status code indicating success or failure
+   */
   int
   check_enabled();
 
@@ -151,7 +178,6 @@ private:
    * This function will be called by the Base loop when the GPIO event is
    * scheduled for processing, and it will trigger the processing of activated
    * EXTI lines.
-   *
    * @param context Pointer to the Bus instance (passed during module
    * registration)
    */

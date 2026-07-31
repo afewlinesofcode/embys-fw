@@ -2,7 +2,7 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "diag.hpp"
+#include "def.hpp"
 #include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
@@ -31,7 +31,7 @@ Bus::enable()
     return 0;
   }
 
-  TRY(enable_exti_source_clock());
+  // TRY(enable_exti_source_clock());
   module = base->add_module({Bus::module_callback, this});
 
   enabled = true;
@@ -48,7 +48,7 @@ Bus::disable()
     return 0;
   }
 
-  TRY(disable_exti_source_clock());
+  // TRY(disable_exti_source_clock());
   base->remove_module(module);
   module = nullptr;
 

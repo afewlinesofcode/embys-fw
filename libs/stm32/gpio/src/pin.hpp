@@ -24,36 +24,89 @@ class Api;
 class Pin
 {
 public:
+  /**
+   * @brief Construct a new Pin object with specified GPIO port, index, and
+   * configuration
+   * @param bus Pointer to the GPIO bus managing this pin
+   * @param port GPIO port (GPIOA, GPIOB, …)
+   * @param index Pin index within the port (0..15)
+   * @param cfg Pin configuration flags (PinCfg bitmask)
+   */
   Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
 
+  /**
+   * @brief Destroy the Pin object and release resources
+   */
+  ~Pin();
+
+  /**
+   * @brief Set the initial output value for this pin. This value will be
+   * applied when the pin is enabled if it is configured as an output.
+   * @param value Initial output value (0 for low, non-zero for high)
+   */
+  void
+  set_init_value(uint8_t value);
+
+  /**
+   * @brief Bind a PWM timer to this pin for PWM output
+   * @param timer Pointer to the Base::Timer object for PWM generation
+   * @param channel Timer channel number for PWM output (1..4)
+   */
+  void
+  bind_pwm(Base::Timer *timer, uint8_t channel);
+
+  /**
+   * @brief Set the callback to be invoked on pin interrupt events
+   * @param cb Callback function to execute on interrupt events, receiving the
+   * pin state (0 or 1) as an argument
+   */
+  void
+  set_callback(Callable<uint8_t> cb);
+
+  /**
+   * @brief Clear the interrupt callback, disabling interrupt notifications
+   */
+  void
+  clear_callback();
+
+  /**
+   * @brief Get the port object
+   * @return GPIO_TypeDef*
+   */
   inline GPIO_TypeDef *
   get_port() const
   {
     return port;
   }
 
+  /**
+   * @brief Get the pin index within the port
+   * @return uint8_t Pin index (0..15)
+   */
   inline uint8_t
   get_index() const
   {
     return index;
   }
 
+  /**
+   * @brief Get the pin configuration flags
+   * @return PinCfg Configuration bitmask for this pin
+   */
   inline PinCfg
   get_cfg() const
   {
     return cfg;
   }
 
+  /**
+   * @brief Check if the pin is currently enabled
+   * @return true if the pin is enabled, false otherwise
+   */
   inline bool
   is_enabled() const
   {
     return enabled;
-  }
-
-  inline void
-  set_init_value(uint8_t value)
-  {
-    init_value = value ? 1 : 0;
   }
 
   /**
@@ -84,32 +137,20 @@ public:
   int
   write(uint8_t value);
 
-  /**
-   * @brief Registers a callback for interrupt events
-   * @param cb Callback function to execute on interrupt events
-   * @return 0 on success, error code on failure
-   */
-  int
-  set_callback(Callable<uint8_t> cb);
-
-  /**
-   * @brief Removes the interrupt callback
-   * @return 0 on success, error code if no callback was registered
-   */
-  int
-  clear_callback();
-
 private:
   friend class Bus;
 
   bool enabled;
-  Bus *bus; ///< GPIO controller managing this pin
-  Api *api; ///< GPIO bus API
-  GPIO_TypeDef *port;
-  uint8_t index;
-  PinCfg cfg;
-  Callable<uint8_t> cb;   ///< Interrupt event callback
-  uint8_t init_value = 0; ///< Initial output value
+
+  Bus *bus;             ///< GPIO controller managing this pin
+  GPIO_TypeDef *port;   ///< GPIO port (GPIOA, GPIOB, …)
+  uint8_t index;        ///< Pin index within the port (0..15)
+  PinCfg cfg;           ///< Pin configuration flags (PinCfg bitmask)
+  PwmBinding pwm;       ///< PWM timer binding for output pins
+  Callable<uint8_t> cb; ///< Interrupt event callback
+
+  bool has_init_value = false; ///< Whether an initial output value has been set
+  uint8_t init_value = 0;      ///< Initial output value
 
   /**
    * @brief Executes the interrupt callback with specified value
@@ -118,10 +159,6 @@ private:
    */
   void
   trigger();
-
-  /** @brief Validates pin configuration for hardware compatibility */
-  int
-  validate_config();
 };
 
 }; // namespace Embys::Stm32::Gpio

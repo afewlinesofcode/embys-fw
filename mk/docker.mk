@@ -57,6 +57,8 @@ docker-shell:
 	@echo "Starting interactive shell in Docker container"
 	cd $(PROJECT_ROOT) && \
 	docker run --name $(DOCKER_NAME) --rm -it \
+		--cap-add=SYS_PTRACE \
+  	--security-opt seccomp=unconfined \
 		--user $(DOCKER_USER) \
 		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \

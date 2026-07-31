@@ -16,46 +16,55 @@
 namespace Embys::Stm32::Gpio
 {
 
-// ── GPIO port clock
-// ───────────────────────────────────────────────────────────
-
+/**
+ * @brief Enable the clock for a GPIO port.
+ * @param port GPIO port (GPIOA, GPIOB, …).
+ * @return 0 on success, negative error code on failure.
+ */
 int
 enable_gpio(GPIO_TypeDef *port);
 
+/**
+ * @brief Disable the clock for a GPIO port.
+ * @param port GPIO port (GPIOA, GPIOB, …).
+ * @return 0 on success, negative error code on failure.
+ */
 int
 disable_gpio(GPIO_TypeDef *port);
 
-// ── EXTI source clock (AFIO on F1, SYSCFG on F4/F7/H7) ───────────────────────
+/**
+ * @brief Enable the clock for the EXTI source routing peripheral (AFIO on F1).
+ * Must be called before configuring any pin IRQs.
+ * @return 0 on success, negative error code on failure.
+ */
+int
+enable_exti();
+
+/**
+ * @brief Disable the clock for the EXTI source routing peripheral (AFIO on F1).
+ * @return 0 on success, negative error code on failure.
+ */
+int
+disable_exti();
+
+/**
+ * @brief Validate the configuration of a pin.
+ * @param port GPIO port (GPIOA, GPIOB, …).
+ * @param index Pin number (0–15).
+ * @param cfg Pin configuration flags (PinCfg bitmask).
+ * @param pwm PWM binding information.
+ * @return 0 on success, negative error code on failure.
+ */
+int
+validate_pin_config(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
+                    const PwmBinding *pwm);
 
 int
-enable_exti_source_clock();
+configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
+              const PwmBinding *pwm);
 
 int
-disable_exti_source_clock();
-
-// ── Pin configuration
-// ─────────────────────────────────────────────────────────
-
-int
-configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
-
-int
-configure_pin_pull_up(GPIO_TypeDef *port, uint8_t index);
-
-int
-configure_pin_pull_down(GPIO_TypeDef *port, uint8_t index);
-
-int
-reset_pin(GPIO_TypeDef *port, uint8_t index);
-
-// ── EXTI interrupt routing
-// ────────────────────────────────────────────────────
-
-int
-enable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index);
-
-int
-disable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index);
+reset_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg, const PwmBinding *pwm);
 
 /**
  * @brief Check whether the EXTI pending flag is set for a pin and clear it.
@@ -65,12 +74,27 @@ disable_pin_irq(GPIO_TypeDef *port, uint8_t pin_index);
 bool
 exti_get_and_clear_pending(uint8_t pin_index);
 
-// ── Pin I/O (identical register layout across all families) ──────────────────
-
+/**
+ * @brief Read the current input value of a pin.
+ * @param port GPIO port (GPIOA, GPIOB, …).
+ * @param index Pin number (0–15).
+ * @param value Output parameter for the pin value (0 or 1).
+ * @return 0 on success, negative error code on failure.
+ */
 int
 read_pin(GPIO_TypeDef *port, uint8_t index, uint8_t *value);
 
+/**
+ * @brief Set the output value of a pin.
+ * @param port GPIO port (GPIOA, GPIOB, …).
+ * @param index Pin number (0–15).
+ * @param value Value to set (0 for low, non-zero for high).
+ * @return 0 on success, negative error code on failure.
+ */
 int
 write_pin(GPIO_TypeDef *port, uint8_t index, uint8_t value);
+
+PinCfg
+get_effective_pin_cfg(const PinCfg &cfg);
 
 }; // namespace Embys::Stm32::Gpio

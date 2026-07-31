@@ -10,6 +10,10 @@
  */
 #pragma once
 
+#include "debug.hpp"
+#include "mcu_traits.hpp"
+#include "types.hpp"
+
 #define SET_BIT_V(REG, BIT) ((REG) = (REG) | (BIT))
 #define CLEAR_BIT_V(REG, BIT) ((REG) = (REG) & ~(BIT))
 #define MOD_BIT_V(REG, SHIFT, MASK, VAL)                                       \
