@@ -42,7 +42,8 @@ public:
   Server &
   operator=(Server &&) = delete;
 
-  Server(uint8_t device_id, Modbus::Handler *handler, Uart::Bus *transport);
+  Server(uint8_t device_id, Modbus::Handler *handler,
+         Uart::BusCore *transport);
   ~Server();
 
   inline const Modbus::DiagnosticsCounters &

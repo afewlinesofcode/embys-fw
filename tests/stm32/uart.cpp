@@ -18,7 +18,7 @@ using namespace Embys::Stm32;
 struct UartBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Uart::Bus *uart_bus_ptr = nullptr;
+  inline static Uart::BusCore *uart_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -58,15 +58,12 @@ struct UartLoopFixture : UartBaseFixture
   static constexpr size_t events_capacity = 4;
   static constexpr size_t modules_capacity = 1;
 
-  uint8_t rx_buf[16];
-
   Base::Timer timer;
   Base::Loop<events_capacity, modules_capacity> loop;
-  Uart::Bus bus;
+  Uart::Bus<16, 32> bus;
 
   UartLoopFixture()
-    : timer(TIM2), loop(timer),
-      bus(USART2, &loop, rx_buf, sizeof(rx_buf))
+    : timer(TIM2), loop(timer), bus(USART2, loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &bus;
@@ -77,13 +74,11 @@ struct UartLoopFixture : UartBaseFixture
 // gpio_bus is never enabled so no module slot is consumed by it.
 struct UartRedeFixture : UartLoopFixture
 {
-  Gpio::Pin *dummy_pin_slots[1];
-  Gpio::Bus gpio_bus;
+  Gpio::Bus<1> gpio_bus;
   Gpio::Pin rede;
 
   UartRedeFixture()
-    : gpio_bus(&loop, dummy_pin_slots, 1),
-      rede(&gpio_bus, GPIOA, 5, Gpio::PinCfg::OUT)
+    : gpio_bus(loop), rede(gpio_bus, GPIOA, 5, Gpio::PinCfg::OUT)
   {
   }
 };
@@ -241,6 +236,31 @@ TEST_SUITE("uart")
     const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
     CHECK(bus.write(data, sizeof(data)) == 0);
     CHECK(bus.write(data, sizeof(data)) == Uart::TX_BUSY);
+  }
+
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::write rejects data larger than owned TX storage")
+  {
+    bus.enable(115200);
+    uint8_t data[33] = {};
+    CHECK(bus.write(data, sizeof(data)) == Uart::BUFFER_TOO_SMALL);
+    CHECK(!bus.is_tx_busy());
+  }
+
+  TEST_CASE_FIXTURE(UartLoopFixture,
+                    "Bus::write owns data for the asynchronous transfer")
+  {
+    bus.enable(115200);
+    uint8_t data[] = {0x12, 0x34};
+    REQUIRE(bus.write(data, sizeof(data)) == 0);
+    data[0] = 0xFF;
+    data[1] = 0xFF;
+
+    loop.stop(100);
+    loop.run();
+
+    REQUIRE(!Sim::Uart::tx_buffers.empty());
+    CHECK(Sim::Uart::tx_buffers.back() == std::vector<uint8_t>({0x12, 0x34}));
   }
 
   TEST_CASE_FIXTURE(UartLoopFixture,

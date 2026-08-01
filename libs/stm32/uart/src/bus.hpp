@@ -13,11 +13,14 @@
  */
 #pragma once
 
+#include <array>
 #include <stddef.h>
 #include <stdint.h>
+#include <type_traits>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/gpio/pin.hpp>
+#include <embys/stm32/mcu.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
@@ -45,8 +48,7 @@ namespace Embys::Stm32::Uart
  *
  * Example:
  * ```
- * uint8_t rx_buf[64];
- * Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+ * Uart::Bus<64, 64> uart(USART1, loop);
  * uart.set_rx_callback({on_rx_byte, &ctx});
  * uart.set_tx_callback({on_tx_done, &ctx});
  * uart.enable(115200);
@@ -54,16 +56,16 @@ namespace Embys::Stm32::Uart
  * void USART1_IRQHandler() { uart.handle_irq(); }
  * ```
  */
-class Bus
+class BusCore
 {
 public:
-  Bus() = delete;
-  Bus(const Bus &) = delete;
-  Bus(Bus &&) = delete;
-  Bus &
-  operator=(const Bus &) = delete;
-  Bus &
-  operator=(Bus &&) = delete;
+  BusCore() = delete;
+  BusCore(const BusCore &) = delete;
+  BusCore(BusCore &&) = delete;
+  BusCore &
+  operator=(const BusCore &) = delete;
+  BusCore &
+  operator=(BusCore &&) = delete;
 
   /**
    * @brief Construct a UART Bus.
@@ -72,10 +74,10 @@ public:
    * @param rx_buffer Caller-allocated buffer for incoming bytes.
    * @param rx_capacity Size of rx_buffer in bytes.
    */
-  Bus(USART_TypeDef *usart, Base::LoopCore *base, uint8_t *rx_buffer,
-      size_t rx_capacity);
+  BusCore(USART_TypeDef *usart, Base::LoopCore &base, uint8_t *rx_buffer,
+          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
 
-  ~Bus();
+  ~BusCore();
 
   inline bool
   is_enabled() const
@@ -197,6 +199,8 @@ private:
 
   // ── TX state ─────────────────────────────────────────────────────────
   const uint8_t *tx_buffer = nullptr;
+  uint8_t *tx_storage;
+  size_t tx_capacity;
   size_t tx_buffer_len = 0;
   volatile size_t tx_buffer_pos = 0;
   volatile bool tx_active = false;
@@ -244,6 +248,38 @@ private:
 
   static void
   timeout_handler(void *context);
+};
+
+namespace Detail
+{
+
+template <size_t RxCapacity, size_t TxCapacity>
+struct BusStorage
+{
+  std::array<uint8_t, RxCapacity> rx{};
+  std::array<uint8_t, TxCapacity> tx{};
+};
+
+} // namespace Detail
+
+template <size_t RxCapacity, size_t TxCapacity,
+          typename Device = Stm32::TargetDevice>
+class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
+                  public BusCore
+{
+  static_assert(RxCapacity > 0, "A UART bus needs RX storage");
+  static_assert(TxCapacity > 0, "A UART bus needs TX storage");
+  using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
+
+public:
+  Bus(USART_TypeDef *usart, Base::LoopCore &base)
+    : Storage(),
+      BusCore(usart, base, Storage::rx.data(), RxCapacity,
+              Storage::tx.data(), TxCapacity)
+  {
+    static_assert(std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f1> ||
+                  std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f4>);
+  }
 };
 
 }; // namespace Embys::Stm32::Uart

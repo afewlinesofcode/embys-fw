@@ -15,7 +15,7 @@ using namespace Embys::Stm32;
 struct GpioBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Gpio::Bus *gpio_bus_ptr = nullptr;
+  inline static Gpio::BusCore *gpio_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -56,15 +56,12 @@ struct GpioLoopFixture : GpioBaseFixture
   static constexpr size_t modules_capacity = 1;
   static constexpr size_t pins_capacity = 3;
 
-  Gpio::Pin *pin_slots[pins_capacity];
-
   Base::Timer timer;
   Base::Loop<events_capacity, modules_capacity> loop;
-  Gpio::Bus bus;
+  Gpio::Bus<pins_capacity> bus;
 
   GpioLoopFixture()
-    : timer(TIM2), loop(timer),
-      bus(&loop, pin_slots, pins_capacity)
+    : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     gpio_bus_ptr = &bus;

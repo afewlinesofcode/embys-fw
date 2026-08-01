@@ -6,7 +6,7 @@ namespace Embys::Stm32::Modbus::Rtu
 {
 
 Server::Server(uint8_t device_id, Modbus::Handler *handler,
-               Uart::Bus *transport)
+               Uart::BusCore *transport)
   : Base(transport), device_id(device_id), handler(handler)
 {
   handler->set_diagnostics_counters(&diag_counters);

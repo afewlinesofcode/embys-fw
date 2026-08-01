@@ -40,7 +40,7 @@ public:
   Base &
   operator=(Base &&) = delete;
 
-  explicit Base(Uart::Bus *transport);
+  explicit Base(Uart::BusCore *transport);
   ~Base();
 
   void
@@ -53,7 +53,7 @@ public:
   }
 
 protected:
-  Uart::Bus *transport;
+  Uart::BusCore *transport;
   Stm32::Base::Event frame_timeout_event;
 
   uint32_t frame_delay_us = 0;

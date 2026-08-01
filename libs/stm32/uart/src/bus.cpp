@@ -1,5 +1,7 @@
 #include "bus.hpp"
 
+#include <cstring>
+
 #include <embys/stm32/base/cs.hpp>
 #include <embys/stm32/def.hpp>
 
@@ -8,21 +10,23 @@
 namespace Embys::Stm32::Uart
 {
 
-Bus::Bus(USART_TypeDef *usart, Base::LoopCore *base, uint8_t *rx_buffer,
-         size_t rx_capacity)
-  : usart(usart), base(base), rx_buffer(rx_buffer), rx_capacity(rx_capacity),
-    timeout_event(*base, Base::EV_RT, {Bus::timeout_handler, this})
+BusCore::BusCore(USART_TypeDef *usart, Base::LoopCore &base,
+                 uint8_t *rx_buffer, size_t rx_capacity, uint8_t *tx_buffer,
+                 size_t tx_capacity)
+  : usart(usart), base(&base), rx_buffer(rx_buffer), rx_capacity(rx_capacity),
+    tx_storage(tx_buffer), tx_capacity(tx_capacity),
+    timeout_event(base, Base::EV_RT, {BusCore::timeout_handler, this})
 {
 }
 
-Bus::~Bus()
+BusCore::~BusCore()
 {
   if (enabled)
     (void)disable();
 }
 
 int
-Bus::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
+BusCore::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
             Parity parity_)
 {
   if (enabled)
@@ -30,7 +34,7 @@ Bus::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
 
   TRY(enable_uart(usart, baud_rate_, word_length_, stop_bits_, parity_));
 
-  module = base->add_module({Bus::module_callback, this});
+  module = base->add_module({BusCore::module_callback, this});
   if (!module)
   {
     (void)disable_uart(usart);
@@ -58,7 +62,7 @@ Bus::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
 }
 
 int
-Bus::disable()
+BusCore::disable()
 {
   if (!enabled)
     return 0;
@@ -75,7 +79,7 @@ Bus::disable()
 }
 
 int
-Bus::write(const uint8_t *buf, size_t len)
+BusCore::write(const uint8_t *buf, size_t len)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
@@ -83,7 +87,11 @@ Bus::write(const uint8_t *buf, size_t len)
   if (tx_active)
     return TX_BUSY;
 
-  tx_buffer = buf;
+  if (len > tx_capacity)
+    return BUFFER_TOO_SMALL;
+
+  std::memcpy(tx_storage, buf, len);
+  tx_buffer = tx_storage;
   tx_buffer_len = len;
   tx_buffer_pos = 0;
   tx_active = true;
@@ -105,7 +113,7 @@ Bus::write(const uint8_t *buf, size_t len)
 }
 
 void
-Bus::handle_irq()
+BusCore::handle_irq()
 {
   uint32_t sr = read_sr(usart);
 
@@ -165,7 +173,7 @@ Bus::handle_irq()
 }
 
 uint32_t
-Bus::calc_tx_timeout_us(size_t len) const
+BusCore::calc_tx_timeout_us(size_t len) const
 {
   uint32_t frame_bits = calc_frame_bits(word_length, stop_bits);
 #ifndef STM32_SIM
@@ -179,7 +187,7 @@ Bus::calc_tx_timeout_us(size_t len) const
 }
 
 void
-Bus::tx_complete(int result)
+BusCore::tx_complete(int result)
 {
   {
     IrqGuard guard;
@@ -196,9 +204,9 @@ Bus::tx_complete(int result)
 }
 
 void
-Bus::module_callback(void *context)
+BusCore::module_callback(void *context)
 {
-  auto *self = static_cast<Bus *>(context);
+  auto *self = static_cast<BusCore *>(context);
 
   // Drain received bytes
   while (self->rx_buffer_pos < self->rx_buffer_len)
@@ -238,9 +246,9 @@ Bus::module_callback(void *context)
 }
 
 void
-Bus::timeout_handler(void *context)
+BusCore::timeout_handler(void *context)
 {
-  auto *self = static_cast<Bus *>(context);
+  auto *self = static_cast<BusCore *>(context);
 
   if (self->tx_active)
     self->tx_complete(TX_TIMEOUT);

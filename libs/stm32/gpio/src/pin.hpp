@@ -18,7 +18,7 @@
 namespace Embys::Stm32::Gpio
 {
 
-class Bus;
+class BusCore;
 class Api;
 
 class Pin
@@ -32,7 +32,12 @@ public:
    * @param index Pin index within the port (0..15)
    * @param cfg Pin configuration flags (PinCfg bitmask)
    */
-  Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
+  Pin(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
+
+  Pin(BusCore *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
+    : Pin(*bus, port, index, cfg)
+  {
+  }
 
   /**
    * @brief Destroy the Pin object and release resources
@@ -138,11 +143,11 @@ public:
   write(uint8_t value);
 
 private:
-  friend class Bus;
+  friend class BusCore;
 
   bool enabled;
 
-  Bus *bus;             ///< GPIO controller managing this pin
+  BusCore *bus;         ///< GPIO controller managing this pin
   GPIO_TypeDef *port;   ///< GPIO port (GPIOA, GPIOB, …)
   uint8_t index;        ///< Pin index within the port (0..15)
   PinCfg cfg;           ///< Pin configuration flags (PinCfg bitmask)

@@ -32,7 +32,7 @@ namespace Base = Embys::Stm32::Base;
 // ── IRQ handler globals ───────────────────────────────────────────────────
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 
 extern "C"
 {
@@ -71,7 +71,7 @@ on_tx_done(void *, int result)
 static void
 send_message(void *context)
 {
-  auto *bus = static_cast<Uart::Bus *>(context);
+  auto *bus = static_cast<Uart::BusCore *>(context);
 
   if (tx_busy)
     return; // Previous transmission still in progress — skip this tick.
@@ -99,16 +99,14 @@ main()
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
-  Gpio::Pin *gpio_pin_slots[2];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 2);
+  Gpio::Bus<2> gpio_bus(loop);
   Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
   Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
 
-  uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  Uart::Bus<64, 64> uart(USART1, loop);
   uart.set_tx_callback({on_tx_done, nullptr});
 
   Base::Event print_event(loop, Base::EV_PERSIST, {send_message, &uart});

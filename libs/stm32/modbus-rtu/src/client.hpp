@@ -61,7 +61,7 @@ public:
   Client &
   operator=(Client &&) = delete;
 
-  Client(Uart::Bus *transport, Stm32::Base::LoopCore *loop);
+  Client(Uart::BusCore *transport, Stm32::Base::LoopCore *loop);
   ~Client();
 
   void

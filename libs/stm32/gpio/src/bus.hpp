@@ -14,6 +14,8 @@
  */
 #pragma once
 
+#include <array>
+
 #include <embys/stm32/base/loop.hpp>
 
 #include "def.hpp"
@@ -29,7 +31,7 @@ namespace Embys::Stm32::Gpio
  * coordination for precise timing.
  * Requires module slot in Base loop for event notifications.
  */
-class Bus
+class BusCore
 {
 public:
   /**
@@ -38,12 +40,12 @@ public:
    * @param pin_slots Array of pointers to GPIO pins
    * @param pins_capacity Capacity of the pin registry
    */
-  Bus(Base::LoopCore *base, Pin **pin_slots, size_t pins_capacity);
+  BusCore(Base::LoopCore &base, Pin **pin_slots, size_t pins_capacity);
 
   /**
    * @brief Clean up GPIO bus resources
    */
-  ~Bus();
+  ~BusCore();
 
   /**
    * @brief Check if the GPIO bus is enabled
@@ -184,8 +186,32 @@ private:
   static void
   module_callback(void *context)
   {
-    Bus *gpio = static_cast<Bus *>(context);
+    BusCore *gpio = static_cast<BusCore *>(context);
     gpio->trigger_activated_pins();
+  }
+};
+
+namespace Detail
+{
+
+template <size_t PinsCapacity>
+struct BusStorage
+{
+  std::array<Pin *, PinsCapacity> pins{};
+};
+
+} // namespace Detail
+
+template <size_t PinsCapacity>
+class Bus final : private Detail::BusStorage<PinsCapacity>, public BusCore
+{
+  static_assert(PinsCapacity > 0, "A GPIO bus needs at least one pin slot");
+  using Storage = Detail::BusStorage<PinsCapacity>;
+
+public:
+  explicit Bus(Base::LoopCore &base)
+    : Storage(), BusCore(base, Storage::pins.data(), PinsCapacity)
+  {
   }
 };
 

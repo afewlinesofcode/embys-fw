@@ -41,7 +41,7 @@ namespace Base = Embys::Stm32::Base;
 // ── IRQ handler globals ───────────────────────────────────────────────────
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 
 extern "C"
 {
@@ -66,7 +66,7 @@ extern "C"
 
 struct AppContext
 {
-  Uart::Bus *uart;
+  Uart::BusCore *uart;
 
   // Accumulation buffer for the current incoming line
   uint8_t line_buf[LINE_BUF_LEN];
@@ -147,15 +147,13 @@ main()
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
-  Gpio::Pin *gpio_pin_slots[2];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 2);
+  Gpio::Bus<2> gpio_bus(loop);
   Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
   Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
-  uint8_t rx_buf[64];
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  Uart::Bus<64, 64> uart(USART1, loop);
   uart.set_rx_callback({on_rx_byte, &ctx});
   uart.set_tx_callback({on_tx_done, &ctx});
 

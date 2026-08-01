@@ -181,9 +181,7 @@ main()
   Embys::Stm32::Base::Event led_off_event(loop, 0, {led_off, &context});
 
   constexpr size_t gpio_pins_capacity = 3;
-  static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-  Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // LED on PC13 (output push-pull, 2 MHz, active-low)
   Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,

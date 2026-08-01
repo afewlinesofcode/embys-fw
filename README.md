@@ -224,7 +224,7 @@ Base path: `libs/stm32/gpio/`
 
 Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1. Two classes make up the public API:
 
-- `Embys::Stm32::Gpio::Bus` — a `Module` registered with `Base::Loop`. Owns a slot array of `Pin*`, configures MODE/CNF/EXTI for each enabled pin, and dispatches pin-level callbacks in loop context from EXTI IRQ handlers.
+- `Embys::Stm32::Gpio::Bus<N>` — a `Module` with an owned, fixed-capacity pin registry. It configures GPIO/EXTI and dispatches callbacks in loop context.
 - `Embys::Stm32::Gpio::Pin` — represents a single GPIO pin. Supports output (push-pull, open-drain, AF) and input (floating, pull-up/pull-down, with optional EXTI interrupt).
 
 **Caller responsibilities:**
@@ -250,12 +250,8 @@ using GpioMode = Embys::Stm32::Gpio::Mode;
 using GpioCnf  = Embys::Stm32::Gpio::Cnf;
 using PinCfg   = Embys::Stm32::Gpio::PinCfg;
 
-// The Bus doesn't allocate pin memory — provide slot storage.
-// Only simultaneously-enabled pins need a slot; slots are reused on disable.
 constexpr size_t gpio_pins_capacity = 2;
-static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
 // LED on PC13: output 2 MHz, push-pull, no extra config
 Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
@@ -282,14 +278,13 @@ Base path: `libs/stm32/uart/`
 
 Provides an interrupt-driven UART transceiver for STM32F1. The central class is `Embys::Stm32::Uart::Bus`, which integrates with `Base::Loop` as a `Module` (RX/TX callbacks are dispatched in loop context) and registers an internal TX timeout event.
 
-TX is fully asynchronous — `write()` returns immediately and signals completion (or timeout) via the TX callback. RX bytes are accumulated into a caller-provided buffer and the RX callback is invoked per received byte in loop context.
+TX is fully asynchronous — `write()` copies into owned bounded storage, returns immediately, and signals completion (or timeout) via the TX callback. RX bytes are also accumulated in owned storage and dispatched in loop context.
 
 **Caller responsibilities:**
 
 - Configure TX pin as alternate-function push-pull output and RX pin as floating input before calling `enable()`
 - Enable `USARTx_IRQn` in NVIC
 - Route `USARTx_IRQHandler → bus.handle_irq()`
-- Provide a receive buffer at construction time
 - Reserve one extra event slot in the Loop (used for the TX timeout)
 
 **Link**: add `libstm32-uart.a` to `LDLIBS` and include `<embys/stm32/uart/bus.hpp>`.
@@ -305,8 +300,7 @@ Configuration enums (from `def.hpp`):
 Error codes are defined in `Embys::Stm32::Uart::Diag` (e.g. `TX_BUSY`, `TX_TIMEOUT`, `RX_OVERFLOW`).
 
 ```cpp
-static uint8_t rx_buf[64];
-Embys::Stm32::Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+Embys::Stm32::Uart::Bus<64, 64> uart(USART1, loop);
 
 uart.set_rx_callback({on_rx, &context});
 uart.set_tx_callback({on_tx_done, &context});

@@ -51,7 +51,7 @@ namespace Base = Embys::Stm32::Base;
 // ── IRQ handler globals ───────────────────────────────────────────────────
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 
 extern "C"
 {
@@ -83,7 +83,7 @@ struct AppContext
 {
   bool tx_busy = false;
   Base::LoopCore *loop = nullptr;
-  Uart::Bus *uart = nullptr;
+  Uart::BusCore *uart = nullptr;
   Gpio::Pin *led_pin = nullptr;
   Base::Event *blink_off_event = nullptr;
 };
@@ -149,8 +149,7 @@ main()
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
-  Gpio::Pin *gpio_pin_slots[4];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 4);
+  Gpio::Bus<4> gpio_bus(loop);
   // PC13: LED (output push-pull, 2 MHz, active-low)
   Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
                     Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
@@ -167,8 +166,7 @@ main()
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
 
-  uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  Uart::Bus<64, 64> uart(USART1, loop);
   uart.set_rede_pin(&uart_rede);
   uart.set_tx_callback({on_tx_done, &app_ctx});
 

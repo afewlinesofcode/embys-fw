@@ -8,7 +8,7 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Base::Base(Uart::Bus *transport)
+Base::Base(Uart::BusCore *transport)
   : transport(transport),
     frame_timeout_event(*transport->get_base(), 0,
                         {Base::frame_timeout_callback, this})

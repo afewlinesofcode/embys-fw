@@ -46,7 +46,7 @@ namespace
 
 struct TestablClient : Modbus::Rtu::Client
 {
-  TestablClient(Uart::Bus *uart, Embys::Stm32::Base::LoopCore *loop)
+  TestablClient(Uart::BusCore *uart, Embys::Stm32::Base::LoopCore *loop)
     : Modbus::Rtu::Client(uart, loop)
   {
   }
@@ -61,7 +61,7 @@ struct TestablClient : Modbus::Rtu::Client
 struct RtuBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Uart::Bus *uart_bus_ptr = nullptr;
+  inline static Uart::BusCore *uart_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -94,16 +94,13 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct ClientFixture : RtuBaseFixture
 {
-  uint8_t rx_buf[Modbus::kFrameSize];
-
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus uart;
+  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart;
   TestablClient client;
 
   ClientFixture()
-    : timer(TIM2), loop(timer),
-      uart(USART2, &loop, rx_buf, sizeof(rx_buf)), client(&uart, &loop)
+    : timer(TIM2), loop(timer), uart(USART2, loop), client(&uart, &loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;

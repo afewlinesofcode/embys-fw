@@ -8,7 +8,7 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Client::Client(Uart::Bus *transport, Stm32::Base::LoopCore *loop)
+Client::Client(Uart::BusCore *transport, Stm32::Base::LoopCore *loop)
   : Base(transport), loop(loop),
     response_timeout_event(*loop, 0,
                            {Client::response_timeout_callback, this})

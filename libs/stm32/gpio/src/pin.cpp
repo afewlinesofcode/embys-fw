@@ -9,8 +9,8 @@
 namespace Embys::Stm32::Gpio
 {
 
-Pin::Pin(Bus *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
-  : enabled(false), bus(bus), port(port), index(index), cfg(cfg)
+Pin::Pin(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
+  : enabled(false), bus(&bus), port(port), index(index), cfg(cfg)
 {
 }
 

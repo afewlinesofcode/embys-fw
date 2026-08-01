@@ -21,6 +21,7 @@ enum Diag : int
   TX_BUSY,
   RX_OVERFLOW,
   TX_TIMEOUT,
+  BUFFER_TOO_SMALL,
 };
 
 }; // namespace Embys::Stm32::Uart

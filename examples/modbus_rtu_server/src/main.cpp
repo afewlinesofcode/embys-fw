@@ -60,7 +60,7 @@ namespace Modbus = Embys::Stm32::Modbus;
 namespace I2c = Embys::Stm32::I2c;
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 static I2c::Bus *i2c_bus_ptr = nullptr;
 
 extern "C"
@@ -205,8 +205,7 @@ main()
   Base::Event startup_event(loop, 0, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 6;
-  static Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // PC13: LED (output push-pull, 2 MHz, active-low)
   Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
@@ -226,8 +225,7 @@ main()
   Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10,
                     Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
-  static uint8_t uart_rx_buf[Modbus::kFrameSize];
-  Uart::Bus uart_bus(USART1, &loop, uart_rx_buf, sizeof(uart_rx_buf));
+  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart_bus(USART1, loop);
   uart_bus.set_rede_pin(&uart_rede);
 
   // Coils / discrete inputs: ceil(10 / 8) = 2 bytes each

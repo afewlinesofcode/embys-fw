@@ -7,8 +7,8 @@
 namespace Embys::Stm32::Gpio
 {
 
-Bus::Bus(Base::LoopCore *base, Pin **pin_slots, size_t pins_capacity)
-  : base(base), pins(pin_slots), pins_capacity(pins_capacity)
+BusCore::BusCore(Base::LoopCore &base, Pin **pin_slots, size_t pins_capacity)
+  : base(&base), pins(pin_slots), pins_capacity(pins_capacity)
 {
   // Initialize pin registry
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -17,12 +17,12 @@ Bus::Bus(Base::LoopCore *base, Pin **pin_slots, size_t pins_capacity)
   }
 }
 
-Bus::~Bus()
+BusCore::~BusCore()
 {
 }
 
 int
-Bus::enable()
+BusCore::enable()
 {
   if (enabled)
   {
@@ -31,7 +31,7 @@ Bus::enable()
   }
 
   // TRY(enable_exti_source_clock());
-  module = base->add_module({Bus::module_callback, this});
+  module = base->add_module({BusCore::module_callback, this});
 
   enabled = true;
 
@@ -39,7 +39,7 @@ Bus::enable()
 }
 
 int
-Bus::disable()
+BusCore::disable()
 {
   if (!enabled)
   {
@@ -56,7 +56,7 @@ Bus::disable()
 }
 
 void
-Bus::handle_irq(uint8_t start, uint8_t end)
+BusCore::handle_irq(uint8_t start, uint8_t end)
 {
   for (uint8_t pin_index = start; pin_index <= end; ++pin_index)
   {
@@ -68,7 +68,7 @@ Bus::handle_irq(uint8_t start, uint8_t end)
 }
 
 int
-Bus::add(Pin *pin)
+BusCore::add(Pin *pin)
 {
   TRY(check_enabled());
 
@@ -87,7 +87,7 @@ Bus::add(Pin *pin)
 }
 
 int
-Bus::remove(Pin *pin)
+BusCore::remove(Pin *pin)
 {
   TRY(check_enabled());
 
@@ -110,13 +110,13 @@ Bus::remove(Pin *pin)
 }
 
 void
-Bus::activate_pin(uint32_t pin_bit)
+BusCore::activate_pin(uint32_t pin_bit)
 {
   SET_BIT_V(activated_exti_lines, pin_bit);
 }
 
 int
-Bus::trigger_activated_pins()
+BusCore::trigger_activated_pins()
 {
   // Process all pins with pending interrupts
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -145,7 +145,7 @@ Bus::trigger_activated_pins()
 }
 
 int
-Bus::check_enabled()
+BusCore::check_enabled()
 {
   if (!enabled)
     return BUS_NOT_ENABLED; // GPIO bus is not enabled

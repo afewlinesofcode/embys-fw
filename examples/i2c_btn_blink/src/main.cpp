@@ -33,7 +33,7 @@ Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 /**
  * @brief Global pointer to GPIO bus for interrupt handler access
  */
-Embys::Stm32::Gpio::Bus *gpio_ptr = nullptr;
+Embys::Stm32::Gpio::BusCore *gpio_ptr = nullptr;
 
 /**
  * @brief Global pointer to I2C bus for interrupt handler access
@@ -183,9 +183,7 @@ main()
   Embys::Stm32::Base::Event startup_event(loop, 0, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 4;
-  static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-  Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // Button on PA0 (input floating, EXTI)
   Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
