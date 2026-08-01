@@ -8,8 +8,7 @@ namespace Embys::Stm32
 uint32_t cs_primask = 0;
 uint32_t cs_stack = 0;
 
-void
-cs_begin()
+IrqGuard::IrqGuard()
 {
   if (cs_stack == 0)
   {
@@ -19,8 +18,7 @@ cs_begin()
   ++cs_stack;
 }
 
-void
-cs_end()
+IrqGuard::~IrqGuard()
 {
   if (cs_stack > 0)
   {

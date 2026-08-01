@@ -61,15 +61,15 @@ Loop::run()
     run_active_events();
     run_modules();
 
-    cs_begin();
-
-    if (interrupted_modules_count == 0)
     {
-      __DSB();
-      __WFI();
-    }
+      IrqGuard();
 
-    cs_end();
+      if (interrupted_modules_count == 0)
+      {
+        __DSB();
+        __WFI();
+      }
+    }
   } while (active);
 
   // Process any remaining active events and modules before exiting
@@ -107,15 +107,17 @@ Loop::add(Event *event)
    * if it is not EV_PERSIST,  and become removed from the list, thus critical
    * section
    */
-  cs_begin();
-  if (event->pending)
+
   {
-    // Event already in the loop, reschedule it
-    schedule_event(event, event->interval_us);
-    cs_end();
-    return 0;
+    IrqGuard();
+
+    if (event->pending)
+    {
+      // Event already in the loop, reschedule it
+      schedule_event(event, event->interval_us);
+      return 0;
+    }
   }
-  cs_end();
 
   for (size_t i = 0; i < events_capacity; ++i)
   {
@@ -267,10 +269,13 @@ Loop::run_modules()
   {
     if (modules[i].interrupted)
     {
-      cs_begin();
-      modules[i].interrupted = false;
-      DEC_V(interrupted_modules_count);
-      cs_end();
+      {
+        IrqGuard();
+
+        modules[i].interrupted = false;
+        DEC_V(interrupted_modules_count);
+      }
+
       modules[i].cb();
     }
   }

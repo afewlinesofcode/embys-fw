@@ -7,6 +7,15 @@
 namespace Embys::Stm32::Gpio
 {
 
+enum class PortId
+{
+  a,
+  b,
+  c,
+  d,
+  e
+};
+
 /**
  * @brief GPIO diagnostics and error codes
  */

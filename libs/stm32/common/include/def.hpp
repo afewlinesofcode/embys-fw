@@ -11,6 +11,7 @@
 #pragma once
 
 #include "debug.hpp"
+#include "mcu.hpp"
 #include "mcu_traits.hpp"
 #include "types.hpp"
 

@@ -181,14 +181,16 @@ Bus::calc_tx_timeout_us(size_t len) const
 void
 Bus::tx_complete(int result)
 {
-  cs_begin();
-  tx_active = false;
-  tx_ready = true;
-  tx_result = result;
-  disable_txe_irq(usart);
-  if (rede_pin)
-    disable_tc_irq(usart);
-  cs_end();
+  {
+    IrqGuard();
+
+    tx_active = false;
+    tx_ready = true;
+    tx_result = result;
+    disable_txe_irq(usart);
+    if (rede_pin)
+      disable_tc_irq(usart);
+  }
 
   set_module_pending();
 }
@@ -208,19 +210,22 @@ Bus::module_callback(void *context)
 
   if (self->rx_buffer_pos >= self->rx_buffer_len)
   {
-    cs_begin();
-    self->rx_buffer_pos = 0;
-    self->rx_buffer_len = 0;
-    if (self->rx_overflow)
+    bool is_overflow = false;
+
     {
-      self->rx_overflow = false;
-      cs_end();
+      IrqGuard();
+
+      self->rx_buffer_pos = 0;
+      self->rx_buffer_len = 0;
+      if (self->rx_overflow)
+      {
+        self->rx_overflow = false;
+        is_overflow = true;
+      }
+    }
+
+    if (is_overflow)
       self->rx_cb(static_cast<uint8_t>(RX_OVERFLOW));
-    }
-    else
-    {
-      cs_end();
-    }
   }
 
   // TX completion

@@ -25,7 +25,11 @@ system_init(bool force)
   // guard with preprocessor to avoid undefined-symbol errors on other targets.
 #if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1)
   if constexpr (T::has_instruction_cache)
+  {
+    // TODO: explore what to prepare before this
+    SCB_InvalidateICache();
     SCB_EnableICache();
+  }
 
   if constexpr (T::has_data_cache)
     SCB_EnableDCache();

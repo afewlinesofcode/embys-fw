@@ -1,7 +1,6 @@
-#include "bus.hpp"
-
 #include <embys/stm32/def.hpp>
 
+#include "bus.hpp"
 #include "def.hpp"
 #include "hal.hpp"
 
@@ -132,9 +131,10 @@ Bus::trigger_activated_pins()
     if ((activated_exti_lines & pin_bit) &&
         has_cfg(pin_ptr->get_cfg(), PinCfg::LISTEN))
     {
-      cs_begin();
-      CLEAR_BIT_V(activated_exti_lines, pin_bit);
-      cs_end();
+      {
+        IrqGuard();
+        CLEAR_BIT_V(activated_exti_lines, pin_bit);
+      }
 
       // Trigger callback for the pin
       pin_ptr->trigger();

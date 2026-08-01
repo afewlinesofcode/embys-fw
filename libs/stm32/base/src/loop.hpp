@@ -181,15 +181,13 @@ public:
   inline void
   set_module_pending(Module *module)
   {
-    cs_begin();
+    IrqGuard();
 
     if (!module->interrupted)
     {
       module->interrupted = true;
       INC_V(interrupted_modules_count);
     }
-
-    cs_end();
   }
 
 private:

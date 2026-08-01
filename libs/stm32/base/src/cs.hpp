@@ -24,18 +24,20 @@ extern uint32_t cs_primask;
  */
 extern uint32_t cs_stack;
 
-/**
- * @brief Enter a critical section, saving the current PRIMASK and disabling
- * interrupts
- */
-void
-cs_begin();
+class IrqGuard
+{
+public:
+  /**
+   * @brief Enter a critical section, saving the current PRIMASK and disabling
+   * interrupts
+   */
+  IrqGuard();
 
-/**
- * @brief Exit a critical section, restoring the previous PRIMASK if this is
- * the outermost level
- */
-void
-cs_end();
+  /**
+   * @brief Exit a critical section, restoring the previous PRIMASK if this is
+   * the outermost level
+   */
+  ~IrqGuard();
+}; // class IrqGuard
 
 } // namespace Embys::Stm32
