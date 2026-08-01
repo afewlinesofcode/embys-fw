@@ -15,6 +15,7 @@ ifeq ($(TC),sim)
 	INCLUDES += -I$(PROJECT_ROOT)/build/include_sim
 endif
 
+include $(PROJECT_ROOT)/mk/family_sources.mk
 include $(PROJECT_ROOT)/mk/toolchain/$(TC).mk
 include $(PROJECT_ROOT)/mk/docker.mk
 

@@ -66,9 +66,10 @@ $(ARCH_OBJ_DIR)/%.o: $(ARCH_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-$(TARGET_LIB): $(APP_OBJ)
+$(TARGET_LIB): $(APP_OBJ) $(MAKEFILE_LIST)
 	mkdir -p $(dir $@)
-	$(AR) rcs $@ $^
+	$(RM) $@
+	$(AR) rcs $@ $(APP_OBJ)
 	$(RANLIB) $@
 
 $(TARGET): $(APP_OBJ) $(ARCH_OBJ)

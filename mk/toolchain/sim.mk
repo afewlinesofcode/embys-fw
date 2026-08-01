@@ -40,9 +40,10 @@ $(TARGET): $(TARGET_DEPS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
-$(TARGET_LIB): $(APP_OBJ)
+$(TARGET_LIB): $(APP_OBJ) $(MAKEFILE_LIST)
 	@mkdir -p $(dir $@)
-	$(AR) rcs $@ $^
+	$(RM) $@
+	$(AR) rcs $@ $(APP_OBJ)
 	$(RANLIB) $@
 
 .size: $(TARGET)
