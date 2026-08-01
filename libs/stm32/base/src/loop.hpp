@@ -22,6 +22,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 
 #include <embys/stm32/def.hpp>
@@ -81,14 +82,14 @@ public:
   run();
 
   /**
-   *@brief Stop main loop execution after specified microseconds.
+   *@brief Stop main loop execution after the specified delay.
    *
-   * @param us Time in microseconds to wait before stopping the loop. If 0, the
-   * loop will stop immediately after the current iteration.
+   * @param delay Time to wait before stopping the loop. A zero duration stops
+   * after the current iteration.
    * @return int
    */
   int
-  stop(uint32_t us = 0);
+  stop(std::chrono::microseconds delay = std::chrono::microseconds::zero());
 
   /**
    * @brief Terminate the loop with a specified exit code and optional error

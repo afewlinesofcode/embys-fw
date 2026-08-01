@@ -8,7 +8,7 @@
  * Example:
  * ```
  * Event blink_event(loop, EV_PERSIST, {toggle_led, nullptr});
- * blink_event.enable(500000); // Schedule to run every half second
+ * blink_event.enable(std::chrono::milliseconds{500});
  * ```
  *
  * @version 0.1
@@ -18,7 +18,8 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <chrono>
+#include <cstdint>
 
 #include <embys/stm32/types.hpp>
 
@@ -87,12 +88,12 @@ struct Event
   Event(LoopCore &loop, uint8_t flags, Callback<> cb);
 
   /**
-   * @brief Enable the event with a specified interval in microseconds
-   * @param us Interval in microseconds
+   * @brief Enable the event with a specified interval.
+   * @param interval Interval represented at microsecond precision.
    * @return 0 on success, negative error code on failure
    */
   int
-  enable(uint32_t us);
+  enable(std::chrono::microseconds interval);
 
   /**
    * @brief Disable the event, removing it from the scheduler

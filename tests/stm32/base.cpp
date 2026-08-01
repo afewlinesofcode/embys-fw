@@ -1,4 +1,6 @@
+#include <chrono>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 #include <embys/stm32/base/loop.hpp>
@@ -51,6 +53,31 @@ struct Stm32BaseLoopFixture : Stm32BaseFixture
 TEST_SUITE("base")
 {
 
+  TEST_CASE_FIXTURE(Stm32BaseLoopFixture,
+                    "Event rejects durations outside timer representation")
+  {
+    Embys::Stm32::Base::Event event(loop, 0, {});
+
+    CHECK(event.enable(std::chrono::microseconds{-1}) != 0);
+    CHECK_FALSE(event.pending);
+
+    constexpr auto too_large =
+        static_cast<std::chrono::microseconds::rep>(
+            std::numeric_limits<uint32_t>::max()) +
+        1;
+    CHECK(event.enable(std::chrono::microseconds{too_large}) != 0);
+    CHECK_FALSE(event.pending);
+  }
+
+  TEST_CASE_FIXTURE(Stm32BaseLoopFixture,
+                    "Loop remains stoppable after invalid stop duration")
+  {
+    CHECK(loop.stop(std::chrono::microseconds{-1}) != 0);
+    CHECK(loop.stop(std::chrono::microseconds{1}) == 0);
+    loop.run();
+    CHECK(DWT->CYCCNT == 72);
+  }
+
   TEST_CASE_FIXTURE(Stm32BaseFixture,
                     "Initialize loop instance, run and stop after 10us")
   {
@@ -65,7 +92,7 @@ TEST_SUITE("base")
     // Verify that DWT cycle counter is initialized to 0
     CHECK(DWT->CYCCNT == 0);
     // Schedule loop to stop after 10 microseconds
-    loop.stop(10);
+    loop.stop(std::chrono::microseconds{10});
     // Run the loop, it should stop after 10 microseconds
     loop.run();
     // Verify that 720 cycles have elapsed (10 us at 72 MHz)
@@ -86,10 +113,10 @@ TEST_SUITE("base")
 
     // Schedule an event to run after 5 microseconds
     Embys::Stm32::Base::Event event(loop, 0, {callback, &event_calls});
-    event.enable(5);
+    event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 10 microseconds
-    loop.stop(10);
+    loop.stop(std::chrono::microseconds{10});
     // Run the loop, it should process the event and then stop
     loop.run();
 
@@ -116,10 +143,10 @@ TEST_SUITE("base")
     // Schedule a persisted event to run every 5 microseconds
     Embys::Stm32::Base::Event event(loop, Embys::Stm32::Base::EV_PERSIST,
                                     {callback, &event_calls});
-    event.enable(5);
+    event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 16 microseconds
-    loop.stop(16);
+    loop.stop(std::chrono::microseconds{16});
     // Run the loop, it should process the event multiple times and then stop
     loop.run();
 
@@ -159,11 +186,11 @@ TEST_SUITE("base")
                                      {callback1, &event1_calls});
     Embys::Stm32::Base::Event event2(loop, Embys::Stm32::Base::EV_PERSIST,
                                      {callback2, &event2_calls});
-    event1.enable(5);  // Every 5 us
-    event2.enable(10); // Every 10 us
+    event1.enable(std::chrono::microseconds{5});  // Every 5 us
+    event2.enable(std::chrono::microseconds{10}); // Every 10 us
 
     // Schedule loop to stop after 20 microseconds
-    loop.stop(20);
+    loop.stop(std::chrono::microseconds{20});
     // Run the loop, it should process both events and then stop
     loop.run();
 

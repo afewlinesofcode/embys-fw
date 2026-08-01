@@ -28,7 +28,7 @@ void
 Init::delay_us(uint32_t us, Stage st)
 {
   stage = st;
-  delay->exec(us, {command_callback, this});
+  delay->exec(std::chrono::microseconds{us}, {command_callback, this});
 }
 
 void

@@ -78,17 +78,17 @@ LoopCore::run()
 }
 
 int
-LoopCore::stop(uint32_t us)
+LoopCore::stop(std::chrono::microseconds delay)
 {
   if (stop_scheduled)
   {
     stop_event.disable();
   }
 
-  stop_scheduled = true;
-
   // Schedule loop termination callback
-  return stop_event.enable(us);
+  const int result = stop_event.enable(delay);
+  stop_scheduled = (result == 0);
+  return result;
 }
 
 void

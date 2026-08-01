@@ -119,7 +119,8 @@ main()
   timer_ptr = &timer;
 
   // Enable the LED toggle event before starting the loop
-  toggle_led_event.enable(LED_BLINK_INTERVAL_US);
+  toggle_led_event.enable(
+      std::chrono::microseconds{LED_BLINK_INTERVAL_US});
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

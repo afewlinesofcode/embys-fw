@@ -1,5 +1,7 @@
 #include "event.hpp"
 
+#include <limits>
+
 #include "loop.hpp"
 
 namespace Embys::Stm32::Base
@@ -11,9 +13,16 @@ Event::Event(LoopCore &loop, uint8_t flags, Callback<> cb)
 }
 
 int
-Event::enable(uint32_t us)
+Event::enable(std::chrono::microseconds interval)
 {
-  interval_us = us;
+  const auto count = interval.count();
+  if (count < 0 || static_cast<uint64_t>(count) >
+                       std::numeric_limits<uint32_t>::max())
+  {
+    return -1;
+  }
+
+  interval_us = static_cast<uint32_t>(count);
   next_time_us = interval_us;
   return loop->add(this);
 }

@@ -128,7 +128,8 @@ Base::recv_callback(void *context, uint8_t byte)
     rtu->buffer_in_overflow = true;
   }
 
-  rtu->frame_timeout_event.enable(rtu->frame_delay_us);
+  rtu->frame_timeout_event.enable(
+      std::chrono::microseconds{rtu->frame_delay_us});
 }
 
 void

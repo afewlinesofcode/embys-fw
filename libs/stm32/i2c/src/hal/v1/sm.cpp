@@ -323,8 +323,8 @@ void
 Sm::start()
 {
   uint16_t timeout_len = buf_len + (reg_and_restart ? 1u : 0u);
-  (void)timeout_event.enable(25000u +
-                             static_cast<uint32_t>(timeout_len) * 250u);
+  (void)timeout_event.enable(std::chrono::microseconds{
+      25000u + static_cast<uint32_t>(timeout_len) * 250u});
   state = State::Start;
   ack(i2c);
   pos_disable(i2c);

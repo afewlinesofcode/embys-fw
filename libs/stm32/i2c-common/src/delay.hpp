@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <chrono>
 
 #include <embys/stm32/base/event.hpp>
 #include <embys/stm32/base/loop.hpp>
@@ -26,7 +26,7 @@ public:
   explicit Delay(Base::LoopCore *loop);
 
   void
-  exec(uint32_t us, Cb cb);
+  exec(std::chrono::microseconds delay, Cb cb);
 
 private:
   Base::Event ev;

@@ -36,9 +36,9 @@ Device::power_up()
 {
   stage = PowerUp;
 #ifndef STM32_SIM
-  timeout.exec(40000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{40}, {command_callback, this});
 #else
-  timeout.exec(400u, {command_callback, this});
+  timeout.exec(std::chrono::microseconds{400}, {command_callback, this});
 #endif
 }
 
@@ -74,7 +74,7 @@ void
 Device::wait_initialization()
 {
   stage = WaitInitialization;
-  timeout.exec(10000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{10}, {command_callback, this});
 }
 
 void
@@ -98,9 +98,9 @@ Device::wait_request_query()
 {
   stage = WaitQuery;
 #ifndef STM32_SIM
-  timeout.exec(80000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{80}, {command_callback, this});
 #else
-  timeout.exec(800u, {command_callback, this});
+  timeout.exec(std::chrono::microseconds{800}, {command_callback, this});
 #endif
 }
 

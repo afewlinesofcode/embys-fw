@@ -8,10 +8,10 @@ Delay::Delay(Base::LoopCore *loop) : ev(*loop, 0, {fired, this})
 }
 
 void
-Delay::exec(uint32_t us, Cb cb)
+Delay::exec(std::chrono::microseconds delay, Cb cb)
 {
   this->cb = cb;
-  int rc = ev.enable(us);
+  int rc = ev.enable(delay);
 
   if (rc != 0)
     cb(rc);

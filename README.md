@@ -169,7 +169,7 @@ Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 loop.run();
 ```
 
-**Events** are scheduled in microseconds. An event with `EV_PERSIST` is re-scheduled automatically after each execution.
+**Events** use `std::chrono` durations at microsecond precision. An event with `EV_PERSIST` is re-scheduled automatically after each execution.
 
 | Flag         | Meaning                                                             |
 | ------------ | ------------------------------------------------------------------- |
@@ -182,12 +182,12 @@ void on_event(void *context) { /* ... */ }
 
 // One-shot: fires after 100 ms
 Embys::Stm32::Base::Event event1(loop, 0, {on_event, &ctx});
-event1.enable(100000);
+event1.enable(std::chrono::milliseconds{100});
 
 // Periodic: fires every 500 ms
 Embys::Stm32::Base::Event blink(loop, Embys::Stm32::Base::EV_PERSIST,
                                 {on_event, &ctx});
-blink.enable(500000);
+blink.enable(std::chrono::milliseconds{500});
 
 // Stop blinking
 blink.disable();

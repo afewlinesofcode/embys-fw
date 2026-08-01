@@ -132,7 +132,8 @@ toggle_btn(void *context, uint8_t value)
     {
       ctx->led->write(0); // Ensure LED is on immediately when blinking starts
       ctx->led_on = true;
-      ctx->blink_event->enable(LED_BLINK_INTERVAL_US);
+      ctx->blink_event->enable(
+          std::chrono::microseconds{LED_BLINK_INTERVAL_US});
       SIM_LOG("Blinking ON");
     }
     else
@@ -195,7 +196,8 @@ main()
   context.blink_event = &blink_event;
   context.led = &led_pin;
   context.blink_on = true;
-  context.blink_event->enable(LED_BLINK_INTERVAL_US);
+  context.blink_event->enable(
+      std::chrono::microseconds{LED_BLINK_INTERVAL_US});
 
   // Enable peripherals before starting main loop
   TRY(gpio_bus.enable());

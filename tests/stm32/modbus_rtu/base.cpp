@@ -210,7 +210,7 @@ TEST_SUITE("modbus_rtu_base")
     // Base does not validate CRC; any 4-byte payload triggers the callback.
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00, 0x04});
 
-    loop.stop(500);
+    loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(cb_called);
@@ -229,7 +229,7 @@ TEST_SUITE("modbus_rtu_base")
 
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00}); // 3 bytes — below minimum
 
-    loop.stop(500);
+    loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK_FALSE(cb_called);
@@ -248,7 +248,7 @@ TEST_SUITE("modbus_rtu_base")
     std::vector<uint8_t> oversized(Modbus::kFrameSize + 1U, 0xAAU);
     Sim::Uart::simulate_rx(oversized);
 
-    loop.stop(500);
+    loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK_FALSE(cb_called);

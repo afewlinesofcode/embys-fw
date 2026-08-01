@@ -29,7 +29,7 @@ void
 Home::wait()
 {
   stage = Wait;
-  timeout->exec(2000, {command_callback, this});
+  timeout->exec(std::chrono::milliseconds{2}, {command_callback, this});
 }
 
 void

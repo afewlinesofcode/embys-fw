@@ -107,7 +107,8 @@ BusCore::write(const uint8_t *buf, size_t len)
   // Enable TXE interrupt — first byte sent from IRQ
   enable_txe_irq(usart);
 
-  (void)timeout_event.enable(calc_tx_timeout_us(len));
+  (void)timeout_event.enable(
+      std::chrono::microseconds{calc_tx_timeout_us(len)});
 
   return 0;
 }

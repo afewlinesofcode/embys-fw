@@ -199,7 +199,7 @@ TEST_SUITE("i2c")
     const uint8_t data[] = {0xDE, 0xAD};
     CHECK(bus.write(0x50u, data, 2u, cb) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(result == 0);
@@ -239,7 +239,7 @@ TEST_SUITE("i2c")
     data[0] = 0xFF;
     data[1] = 0xFF;
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     REQUIRE(!Sim::I2C::tx_buffers.empty());
@@ -260,7 +260,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 1u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(capture.result == 0);
@@ -280,7 +280,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 2u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(capture.result == 0);
@@ -301,7 +301,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 3u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(capture.result == 0);
@@ -321,7 +321,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 4u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(capture.result == 0);
@@ -344,7 +344,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 0x10u, 2u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(100u);
+    loop.stop(std::chrono::microseconds{100});
     loop.run();
 
     CHECK(capture.result == 0);
@@ -365,7 +365,7 @@ TEST_SUITE("i2c")
 
     CHECK(bus.read(0x50u, 1u, {ReadCapture::callback, &capture}) == 0);
 
-    loop.stop(500u);
+    loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(capture.result == I2c::BUS_BUSY);

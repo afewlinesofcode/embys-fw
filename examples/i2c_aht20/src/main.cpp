@@ -73,7 +73,7 @@ on_query(void *context, int rc,
 
   // Blink LED: turn on, schedule a short off event
   ctx->led->write(0); // active-low: write 0 = LED on
-  ctx->led_off_event->enable(LED_BLINK_US);
+  ctx->led_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 
   if (rc != 0)
   {
@@ -114,7 +114,7 @@ on_aht20_enabled(void *context, int rc)
   }
 
   SIM_LOG("AHT20 ready, starting periodic query");
-  ctx->query_event->enable(QUERY_INTERVAL_US);
+  ctx->query_event->enable(std::chrono::microseconds{QUERY_INTERVAL_US});
 }
 
 /**
@@ -230,7 +230,7 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  startup_event.enable(0);
+  startup_event.enable(std::chrono::microseconds::zero());
 
   loop.run();
 

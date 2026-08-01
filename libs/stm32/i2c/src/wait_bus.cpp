@@ -23,7 +23,7 @@ WaitBus::start()
     return 0;
   }
 
-  return event.enable(WaitBus::check_us);
+  return event.enable(std::chrono::microseconds{WaitBus::check_us});
 }
 
 void
@@ -43,7 +43,7 @@ WaitBus::event_callback(void *context)
     return;
   }
 
-  (void)self->event.enable(WaitBus::check_us);
+  (void)self->event.enable(std::chrono::microseconds{WaitBus::check_us});
 }
 
 }; // namespace Embys::Stm32::I2c
