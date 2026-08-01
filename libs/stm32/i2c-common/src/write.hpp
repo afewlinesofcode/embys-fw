@@ -22,13 +22,13 @@ namespace Embys::Stm32::I2c::Dev
 class Write
 {
 public:
-  explicit Write(I2c::Bus *bus);
+  explicit Write(I2c::BusCore *bus);
 
   void
   exec(uint8_t addr, const uint8_t *buf, uint16_t len, Cb cb);
 
 private:
-  I2c::Bus *bus;
+  I2c::BusCore *bus;
   Cb cb;
 
   static void

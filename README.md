@@ -322,7 +322,7 @@ Base path: `libs/stm32/i2c/`
 
 Provides an interrupt-driven I2C master for STM32F1. The central class is `Embys::Stm32::I2c::Bus`, which integrates with `Base::Loop` as a `Module` (completions are dispatched in loop context) and registers a timeout event.
 
-All transfers are fully asynchronous — `read()` and `write()` return immediately; your callback is invoked from the main loop once the transfer completes or fails.
+All transfers are fully asynchronous and use owned bounded storage. Writes are copied before returning; reads deliver a `std::span<const uint8_t>` valid during the loop-context callback.
 
 **Caller responsibilities:**
 
@@ -335,7 +335,7 @@ All transfers are fully asynchronous — `read()` and `write()` return immediate
 
 ```cpp
 // Construct and enable at 100 kHz (default)
-Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+Embys::Stm32::I2c::Bus<16, 16> i2c_bus(I2C1, loop);
 i2c_bus.enable();          // or enable(400000) for 400 kHz
 
 // Wire up IRQ handlers (in the same .cpp as your I2Cx_*_IRQHandler definitions)
@@ -346,7 +346,7 @@ void I2C1_ER_IRQHandler() { i2c_bus.handle_er_irq(); }
 i2c_bus.write(0x27, buf, sizeof(buf), {on_done, &context});
 
 // Asynchronous register-addressed read (write reg, repeated START, read)
-i2c_bus.read(0x38, 0xAC, rx_buf, 6, {on_done, &context});
+i2c_bus.read(0x38, 0xAC, 6, {on_read, &context});
 ```
 
 Error codes are defined in `Embys::Stm32::I2c::Diag` (e.g. `NACK`, `TIMEOUT`, `BUS_BUSY`).

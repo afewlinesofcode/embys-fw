@@ -29,7 +29,7 @@
 namespace Embys::Stm32::I2c
 {
 
-class Bus;
+class BusCore;
 
 /**
  * @brief Interrupt-driven I2C V1 state machine.
@@ -48,7 +48,7 @@ public:
   Sm &
   operator=(Sm &&) = delete;
 
-  Sm(Bus *bus);
+  Sm(BusCore *bus);
 
   /**
    * @brief Start an asynchronous read of len bytes from addr7.
@@ -119,7 +119,7 @@ private:
   };
 
   volatile State state = State::Idle;
-  Bus *bus;
+  BusCore *bus;
   I2C_TypeDef *i2c;
   WaitBus wait_bus;
   Base::Event timeout_event;

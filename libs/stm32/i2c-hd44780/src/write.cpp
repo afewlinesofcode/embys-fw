@@ -3,7 +3,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Write::Write(I2c::Bus *bus, uint8_t addr7) : write(bus), addr7(addr7)
+Write::Write(I2c::BusCore *bus, uint8_t addr7) : write(bus), addr7(addr7)
 {
 }
 

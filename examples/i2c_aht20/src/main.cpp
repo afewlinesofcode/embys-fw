@@ -22,7 +22,7 @@ Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 /**
  * @brief Global pointer to I2C bus for interrupt handler access
  */
-Embys::Stm32::I2c::Bus *i2c_bus_ptr = nullptr;
+Embys::Stm32::I2c::BusCore *i2c_bus_ptr = nullptr;
 
 extern "C"
 {
@@ -196,7 +196,7 @@ main()
   Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
                                   PinCfg::I2C | PinCfg::HIGH);
 
-  Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+  Embys::Stm32::I2c::Bus<16, 16> i2c_bus(I2C1, loop);
 
   Embys::Stm32::I2c::Dev::Aht20::Device aht20(&loop, &i2c_bus);
   Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(&loop, &i2c_bus);

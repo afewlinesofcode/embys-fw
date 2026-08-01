@@ -16,7 +16,7 @@ using Embys::Callback;
 
 struct I2cBaseFixture
 {
-  inline static I2c::Bus *i2c_bus_ptr = nullptr;
+  inline static I2c::BusCore *i2c_bus_ptr = nullptr;
   inline static Base::Timer *timer_ptr = nullptr;
 
   static void
@@ -60,14 +60,27 @@ struct I2cLoopFixture : I2cBaseFixture
 
   Base::Timer timer;
   Base::Loop<events_capacity, modules_capacity> loop;
-  I2c::Bus bus;
+  I2c::Bus<16, 16> bus;
 
   I2cLoopFixture()
-    : timer(TIM2), loop(timer),
-      bus(I2C1, &loop)
+    : timer(TIM2), loop(timer), bus(I2C1, loop)
   {
     timer_ptr = &timer;
     i2c_bus_ptr = &bus;
+  }
+};
+
+struct ReadCapture
+{
+  int result = -1;
+  std::vector<uint8_t> data;
+
+  static void
+  callback(void *context, int result, std::span<const uint8_t> data)
+  {
+    auto *capture = static_cast<ReadCapture *>(context);
+    capture->result = result;
+    capture->data.assign(data.begin(), data.end());
   }
 };
 
@@ -209,6 +222,30 @@ TEST_SUITE("i2c")
     CHECK(bus.write(0x50u, data, 1u, cb2) == I2c::INVALID_STATE);
   }
 
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus::write rejects data larger than owned TX storage")
+  {
+    bus.enable(100000u);
+    uint8_t data[17] = {};
+    CHECK(bus.write(0x50u, data, sizeof(data), {}) == I2c::BUFFER_TOO_SMALL);
+  }
+
+  TEST_CASE_FIXTURE(I2cLoopFixture,
+                    "Bus::write owns data for the asynchronous transfer")
+  {
+    bus.enable(100000u);
+    uint8_t data[] = {0x12, 0x34};
+    REQUIRE(bus.write(0x50u, data, sizeof(data), {}) == 0);
+    data[0] = 0xFF;
+    data[1] = 0xFF;
+
+    loop.stop(100u);
+    loop.run();
+
+    REQUIRE(!Sim::I2C::tx_buffers.empty());
+    CHECK(Sim::I2C::tx_buffers.back() == std::vector<uint8_t>({0x12, 0x34}));
+  }
+
   // ── read ──────────────────────────────────────────────────────────────────
 
   TEST_CASE_FIXTURE(I2cLoopFixture,
@@ -219,18 +256,15 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_rx({0xAB});
 
-    int result = -2;
-    uint8_t buf[1] = {};
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
+    CHECK(bus.read(0x50u, 1u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(100u);
     loop.run();
 
-    CHECK(result == 0);
-    CHECK(buf[0] == 0xABu);
+    CHECK(capture.result == 0);
+    CHECK(capture.data[0] == 0xABu);
   }
 
   // 2-byte path: POS flag set before address, NACK applied to both bytes
@@ -242,19 +276,16 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_rx({0xCA, 0xFE});
 
-    int result = -1;
-    uint8_t buf[2] = {};
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, buf, 2u, cb) == 0);
+    CHECK(bus.read(0x50u, 2u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(100u);
     loop.run();
 
-    CHECK(result == 0);
-    CHECK(buf[0] == 0xCAu);
-    CHECK(buf[1] == 0xFEu);
+    CHECK(capture.result == 0);
+    CHECK(capture.data[0] == 0xCAu);
+    CHECK(capture.data[1] == 0xFEu);
   }
 
   // 3-byte path: ACK through address, at byte N-3 (index 0) wait BTF,
@@ -266,20 +297,17 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_rx({0xA1, 0xB2, 0xC3});
 
-    int result = -1;
-    uint8_t buf[3] = {};
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, buf, 3u, cb) == 0);
+    CHECK(bus.read(0x50u, 3u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(100u);
     loop.run();
 
-    CHECK(result == 0);
-    CHECK(buf[0] == 0xA1u);
-    CHECK(buf[1] == 0xB2u);
-    CHECK(buf[2] == 0xC3u);
+    CHECK(capture.result == 0);
+    CHECK(capture.data[0] == 0xA1u);
+    CHECK(capture.data[1] == 0xB2u);
+    CHECK(capture.data[2] == 0xC3u);
   }
 
   TEST_CASE_FIXTURE(I2cLoopFixture,
@@ -289,21 +317,18 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_rx({0x11, 0x22, 0x33, 0x44});
 
-    int result = -1;
-    uint8_t buf[4] = {};
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, buf, 4u, cb) == 0);
+    CHECK(bus.read(0x50u, 4u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(100u);
     loop.run();
 
-    CHECK(result == 0);
-    CHECK(buf[0] == 0x11u);
-    CHECK(buf[1] == 0x22u);
-    CHECK(buf[2] == 0x33u);
-    CHECK(buf[3] == 0x44u);
+    CHECK(capture.result == 0);
+    CHECK(capture.data[0] == 0x11u);
+    CHECK(capture.data[1] == 0x22u);
+    CHECK(capture.data[2] == 0x33u);
+    CHECK(capture.data[3] == 0x44u);
   }
 
   // ── register-addressed read ───────────────────────────────────────────────
@@ -315,19 +340,16 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_rx({0x55, 0x66});
 
-    int result = -1;
-    uint8_t buf[2] = {};
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, 0x10u, buf, 2u, cb) == 0);
+    CHECK(bus.read(0x50u, 0x10u, 2u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(100u);
     loop.run();
 
-    CHECK(result == 0);
-    CHECK(buf[0] == 0x55u);
-    CHECK(buf[1] == 0x66u);
+    CHECK(capture.result == 0);
+    CHECK(capture.data[0] == 0x55u);
+    CHECK(capture.data[1] == 0x66u);
   }
 
   // ── error handling ───────────────────────────────────────────────────────
@@ -339,17 +361,14 @@ TEST_SUITE("i2c")
 
     Sim::I2C::simulate_busy();
 
-    uint8_t buf[1] = {};
-    int result = 0;
-    auto cb = Callback<int>{[](void *ctx, int r)
-                            { *static_cast<int *>(ctx) = r; }, &result};
+    ReadCapture capture;
 
-    CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
+    CHECK(bus.read(0x50u, 1u, {ReadCapture::callback, &capture}) == 0);
 
     loop.stop(500u);
     loop.run();
 
-    CHECK(result == I2c::BUS_BUSY);
+    CHECK(capture.result == I2c::BUS_BUSY);
   }
 
 } // TEST_SUITE("i2c")

@@ -27,7 +27,7 @@ class LoopCore;
 namespace Embys::Stm32::I2c
 {
 
-class Bus;
+class BusCore;
 
 class WaitBus
 {
@@ -48,7 +48,7 @@ public:
    * @param cb   Callback invoked with 0 when the bus is free, or BUS_BUSY
    *             when the check limit is reached.
    */
-  WaitBus(Bus *bus, Callback<int> cb);
+  WaitBus(BusCore *bus, Callback<int> cb);
 
   /**
    * @brief Start waiting for the bus to become idle.

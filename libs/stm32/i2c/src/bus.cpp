@@ -1,5 +1,7 @@
 #include "bus.hpp"
 
+#include <cstring>
+
 #include <embys/stm32/def.hpp>
 
 #include "hal.hpp"
@@ -7,19 +9,22 @@
 namespace Embys::Stm32::I2c
 {
 
-Bus::Bus(I2C_TypeDef *i2c_, Base::LoopCore *base_)
-  : i2c(i2c_), base(base_), sm(this)
+BusCore::BusCore(I2C_TypeDef *i2c_, Base::LoopCore &base_,
+                 uint8_t *rx_buffer_, size_t rx_capacity_,
+                 uint8_t *tx_buffer_, size_t tx_capacity_)
+  : i2c(i2c_), base(&base_), sm(this), rx_buffer(rx_buffer_),
+    rx_capacity(rx_capacity_), tx_buffer(tx_buffer_), tx_capacity(tx_capacity_)
 {
 }
 
-Bus::~Bus()
+BusCore::~BusCore()
 {
   if (enabled)
     (void)disable();
 }
 
 int
-Bus::enable(uint32_t scl_hz_)
+BusCore::enable(uint32_t scl_hz_)
 {
   if (enabled)
     return 0;
@@ -28,7 +33,7 @@ Bus::enable(uint32_t scl_hz_)
   TRY(reset_i2c(i2c));
 
 
-  module = base->add_module({Bus::module_callback, this});
+  module = base->add_module({BusCore::module_callback, this});
   if (!module)
   {
     (void)disable_i2c(i2c);
@@ -42,7 +47,7 @@ Bus::enable(uint32_t scl_hz_)
 }
 
 int
-Bus::disable()
+BusCore::disable()
 {
   if (!enabled)
     return 0;
@@ -59,44 +64,60 @@ Bus::disable()
 }
 
 int
-Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callback<int> cb)
+BusCore::read(uint8_t addr7, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  this->cb = cb;
-  TRY(sm.start_read(addr7, buf, len));
+  if (len > rx_capacity)
+    return BUFFER_TOO_SMALL;
+
+  read_cb = cb;
+  reading = true;
+  transfer_len = len;
+  TRY(sm.start_read(addr7, rx_buffer, len));
 
   return 0;
 }
 
 int
-Bus::read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-          Callback<int> cb)
+BusCore::read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  this->cb = cb;
-  TRY(sm.start_read(addr7, reg, buf, len));
+  if (len > rx_capacity)
+    return BUFFER_TOO_SMALL;
+
+  read_cb = cb;
+  reading = true;
+  transfer_len = len;
+  TRY(sm.start_read(addr7, reg, rx_buffer, len));
 
   return 0;
 }
 
 int
-Bus::write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callback<int> cb)
+BusCore::write(uint8_t addr7, const uint8_t *buf, uint16_t len,
+               Callback<int> cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
 
+  if (len > tx_capacity)
+    return BUFFER_TOO_SMALL;
+
+  std::memcpy(tx_buffer, buf, len);
   this->cb = cb;
-  TRY(sm.start_write(addr7, buf, len));
+  reading = false;
+  transfer_len = len;
+  TRY(sm.start_write(addr7, tx_buffer, len));
 
   return 0;
 }
 
 void
-Bus::handle_ev_irq()
+BusCore::handle_ev_irq()
 {
   sm.handle_irq();
 
@@ -105,7 +126,7 @@ Bus::handle_ev_irq()
 }
 
 void
-Bus::handle_er_irq()
+BusCore::handle_er_irq()
 {
   sm.handle_error();
 
@@ -116,15 +137,18 @@ Bus::handle_er_irq()
 }
 
 void
-Bus::module_callback(void *context)
+BusCore::module_callback(void *context)
 {
-  auto *self = static_cast<Bus *>(context);
+  auto *self = static_cast<BusCore *>(context);
 
   if (self->sm.is_complete())
   {
     int result = self->sm.get_result();
     self->sm.reset();
-    self->cb(result);
+    if (self->reading)
+      self->read_cb(result, {self->rx_buffer, self->transfer_len});
+    else
+      self->cb(result);
   }
 }
 

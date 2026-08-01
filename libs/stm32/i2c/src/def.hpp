@@ -33,6 +33,7 @@ enum Diag : int
   BUS_BUSY,
   BUS_STUCK,
   STOP_STUCK,
+  BUFFER_TOO_SMALL,
 };
 
 }; // namespace Embys::Stm32::I2c

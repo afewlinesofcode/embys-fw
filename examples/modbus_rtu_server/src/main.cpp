@@ -61,7 +61,7 @@ namespace I2c = Embys::Stm32::I2c;
 
 static Base::Timer *timer_ptr = nullptr;
 static Uart::BusCore *uart_ptr = nullptr;
-static I2c::Bus *i2c_bus_ptr = nullptr;
+static I2c::BusCore *i2c_bus_ptr = nullptr;
 
 extern "C"
 {
@@ -257,7 +257,7 @@ main()
   Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
                     Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
 
-  I2c::Bus i2c_bus(I2C1, &loop);
+  I2c::Bus<16, 16> i2c_bus(I2C1, loop);
   ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
 
   // Global pointers for IRQ handlers

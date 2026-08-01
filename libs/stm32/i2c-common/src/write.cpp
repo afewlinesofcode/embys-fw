@@ -3,7 +3,7 @@
 namespace Embys::Stm32::I2c::Dev
 {
 
-Write::Write(I2c::Bus *bus) : bus(bus)
+Write::Write(I2c::BusCore *bus) : bus(bus)
 {
 }
 

@@ -13,9 +13,13 @@
  */
 #pragma once
 
+#include <array>
+#include <span>
 #include <stdint.h>
+#include <type_traits>
 
 #include <embys/stm32/base/loop.hpp>
+#include <embys/stm32/mcu.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
@@ -44,31 +48,34 @@ namespace Embys::Stm32::I2c
  *
  * Example:
  * ```
- * I2c::Bus bus(I2C1, &loop);
+ * I2c::Bus<16, 16> bus(I2C1, loop);
  * bus.enable(400000);
  *
  * void I2C1_EV_IRQHandler() { bus.handle_ev_irq(); }
  * void I2C1_ER_IRQHandler() { bus.handle_er_irq(); }
  * ```
  */
-class Bus
+class BusCore
 {
 public:
-  Bus() = delete;
-  Bus(const Bus &) = delete;
-  Bus(Bus &&) = delete;
-  Bus &
-  operator=(const Bus &) = delete;
-  Bus &
-  operator=(Bus &&) = delete;
+  using ReadCallback = Callback<int, std::span<const uint8_t>>;
+
+  BusCore() = delete;
+  BusCore(const BusCore &) = delete;
+  BusCore(BusCore &&) = delete;
+  BusCore &
+  operator=(const BusCore &) = delete;
+  BusCore &
+  operator=(BusCore &&) = delete;
 
   /**
    * @brief Construct an I2C Bus.
    * @param i2c  Peripheral instance (I2C1 or I2C2).
    * @param base Main loop for module and event registration.
    */
-  Bus(I2C_TypeDef *i2c, Base::LoopCore *base);
-  ~Bus();
+  BusCore(I2C_TypeDef *i2c, Base::LoopCore &base, uint8_t *rx_buffer,
+          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
+  ~BusCore();
 
   inline I2C_TypeDef *
   get_i2c() const
@@ -115,7 +122,7 @@ public:
    * @param cb  Invoked in loop context with 0 on success, negative on error.
    */
   int
-  read(uint8_t addr7, uint8_t *buf, uint16_t len, Callback<int> cb);
+  read(uint8_t addr7, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous register-addressed read.
@@ -123,8 +130,7 @@ public:
    * @param cb  Invoked in loop context with 0 on success, negative on error.
    */
   int
-  read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-       Callback<int> cb);
+  read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous write of len bytes to I2C address addr7.
@@ -159,9 +165,48 @@ private:
   uint32_t scl_hz = 0u;
   bool enabled = false;
   Callback<int> cb;
+  ReadCallback read_cb;
+  uint8_t *rx_buffer;
+  size_t rx_capacity;
+  uint8_t *tx_buffer;
+  size_t tx_capacity;
+  uint16_t transfer_len = 0;
+  bool reading = false;
 
   static void
   module_callback(void *context);
+};
+
+namespace Detail
+{
+
+template <size_t RxCapacity, size_t TxCapacity>
+struct BusStorage
+{
+  std::array<uint8_t, RxCapacity> rx{};
+  std::array<uint8_t, TxCapacity> tx{};
+};
+
+} // namespace Detail
+
+template <size_t RxCapacity, size_t TxCapacity,
+          typename Device = Stm32::TargetDevice>
+class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
+                  public BusCore
+{
+  static_assert(RxCapacity > 0, "An I2C bus needs RX storage");
+  static_assert(TxCapacity > 0, "An I2C bus needs TX storage");
+  using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
+
+public:
+  Bus(I2C_TypeDef *i2c, Base::LoopCore &base)
+    : Storage(),
+      BusCore(i2c, base, Storage::rx.data(), RxCapacity,
+              Storage::tx.data(), TxCapacity)
+  {
+    static_assert(std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f1> ||
+                  std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f4>);
+  }
 };
 
 }; // namespace Embys::Stm32::I2c

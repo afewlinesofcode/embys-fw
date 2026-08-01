@@ -43,7 +43,7 @@ public:
   Device &
   operator=(Device &&) = delete;
 
-  Device(Base::LoopCore *loop, I2c::Bus *bus, uint8_t addr7 = 0x27u);
+  Device(Base::LoopCore *loop, I2c::BusCore *bus, uint8_t addr7 = 0x27u);
 
   void
   enable(Cb cb);
