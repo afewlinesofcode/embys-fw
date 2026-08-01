@@ -10,6 +10,11 @@
 
 namespace Sim = Embys::Stm32::Sim;
 using namespace Embys::Stm32;
+
+static_assert(I2c::instance_available<Stm32f103xb, I2c::Instance::I2c2>);
+static_assert(!I2c::instance_available<Stm32f103xb, I2c::Instance::I2c3>);
+static_assert(I2c::instance_available<Stm32f407xx, I2c::Instance::I2c3>);
+static_assert(I2c::instance_available<Stm32f411xe, I2c::Instance::I2c3>);
 using Embys::Callback;
 
 // ── fixtures ──────────────────────────────────────────────────────────────
@@ -60,10 +65,10 @@ struct I2cLoopFixture : I2cBaseFixture
 
   Base::Timer timer;
   Base::Loop<events_capacity, modules_capacity> loop;
-  I2c::Bus<16, 16> bus;
+  I2c::Bus<I2c::Instance::I2c1, 16, 16> bus;
 
   I2cLoopFixture()
-    : timer(TIM2), loop(timer), bus(I2C1, loop)
+    : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     i2c_bus_ptr = &bus;

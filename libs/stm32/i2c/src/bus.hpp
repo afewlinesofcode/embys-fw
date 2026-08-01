@@ -23,6 +23,7 @@
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
+#include "instance.hpp"
 #include "sm.hpp"
 #include "stm32xx.hpp"
 
@@ -48,7 +49,7 @@ namespace Embys::Stm32::I2c
  *
  * Example:
  * ```
- * I2c::Bus<16, 16> bus(I2C1, loop);
+ * I2c::Bus<I2c::Instance::I2c1, 16, 16> bus(loop);
  * bus.enable(400000);
  *
  * void I2C1_EV_IRQHandler() { bus.handle_ev_irq(); }
@@ -70,11 +71,9 @@ public:
 
   /**
    * @brief Construct an I2C Bus.
-   * @param i2c  Peripheral instance (I2C1 or I2C2).
-   * @param base Main loop for module and event registration.
+   * @param i2c Peripheral selected by the owning Bus template.
+   * @param base Main loop used for module and event registration.
    */
-  BusCore(I2C_TypeDef *i2c, Base::LoopCore &base, uint8_t *rx_buffer,
-          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
   ~BusCore();
 
   inline I2C_TypeDef *
@@ -157,6 +156,10 @@ public:
     base->set_module_pending(module);
   }
 
+protected:
+  BusCore(I2C_TypeDef *i2c, Base::LoopCore &base, uint8_t *rx_buffer,
+          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
+
 private:
   I2C_TypeDef *i2c;
   Base::LoopCore *base;
@@ -189,8 +192,7 @@ struct BusStorage
 
 } // namespace Detail
 
-template <size_t RxCapacity, size_t TxCapacity,
-          typename Device = Stm32::TargetDevice>
+template <Instance Peripheral, size_t RxCapacity, size_t TxCapacity>
 class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
                   public BusCore
 {
@@ -199,13 +201,13 @@ class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
   using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
 
 public:
-  Bus(I2C_TypeDef *i2c, Base::LoopCore &base)
+  explicit Bus(Base::LoopCore &base)
     : Storage(),
-      BusCore(i2c, base, Storage::rx.data(), RxCapacity,
-              Storage::tx.data(), TxCapacity)
+      BusCore(peripheral_address<Peripheral>(), base, Storage::rx.data(),
+              RxCapacity, Storage::tx.data(), TxCapacity)
   {
-    static_assert(std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f1> ||
-                  std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f4>);
+    static_assert(instance_available<Stm32::TargetDevice, Peripheral>,
+                  "Selected I2C instance is not available on this device");
   }
 };
 

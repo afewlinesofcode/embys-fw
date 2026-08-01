@@ -96,11 +96,11 @@ struct ClientFixture : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
   TestablClient client;
 
   ClientFixture()
-    : timer(TIM2), loop(timer), uart(USART2, loop), client(&uart, &loop)
+    : timer(TIM2), loop(timer), uart(loop), client(&uart, &loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;

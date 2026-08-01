@@ -77,10 +77,10 @@ struct RtuLoopFixture : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
 
   RtuLoopFixture()
-    : timer(TIM2), loop(timer), uart(USART2, loop)
+    : timer(TIM2), loop(timer), uart(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
@@ -102,11 +102,11 @@ struct BaseFixture38400 : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
   TestablBase base;
 
   BaseFixture38400()
-    : timer(TIM2), loop(timer), uart(USART2, loop), base(&uart)
+    : timer(TIM2), loop(timer), uart(loop), base(&uart)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;

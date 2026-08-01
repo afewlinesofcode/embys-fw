@@ -166,7 +166,7 @@ main()
                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
 
-  Uart::Bus<64, 64> uart(USART1, loop);
+  Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);
   uart.set_rede_pin(&uart_rede);
   uart.set_tx_callback({on_tx_done, &app_ctx});
 

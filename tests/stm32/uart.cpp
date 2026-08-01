@@ -13,6 +13,12 @@
 namespace Sim = Embys::Stm32::Sim;
 using namespace Embys::Stm32;
 
+static_assert(Uart::instance_available<Stm32f103xb, Uart::Instance::Usart3>);
+static_assert(!Uart::instance_available<Stm32f103xb, Uart::Instance::Usart6>);
+static_assert(Uart::instance_available<Stm32f407xx, Uart::Instance::Usart3>);
+static_assert(Uart::instance_available<Stm32f411xe, Uart::Instance::Usart6>);
+static_assert(!Uart::instance_available<Stm32f411xe, Uart::Instance::Usart3>);
+
 // ── fixtures ──────────────────────────────────────────────────────────────
 
 struct UartBaseFixture
@@ -60,10 +66,10 @@ struct UartLoopFixture : UartBaseFixture
 
   Base::Timer timer;
   Base::Loop<events_capacity, modules_capacity> loop;
-  Uart::Bus<16, 32> bus;
+  Uart::Bus<Uart::Instance::Usart2, 16, 32> bus;
 
   UartLoopFixture()
-    : timer(TIM2), loop(timer), bus(USART2, loop)
+    : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &bus;

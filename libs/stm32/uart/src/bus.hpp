@@ -25,6 +25,7 @@
 
 #include "def.hpp"
 #include "hal.hpp"
+#include "instance.hpp"
 #include "stm32xx.hpp"
 
 namespace Embys::Stm32::Uart
@@ -48,7 +49,7 @@ namespace Embys::Stm32::Uart
  *
  * Example:
  * ```
- * Uart::Bus<64, 64> uart(USART1, loop);
+ * Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);
  * uart.set_rx_callback({on_rx_byte, &ctx});
  * uart.set_tx_callback({on_tx_done, &ctx});
  * uart.enable(115200);
@@ -69,14 +70,11 @@ public:
 
   /**
    * @brief Construct a UART Bus.
-   * @param usart     Peripheral instance (USART1, USART2, or USART3).
-   * @param base      Main loop for module and event registration.
-   * @param rx_buffer Caller-allocated buffer for incoming bytes.
+   * @param usart Peripheral selected by the owning Bus template.
+   * @param base Main loop used for module and event registration.
+   * @param rx_buffer Storage owned by the derived Bus template.
    * @param rx_capacity Size of rx_buffer in bytes.
    */
-  BusCore(USART_TypeDef *usart, Base::LoopCore &base, uint8_t *rx_buffer,
-          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
-
   ~BusCore();
 
   inline bool
@@ -185,6 +183,10 @@ public:
     tx_cb.clear();
   }
 
+protected:
+  BusCore(USART_TypeDef *usart, Base::LoopCore &base, uint8_t *rx_buffer,
+          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
+
 private:
   USART_TypeDef *usart;
   Base::LoopCore *base;
@@ -262,8 +264,7 @@ struct BusStorage
 
 } // namespace Detail
 
-template <size_t RxCapacity, size_t TxCapacity,
-          typename Device = Stm32::TargetDevice>
+template <Instance Peripheral, size_t RxCapacity, size_t TxCapacity>
 class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
                   public BusCore
 {
@@ -272,13 +273,13 @@ class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
   using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
 
 public:
-  Bus(USART_TypeDef *usart, Base::LoopCore &base)
+  explicit Bus(Base::LoopCore &base)
     : Storage(),
-      BusCore(usart, base, Storage::rx.data(), RxCapacity,
-              Storage::tx.data(), TxCapacity)
+      BusCore(peripheral_address<Peripheral>(), base, Storage::rx.data(),
+              RxCapacity, Storage::tx.data(), TxCapacity)
   {
-    static_assert(std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f1> ||
-                  std::is_same_v<Stm32::FamilyOf<Device>, Stm32::Stm32f4>);
+    static_assert(instance_available<Stm32::TargetDevice, Peripheral>,
+                  "Selected UART instance is not available on this device");
   }
 };
 

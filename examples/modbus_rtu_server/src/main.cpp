@@ -225,7 +225,7 @@ main()
   Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10,
                     Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
 
-  Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart_bus(USART1, loop);
+  Uart::Bus<Uart::Instance::Usart1, Modbus::kFrameSize, Modbus::kFrameSize> uart_bus(loop);
   uart_bus.set_rede_pin(&uart_rede);
 
   Modbus::Store<MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE,
@@ -251,7 +251,7 @@ main()
   Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
                     Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
 
-  I2c::Bus<16, 16> i2c_bus(I2C1, loop);
+  I2c::Bus<I2c::Instance::I2c1, 16, 16> i2c_bus(loop);
   ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
 
   // Global pointers for IRQ handlers

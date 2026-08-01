@@ -300,7 +300,8 @@ Configuration enums (from `def.hpp`):
 Error codes are defined in `Embys::Stm32::Uart::Diag` (e.g. `TX_BUSY`, `TX_TIMEOUT`, `RX_OVERFLOW`).
 
 ```cpp
-Embys::Stm32::Uart::Bus<64, 64> uart(USART1, loop);
+Embys::Stm32::Uart::Bus<Embys::Stm32::Uart::Instance::Usart1, 64, 64>
+    uart(loop);
 
 uart.set_rx_callback({on_rx, &context});
 uart.set_tx_callback({on_tx_done, &context});
@@ -335,7 +336,8 @@ All transfers are fully asynchronous and use owned bounded storage. Writes are c
 
 ```cpp
 // Construct and enable at 100 kHz (default)
-Embys::Stm32::I2c::Bus<16, 16> i2c_bus(I2C1, loop);
+Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16>
+    i2c_bus(loop);
 i2c_bus.enable();          // or enable(400000) for 400 kHz
 
 // Wire up IRQ handlers (in the same .cpp as your I2Cx_*_IRQHandler definitions)

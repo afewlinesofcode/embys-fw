@@ -204,7 +204,8 @@ main()
   Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
                                   PinCfg::I2C | PinCfg::HIGH);
 
-  Embys::Stm32::I2c::Bus<16, 16> i2c_bus(I2C1, loop);
+  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16>
+      i2c_bus(loop);
 
   Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(&loop, &i2c_bus);
 
