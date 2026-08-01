@@ -362,15 +362,10 @@ Provides a Modbus RTU server (slave) and client (master) over the interrupt-driv
 
 #### Store
 
-`Embys::Stm32::Modbus::Store` holds the four Modbus data models — coils, discrete inputs, holding registers, and input registers. All backing memory is provided by the caller; no heap allocation occurs.
+`Embys::Stm32::Modbus::Store` holds the four Modbus data models — coils, discrete inputs, holding registers, and input registers. Its template capacities determine statically owned storage; no heap allocation occurs.
 
 ```cpp
-static uint8_t  coils_buf[2];     // ceil(10 / 8) bytes → 16 coils
-static uint8_t  di_buf[2];        // 16 discrete inputs
-static uint16_t hr_buf[16];       // 16 holding registers
-static uint16_t ir_buf[8];        // 8 input registers
-
-Modbus::Store store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
+Modbus::Store<16, 16, 16, 8> store;
 ```
 
 #### Handler
@@ -395,7 +390,7 @@ Supported function codes:
 Optional address offsets let a single store be shared by multiple servers with different on-wire base addresses:
 
 ```cpp
-Modbus::Handler handler(&store);
+Modbus::Handler handler(store);
 handler.set_coils_offset(0x1000);
 handler.set_holding_registers_offset(0x1000);
 
@@ -416,8 +411,8 @@ handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
 - Call `server.enable()` after all peripherals are enabled
 
 ```cpp
-Modbus::Store  store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
-Modbus::Handler handler(&store);
+Modbus::Store<16, 16, 16, 8> store;
+Modbus::Handler handler(store);
 
 Modbus::Rtu::Server server(1 /*device_id*/, &handler, &uart_bus);
 server.set_on_request_callback({on_request, &context});

@@ -30,17 +30,12 @@ struct StoreFixture
   static constexpr uint16_t NHR = 8;
   static constexpr uint16_t NIR = 4;
 
-  uint8_t coils_buf[(NC + 7U) / 8U] = {};
-  uint8_t di_buf[(NDI + 7U) / 8U] = {};
-  uint16_t hr_buf[NHR] = {};
-  uint16_t ir_buf[NIR] = {};
-
-  Store store{coils_buf, NC, di_buf, NDI, hr_buf, NHR, ir_buf, NIR};
+  Store<NC, NDI, NHR, NIR> store;
 };
 
 struct HandlerFixture : StoreFixture
 {
-  Handler handler{&store};
+  Handler handler{store};
 
   uint8_t req[kFrameSize] = {};
   uint8_t rsp[kFrameSize] = {};

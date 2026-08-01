@@ -121,12 +121,8 @@ struct RtuLoopFixture : RtuBaseFixture
 struct StoreFixture
 {
   static constexpr uint16_t NC = 16, NDI = 8, NHR = 8, NIR = 4;
-  uint8_t coils_buf[(NC + 7U) / 8U] = {};
-  uint8_t di_buf[(NDI + 7U) / 8U] = {};
-  uint16_t hr_buf[NHR] = {};
-  uint16_t ir_buf[NIR] = {};
-  Modbus::Store store{coils_buf, NC, di_buf, NDI, hr_buf, NHR, ir_buf, NIR};
-  Modbus::Handler handler{&store};
+  Modbus::Store<NC, NDI, NHR, NIR> store;
+  Modbus::Handler handler{store};
 };
 
 struct ServerFixture : RtuLoopFixture, StoreFixture

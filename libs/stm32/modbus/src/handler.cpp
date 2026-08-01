@@ -7,7 +7,7 @@
 namespace Embys::Stm32::Modbus
 {
 
-Handler::Handler(Store *store) : store(store)
+Handler::Handler(StoreCore &store) : store(store)
 {
 }
 
@@ -72,7 +72,7 @@ Handler::handle_read_coils(BufferIn request, uint16_t req_len,
   }
 
   memset(response + 3, 0, response[2]);
-  if (store->get_coils(starting_address, response + 3, quantity))
+  if (store.get_coils(starting_address, response + 3, quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -107,7 +107,7 @@ Handler::handle_read_discrete_inputs(BufferIn request, uint16_t req_len,
   }
 
   memset(response + 3, 0, response[2]);
-  if (store->get_discrete_inputs(starting_address, response + 3, quantity))
+  if (store.get_discrete_inputs(starting_address, response + 3, quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -141,7 +141,7 @@ Handler::handle_read_holding_registers(BufferIn request, uint16_t req_len,
     return ExceptionCode::IllegalDataValue;
   }
 
-  if (store->get_holding_registers_be(starting_address, response + 3, quantity))
+  if (store.get_holding_registers_be(starting_address, response + 3, quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -175,7 +175,7 @@ Handler::handle_read_input_registers(BufferIn request, uint16_t req_len,
     return ExceptionCode::IllegalDataValue;
   }
 
-  if (store->get_input_registers_be(starting_address, response + 3, quantity))
+  if (store.get_input_registers_be(starting_address, response + 3, quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -204,7 +204,7 @@ Handler::handle_write_single_coil(BufferIn request, uint16_t req_len,
 
   bool coil_state = (write_value == 0xFF00U);
 
-  if (store->set_coil(starting_address, coil_state))
+  if (store.set_coil(starting_address, coil_state))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -229,7 +229,7 @@ Handler::handle_write_single_register(BufferIn request, uint16_t req_len,
                                            holding_registers_offset);
   write_value = read_u16_be(&request[4]);
 
-  if (store->set_holding_register(starting_address, write_value))
+  if (store.set_holding_register(starting_address, write_value))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -270,7 +270,7 @@ Handler::handle_write_multiple_coils(BufferIn request, uint16_t req_len,
     return ExceptionCode::IllegalDataValue;
   }
 
-  if (store->set_coils(starting_address, &request[7], quantity))
+  if (store.set_coils(starting_address, &request[7], quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }
@@ -311,7 +311,7 @@ Handler::handle_write_multiple_registers(BufferIn request, uint16_t req_len,
     return ExceptionCode::IllegalDataValue;
   }
 
-  if (store->set_holding_registers_be(starting_address, &request[7], quantity))
+  if (store.set_holding_registers_be(starting_address, &request[7], quantity))
   {
     return ExceptionCode::IllegalDataAddress;
   }

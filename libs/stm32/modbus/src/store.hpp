@@ -3,17 +3,13 @@
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
  * @brief Modbus data store: coils, discrete inputs, holding and input registers
  *
- * The Store aggregates the four Modbus data models.  All backing memory is
- * provided by the caller, so no heap allocation occurs.
+ * Store aggregates and owns the four Modbus data models. Capacities are part
+ * of the type, so no heap allocation or caller-managed backing storage is
+ * required.
  *
  * Example:
  * ```
- * static uint8_t  coils_buf[8];          // 64 coils
- * static uint8_t  di_buf[4];             // 32 discrete inputs
- * static uint16_t hr_buf[16];            // 16 holding registers
- * static uint16_t ir_buf[8];             // 8 input registers
- *
- * Modbus::Store store(coils_buf, 64, di_buf, 32, hr_buf, 16, ir_buf, 8);
+ * Modbus::Store<64, 32, 16, 8> store;
  * ```
  *
  * @version 0.1
@@ -23,7 +19,9 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 
 #include "coils.hpp"
 #include "registers.hpp"
@@ -31,37 +29,27 @@
 namespace Embys::Stm32::Modbus
 {
 
-class Store
+class StoreCore
 {
 public:
-  Store() = delete;
-  Store(const Store &) = delete;
-  Store(Store &&) = delete;
-  Store &
-  operator=(const Store &) = delete;
-  Store &
-  operator=(Store &&) = delete;
+  StoreCore(const StoreCore &) = delete;
+  StoreCore(StoreCore &&) = delete;
+  StoreCore &
+  operator=(const StoreCore &) = delete;
+  StoreCore &
+  operator=(StoreCore &&) = delete;
 
-  /**
-   * @brief Construct a Modbus data store with caller-provided buffers.
-   *
-   * @param coils_buf         Byte array for coil bits (capacity in coils).
-   * @param coils_capacity    Number of coils backed by coils_buf.
-   * @param di_buf            Byte array for discrete-input bits.
-   * @param di_capacity       Number of discrete inputs.
-   * @param hr_buf            uint16_t array for holding registers.
-   * @param hr_capacity       Number of holding registers.
-   * @param ir_buf            uint16_t array for input registers.
-   * @param ir_capacity       Number of input registers.
-   */
-  Store(uint8_t *coils_buf, uint16_t coils_capacity, uint8_t *di_buf,
-        uint16_t di_capacity, uint16_t *hr_buf, uint16_t hr_capacity,
-        uint16_t *ir_buf, uint16_t ir_capacity)
+protected:
+  StoreCore(uint8_t *coils_buf, uint16_t coils_capacity, uint8_t *di_buf,
+            uint16_t di_capacity, uint16_t *hr_buf, uint16_t hr_capacity,
+            uint16_t *ir_buf, uint16_t ir_capacity)
     : coils(coils_buf, coils_capacity), discrete_inputs(di_buf, di_capacity),
       holding_registers(hr_buf, hr_capacity),
       input_registers(ir_buf, ir_capacity)
   {
   }
+
+public:
 
   int
   get_coils(uint16_t address, uint8_t *value, uint16_t quantity) const;
@@ -121,6 +109,54 @@ private:
   Coils discrete_inputs;
   Registers holding_registers;
   Registers input_registers;
+};
+
+namespace Detail
+{
+
+template <std::size_t CoilsN, std::size_t DiscreteN, std::size_t HoldingN,
+          std::size_t InputN>
+struct StoreStorage
+{
+  std::array<uint8_t, (CoilsN + 7U) / 8U> coils{};
+  std::array<uint8_t, (DiscreteN + 7U) / 8U> discrete_inputs{};
+  std::array<uint16_t, HoldingN> holding_registers{};
+  std::array<uint16_t, InputN> input_registers{};
+};
+
+} // namespace Detail
+
+/**
+ * @brief Fixed-capacity, allocation-free Modbus data store.
+ *
+ * Capacities count logical bits for coils/discrete inputs and 16-bit values
+ * for holding/input registers.
+ */
+template <std::size_t CoilsN, std::size_t DiscreteN, std::size_t HoldingN,
+          std::size_t InputN>
+class Store final
+  : private Detail::StoreStorage<CoilsN, DiscreteN, HoldingN, InputN>,
+    public StoreCore
+{
+  using Storage = Detail::StoreStorage<CoilsN, DiscreteN, HoldingN, InputN>;
+
+  static_assert(CoilsN > 0U && DiscreteN > 0U && HoldingN > 0U && InputN > 0U,
+                "Modbus store capacities must be non-zero");
+  static_assert(CoilsN <= UINT16_MAX && DiscreteN <= UINT16_MAX &&
+                    HoldingN <= UINT16_MAX && InputN <= UINT16_MAX,
+                "Modbus store capacities must fit in uint16_t");
+
+public:
+  Store()
+    : Storage{},
+      StoreCore(Storage::coils.data(), static_cast<uint16_t>(CoilsN),
+                Storage::discrete_inputs.data(),
+                static_cast<uint16_t>(DiscreteN),
+                Storage::holding_registers.data(),
+                static_cast<uint16_t>(HoldingN),
+                Storage::input_registers.data(), static_cast<uint16_t>(InputN))
+  {
+  }
 };
 
 }; // namespace Embys::Stm32::Modbus

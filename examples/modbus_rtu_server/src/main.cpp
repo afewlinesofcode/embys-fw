@@ -228,17 +228,11 @@ main()
   Uart::Bus<Modbus::kFrameSize, Modbus::kFrameSize> uart_bus(USART1, loop);
   uart_bus.set_rede_pin(&uart_rede);
 
-  // Coils / discrete inputs: ceil(10 / 8) = 2 bytes each
-  static uint8_t coils_buf[2] = {};
-  static uint8_t di_buf[2] = {};
-  static uint16_t hr_buf[MODBUS_TABLE_SIZE] = {};
-  static uint16_t ir_buf[MODBUS_TABLE_SIZE] = {};
+  Modbus::Store<MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE,
+                MODBUS_TABLE_SIZE>
+      modbus_store;
 
-  Modbus::Store modbus_store(coils_buf, MODBUS_TABLE_SIZE, di_buf,
-                             MODBUS_TABLE_SIZE, hr_buf, MODBUS_TABLE_SIZE,
-                             ir_buf, MODBUS_TABLE_SIZE);
-
-  Modbus::Handler modbus_handler(&modbus_store);
+  Modbus::Handler modbus_handler(modbus_store);
   modbus_handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
   modbus_handler.set_coils_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_discrete_inputs_offset(MODBUS_BASE_ADDR);

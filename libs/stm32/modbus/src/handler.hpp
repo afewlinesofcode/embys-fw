@@ -41,9 +41,9 @@ public:
   Handler &
   operator=(Handler &&) = delete;
 
-  explicit Handler(Store *store);
+  explicit Handler(StoreCore &store);
 
-  inline Store *
+  inline StoreCore &
   get_store() const
   {
     return store;
@@ -100,7 +100,7 @@ public:
   }
 
 private:
-  Store *store;
+  StoreCore &store;
   DiagnosticsCounters *diag_counters = nullptr;
   const uint8_t *server_id_buf = nullptr;
   uint8_t server_id_len = 0;
