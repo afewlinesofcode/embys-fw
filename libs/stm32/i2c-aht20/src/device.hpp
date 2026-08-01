@@ -43,7 +43,7 @@ public:
   Device &
   operator=(Device &&) = delete;
 
-  Device(Base::Loop *loop, I2c::Bus *bus);
+  Device(Base::LoopCore *loop, I2c::Bus *bus);
 
   inline bool
   is_initialized() const

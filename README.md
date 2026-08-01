@@ -158,20 +158,14 @@ The `Timer` is used internally by `Loop` — you normally do not call `schedule_
 
 `Embys::Stm32::Base::Loop` is the application main loop. It sleeps with WFI and wakes on timer or module interrupts to run scheduled events and deferred module callbacks.
 
-The Loop owns no dynamic memory — you provide the slot arrays:
+The Loop owns fixed-capacity storage and performs no dynamic allocation:
 
 ```cpp
 Embys::Stm32::Base::Timer timer(TIM2);
 
 constexpr size_t events_capacity = 10;
-static Embys::Stm32::Base::Event *event_slots[events_capacity];
-static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
-
 constexpr size_t modules_capacity = 4;
-static Embys::Stm32::Base::Module module_slots[modules_capacity];
-
-Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                              events_capacity, module_slots, modules_capacity);
+Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 loop.run();
 ```
 
@@ -187,11 +181,11 @@ loop.run();
 void on_event(void *context) { /* ... */ }
 
 // One-shot: fires after 100 ms
-Embys::Stm32::Base::Event event1(&loop, 0, {on_event, &ctx});
+Embys::Stm32::Base::Event event1(loop, 0, {on_event, &ctx});
 event1.enable(100000);
 
 // Periodic: fires every 500 ms
-Embys::Stm32::Base::Event blink(&loop, Embys::Stm32::Base::EV_PERSIST,
+Embys::Stm32::Base::Event blink(loop, Embys::Stm32::Base::EV_PERSIST,
                                 {on_event, &ctx});
 blink.enable(500000);
 

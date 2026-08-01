@@ -75,19 +75,14 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct RtuLoopFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
   uint8_t rx_buf[Modbus::kFrameSize];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
   Uart::Bus uart;
 
   RtuLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
+    : timer(TIM2), loop(timer),
       uart(USART2, &loop, rx_buf, sizeof(rx_buf))
   {
     timer_ptr = &timer;
@@ -108,20 +103,15 @@ struct BaseFixture : RtuLoopFixture
 
 struct BaseFixture38400 : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
   uint8_t rx_buf[Modbus::kFrameSize];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
   Uart::Bus uart;
   TestablBase base;
 
   BaseFixture38400()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
+    : timer(TIM2), loop(timer),
       uart(USART2, &loop, rx_buf, sizeof(rx_buf)), base(&uart)
   {
     timer_ptr = &timer;

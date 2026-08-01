@@ -3,13 +3,13 @@
 namespace Embys::Stm32::Base
 {
 
-Loop::Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
-           size_t events_capacity, Module *module_slots,
-           size_t modules_capacity)
-  : timer(timer), events(event_slots), active_events(active_event_slots),
+LoopCore::LoopCore(Timer &timer, Event **event_slots,
+                   Event **active_event_slots, size_t events_capacity,
+                   Module *module_slots, size_t modules_capacity)
+  : timer(&timer), events(event_slots), active_events(active_event_slots),
     events_capacity(events_capacity), modules(module_slots),
     modules_capacity(modules_capacity),
-    stop_event(this, EV_RT, {loopbreak_callback, this}), active(false)
+    stop_event(*this, EV_RT, {loopbreak_callback, this}), active(false)
 {
   // Initialize event arrays
   for (size_t i = 0; i < events_capacity; ++i)
@@ -25,10 +25,10 @@ Loop::Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
     modules[i].cb.clear();
   }
 
-  timer->set_callback({timer_callback, this});
+  this->timer->set_callback({timer_callback, this});
 }
 
-Loop::~Loop()
+LoopCore::~LoopCore()
 {
   timer->set_callback({}); // Clear timer callback
 
@@ -40,7 +40,7 @@ Loop::~Loop()
 }
 
 void
-Loop::run()
+LoopCore::run()
 {
   active = true;
 
@@ -78,7 +78,7 @@ Loop::run()
 }
 
 int
-Loop::stop(uint32_t us)
+LoopCore::stop(uint32_t us)
 {
   if (stop_scheduled)
   {
@@ -92,7 +92,7 @@ Loop::stop(uint32_t us)
 }
 
 void
-Loop::terminate(int code, void *error_context)
+LoopCore::terminate(int code, void *error_context)
 {
   this->exit_code = code;
   this->error_context = error_context;
@@ -100,7 +100,7 @@ Loop::terminate(int code, void *error_context)
 }
 
 int
-Loop::add(Event *event)
+LoopCore::add(Event *event)
 {
   /*
    * Event may suddenly become not pending after the check below,
@@ -134,7 +134,7 @@ Loop::add(Event *event)
 }
 
 int
-Loop::remove(Event *event)
+LoopCore::remove(Event *event)
 {
   for (size_t i = 0; i < events_capacity; ++i)
   {
@@ -151,7 +151,7 @@ Loop::remove(Event *event)
 }
 
 Module *
-Loop::add_module(Callback<> module_cb)
+LoopCore::add_module(Callback<> module_cb)
 {
   for (size_t i = 0; i < modules_capacity; ++i)
   {
@@ -166,13 +166,13 @@ Loop::add_module(Callback<> module_cb)
 }
 
 void
-Loop::remove_module(Module *module)
+LoopCore::remove_module(Module *module)
 {
   module->cb.clear();
 }
 
 void
-Loop::tick()
+LoopCore::tick()
 {
   // Reset active events processing
   if (active_event_idx == active_events_count)
@@ -228,7 +228,7 @@ Loop::tick()
 }
 
 void
-Loop::schedule_event(Event *event, uint32_t us)
+LoopCore::schedule_event(Event *event, uint32_t us)
 {
   if (!timer->is_enabled())
   {
@@ -250,7 +250,7 @@ Loop::schedule_event(Event *event, uint32_t us)
 }
 
 void
-Loop::run_active_events()
+LoopCore::run_active_events()
 {
   // Process deferred events in main loop context
   while (has_active_events())
@@ -262,7 +262,7 @@ Loop::run_active_events()
 }
 
 void
-Loop::run_modules()
+LoopCore::run_modules()
 {
   // Execute all active module callbacks
   for (size_t i = 0; i < modules_capacity; ++i)
@@ -282,16 +282,16 @@ Loop::run_modules()
 }
 
 void
-Loop::timer_callback(void *context)
+LoopCore::timer_callback(void *context)
 {
-  auto loop = static_cast<Loop *>(context);
+  auto loop = static_cast<LoopCore *>(context);
   loop->tick();
 }
 
 void
-Loop::loopbreak_callback(void *context)
+LoopCore::loopbreak_callback(void *context)
 {
-  auto loop = static_cast<Loop *>(context);
+  auto loop = static_cast<LoopCore *>(context);
   loop->stop_scheduled = false;
   loop->active = false;
 }

@@ -38,7 +38,7 @@ public:
    * @param pin_slots Array of pointers to GPIO pins
    * @param pins_capacity Capacity of the pin registry
    */
-  Bus(Base::Loop *base, Pin **pin_slots, size_t pins_capacity);
+  Bus(Base::LoopCore *base, Pin **pin_slots, size_t pins_capacity);
 
   /**
    * @brief Clean up GPIO bus resources
@@ -57,9 +57,9 @@ public:
 
   /**
    * @brief Get the Base loop associated with this GPIO bus
-   * @return Base::Loop* Pointer to the Base loop
+   * @return Base::LoopCore* Pointer to the Base loop
    */
-  inline Base::Loop *
+  inline Base::LoopCore *
   get_base() const
   {
     return base;
@@ -93,7 +93,7 @@ private:
   /**
    * @brief Pointer to the Base loop for event scheduling
    */
-  Base::Loop *base;
+  Base::LoopCore *base;
 
   /**
    * @brief Registry of active GPIO pins

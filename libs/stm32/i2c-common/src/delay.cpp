@@ -3,7 +3,7 @@
 namespace Embys::Stm32::I2c::Dev
 {
 
-Delay::Delay(Base::Loop *loop) : ev(loop, 0, {fired, this})
+Delay::Delay(Base::LoopCore *loop) : ev(*loop, 0, {fired, this})
 {
 }
 

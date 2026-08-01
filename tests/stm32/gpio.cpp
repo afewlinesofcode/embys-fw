@@ -56,18 +56,14 @@ struct GpioLoopFixture : GpioBaseFixture
   static constexpr size_t modules_capacity = 1;
   static constexpr size_t pins_capacity = 3;
 
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-  Base::Module module_slots[modules_capacity];
   Gpio::Pin *pin_slots[pins_capacity];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<events_capacity, modules_capacity> loop;
   Gpio::Bus bus;
 
   GpioLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        events_capacity, module_slots, modules_capacity),
+    : timer(TIM2), loop(timer),
       bus(&loop, pin_slots, pins_capacity)
   {
     timer_ptr = &timer;

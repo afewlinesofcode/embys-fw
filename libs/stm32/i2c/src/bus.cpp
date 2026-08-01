@@ -7,7 +7,7 @@
 namespace Embys::Stm32::I2c
 {
 
-Bus::Bus(I2C_TypeDef *i2c_, Base::Loop *base_)
+Bus::Bus(I2C_TypeDef *i2c_, Base::LoopCore *base_)
   : i2c(i2c_), base(base_), sm(this)
 {
 }

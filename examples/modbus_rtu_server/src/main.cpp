@@ -197,18 +197,12 @@ main()
   //   6. LED blink-off (one-shot)
   //   7. startup (one-shot)
   constexpr size_t events_capacity = 8;
-  static Base::Event *event_slots[events_capacity];
-  static Base::Event *active_event_slots[events_capacity];
-
   // Modules: GPIO bus, UART bus, I2C bus
   constexpr size_t modules_capacity = 3;
-  static Base::Module module_slots[modules_capacity];
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
-
-  Base::Event blink_off_event(&loop, 0, {on_blink_off, &context});
-  Base::Event startup_event(&loop, 0, {on_start, &context});
+  Base::Event blink_off_event(loop, 0, {on_blink_off, &context});
+  Base::Event startup_event(loop, 0, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 6;
   static Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
@@ -278,7 +272,7 @@ main()
   context.blink_off_event = &blink_off_event;
   context.lcd = &lcd;
 
-  Base::system_init();
+  Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
   TRY(gpio_bus.enable());

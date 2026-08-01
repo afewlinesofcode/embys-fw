@@ -72,7 +72,7 @@ public:
    * @param rx_buffer Caller-allocated buffer for incoming bytes.
    * @param rx_capacity Size of rx_buffer in bytes.
    */
-  Bus(USART_TypeDef *usart, Base::Loop *base, uint8_t *rx_buffer,
+  Bus(USART_TypeDef *usart, Base::LoopCore *base, uint8_t *rx_buffer,
       size_t rx_capacity);
 
   ~Bus();
@@ -101,7 +101,7 @@ public:
     return calc_frame_bits(word_length, stop_bits);
   }
 
-  inline Stm32::Base::Loop *
+  inline Stm32::Base::LoopCore *
   get_base() const
   {
     return base;
@@ -185,7 +185,7 @@ public:
 
 private:
   USART_TypeDef *usart;
-  Base::Loop *base;
+  Base::LoopCore *base;
 
   // ── RX state ─────────────────────────────────────────────────────────
   uint8_t *rx_buffer;

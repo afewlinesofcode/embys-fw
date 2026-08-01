@@ -58,19 +58,14 @@ struct UartLoopFixture : UartBaseFixture
   static constexpr size_t events_capacity = 4;
   static constexpr size_t modules_capacity = 1;
 
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-  Base::Module module_slots[modules_capacity];
-
   uint8_t rx_buf[16];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<events_capacity, modules_capacity> loop;
   Uart::Bus bus;
 
   UartLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        events_capacity, module_slots, modules_capacity),
+    : timer(TIM2), loop(timer),
       bus(USART2, &loop, rx_buf, sizeof(rx_buf))
   {
     timer_ptr = &timer;

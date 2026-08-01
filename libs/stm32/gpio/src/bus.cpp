@@ -7,7 +7,7 @@
 namespace Embys::Stm32::Gpio
 {
 
-Bus::Bus(Base::Loop *base, Pin **pin_slots, size_t pins_capacity)
+Bus::Bus(Base::LoopCore *base, Pin **pin_slots, size_t pins_capacity)
   : base(base), pins(pin_slots), pins_capacity(pins_capacity)
 {
   // Initialize pin registry

@@ -9,11 +9,8 @@
  * Example:
  * ```
  * Timer timer(TIM2);
- * Event *event_slots[10];
- * Event *active_event_slots[10];
- * Module module_slots[5];
- * Loop loop(&timer, event_slots, active_event_slots, 10, module_slots, 5);
- * Event startup_event(&loop, 0, []() { check_sensors(); });
+ * Loop<10, 5> loop(timer);
+ * Event startup_event(loop, 0, {check_sensors, nullptr});
  * loop.run();
  * ```
  *
@@ -24,7 +21,8 @@
  */
 #pragma once
 
-#include <stddef.h>
+#include <array>
+#include <cstddef>
 
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/types.hpp>
@@ -43,20 +41,19 @@ struct Module
   volatile bool interrupted = false;
 };
 
-class Loop
+class LoopCore
 {
 public:
-  Loop() = delete;
-  Loop(const Loop &) = delete;
-  Loop(Loop &&) = delete;
-  Loop &
-  operator=(const Loop &) = delete;
-  Loop &
-  operator=(Loop &&) = delete;
+  LoopCore() = delete;
+  LoopCore(const LoopCore &) = delete;
+  LoopCore(LoopCore &&) = delete;
+  LoopCore &
+  operator=(const LoopCore &) = delete;
+  LoopCore &
+  operator=(LoopCore &&) = delete;
 
   /**
-   * @brief Initialize a new Loop object with specified timer, event slots, and
-   * module slots.
+   * @brief Initialize the type-erased loop core over owned template storage.
    *
    * @param timer Pointer to the Timer object for hardware timing
    * @param event_slots Array to hold pointers to scheduled events
@@ -66,15 +63,16 @@ public:
    * @param module_slots Array to hold registered modules
    * @param modules_capacity Capacity of the module slots array
    */
-  Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
-       size_t events_capacity, Module *module_slots, size_t modules_capacity);
+  LoopCore(Timer &timer, Event **event_slots, Event **active_event_slots,
+           size_t events_capacity, Module *module_slots,
+           size_t modules_capacity);
 
   /**
    * @brief Clean up Base system resources.
    * This includes clearing the timer callback and removing any scheduled stop
    * event.
    */
-  ~Loop();
+  ~LoopCore();
 
   /**
    * @brief Start main loop execution.
@@ -313,6 +311,38 @@ private:
    */
   static void
   loopbreak_callback(void *context);
+};
+
+namespace Detail
+{
+
+template <size_t EventsCapacity, size_t ModulesCapacity>
+struct LoopStorage
+{
+  static_assert(EventsCapacity > 0, "A loop needs at least one event slot");
+  static_assert(ModulesCapacity > 0, "A loop needs at least one module slot");
+
+  std::array<Event *, EventsCapacity> events{};
+  std::array<Event *, EventsCapacity> active_events{};
+  std::array<Module, ModulesCapacity> modules{};
+};
+
+} // namespace Detail
+
+template <size_t EventsCapacity, size_t ModulesCapacity>
+class Loop final
+  : private Detail::LoopStorage<EventsCapacity, ModulesCapacity>,
+    public LoopCore
+{
+  using Storage = Detail::LoopStorage<EventsCapacity, ModulesCapacity>;
+
+public:
+  explicit Loop(Timer &timer)
+    : Storage(),
+      LoopCore(timer, Storage::events.data(), Storage::active_events.data(),
+               EventsCapacity, Storage::modules.data(), ModulesCapacity)
+  {
+  }
 };
 
 }; // namespace Embys::Stm32::Base

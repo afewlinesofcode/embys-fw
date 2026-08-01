@@ -170,24 +170,17 @@ main()
   //   - I2C bus timeout event
   //   - I2C device delay event
   constexpr size_t events_capacity = 5;
-  static Embys::Stm32::Base::Event *event_slots[events_capacity];
-  static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
-
   // Modules:
   //   - GPIO bus
   //   - I2C bus
   constexpr size_t modules_capacity = 2;
-  static Embys::Stm32::Base::Module module_slots[modules_capacity];
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
-
-  Embys::Stm32::Base::Event blink_event(&loop, Embys::Stm32::Base::EV_PERSIST,
+  Embys::Stm32::Base::Event blink_event(loop, Embys::Stm32::Base::EV_PERSIST,
                                         {toggle_led, &context});
 
   // One-shot startup event: fires on the first loop iteration (us=0)
-  Embys::Stm32::Base::Event startup_event(&loop, 0, {on_start, &context});
+  Embys::Stm32::Base::Event startup_event(loop, 0, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 4;
   static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
@@ -228,7 +221,7 @@ main()
 
   // Initialize system (performs DWT setup, needs to be moved to a more
   // central place in the future)
-  Embys::Stm32::Base::system_init();
+  Embys::Stm32::Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
   TRY(gpio_bus.enable());

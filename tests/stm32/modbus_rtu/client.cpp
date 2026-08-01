@@ -46,7 +46,7 @@ namespace
 
 struct TestablClient : Modbus::Rtu::Client
 {
-  TestablClient(Uart::Bus *uart, Embys::Stm32::Base::Loop *loop)
+  TestablClient(Uart::Bus *uart, Embys::Stm32::Base::LoopCore *loop)
     : Modbus::Rtu::Client(uart, loop)
   {
   }
@@ -94,20 +94,15 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct ClientFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
   uint8_t rx_buf[Modbus::kFrameSize];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
   Uart::Bus uart;
   TestablClient client;
 
   ClientFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
+    : timer(TIM2), loop(timer),
       uart(USART2, &loop, rx_buf, sizeof(rx_buf)), client(&uart, &loop)
   {
     timer_ptr = &timer;
@@ -158,7 +153,7 @@ TEST_SUITE("modbus_rtu_client")
       inject_frame({0x01, 0x03, 0x04, 0xAAU, 0xBBU, 0xCCU, 0xDDU});
     };
 
-    Base::Event response_event(&loop, 0, {response_handler, nullptr});
+    Base::Event response_event(loop, 0, {response_handler, nullptr});
     response_event.enable(100);
 
     // Run long enough for both events to execute and for the client to process

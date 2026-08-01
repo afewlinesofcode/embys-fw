@@ -107,21 +107,14 @@ main()
   // Initialize timer instance and update global pointer for interrupt handler
   Embys::Stm32::Base::Timer timer(TIM2);
 
-  // Allocate event slots and module slots for the loop
   constexpr size_t events_capacity = 5;
-  Embys::Stm32::Base::Event *event_slots[events_capacity];
-  Embys::Stm32::Base::Event *active_event_slots[events_capacity];
   constexpr size_t modules_capacity = 1;
-  Embys::Stm32::Base::Module module_slots[modules_capacity];
 
-  // Initialize the main loop with the timer and event/module slots
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   // Create an event to toggle the LED
   Embys::Stm32::Base::Event toggle_led_event(
-      &loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &context});
+      loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &context});
 
   // Set global pointer for timer interrupt handler
   timer_ptr = &timer;

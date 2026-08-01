@@ -28,7 +28,7 @@ reset() noexcept
 }
 
 template <>
-void
+inline void
 reset<Stm32f7>() noexcept
 {
   // Enable instruction and data caches on cores that have them (F7, H7).
@@ -44,7 +44,7 @@ reset<Stm32f7>() noexcept
   reset_dwt();
 }
 
-void
+inline void
 reset_dwt() noexcept
 {
   // Initialize DWT cycle counter for precise timing.

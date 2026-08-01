@@ -23,7 +23,7 @@ namespace Embys::Stm32::I2c::Dev
 class Delay
 {
 public:
-  explicit Delay(Base::Loop *loop);
+  explicit Delay(Base::LoopCore *loop);
 
   void
   exec(uint32_t us, Cb cb);

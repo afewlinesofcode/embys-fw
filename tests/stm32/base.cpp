@@ -36,17 +36,13 @@ struct Stm32BaseFixture
 struct Stm32BaseLoopFixture : Stm32BaseFixture
 {
   static constexpr size_t events_capacity = 5;
-  Embys::Stm32::Base::Event *event_slots[events_capacity];
-  Embys::Stm32::Base::Event *active_event_slots[events_capacity];
   static constexpr size_t modules_capacity = 1;
-  Embys::Stm32::Base::Module module_slots[modules_capacity];
 
   Embys::Stm32::Base::Timer timer;
-  Embys::Stm32::Base::Loop loop;
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop;
 
   Stm32BaseLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        events_capacity, module_slots, modules_capacity)
+    : timer(TIM2), loop(timer)
   {
     timer_ptr = &timer;
   }
@@ -62,16 +58,9 @@ TEST_SUITE("base")
     Embys::Stm32::Base::Timer timer(TIM2);
     timer_ptr = &timer;
 
-    // Allocate event slots and module slots
     constexpr size_t events_capacity = 5;
-    Embys::Stm32::Base::Event *event_slots[events_capacity];
-    Embys::Stm32::Base::Event *active_event_slots[events_capacity];
     constexpr size_t modules_capacity = 1;
-    Embys::Stm32::Base::Module module_slots[modules_capacity];
-
-    Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                  events_capacity, module_slots,
-                                  modules_capacity);
+    Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
     // Verify that DWT cycle counter is initialized to 0
     CHECK(DWT->CYCCNT == 0);
@@ -96,7 +85,7 @@ TEST_SUITE("base")
     };
 
     // Schedule an event to run after 5 microseconds
-    Embys::Stm32::Base::Event event(&loop, 0, {callback, &event_calls});
+    Embys::Stm32::Base::Event event(loop, 0, {callback, &event_calls});
     event.enable(5);
 
     // Schedule loop to stop after 10 microseconds
@@ -125,7 +114,7 @@ TEST_SUITE("base")
     };
 
     // Schedule a persisted event to run every 5 microseconds
-    Embys::Stm32::Base::Event event(&loop, Embys::Stm32::Base::EV_PERSIST,
+    Embys::Stm32::Base::Event event(loop, Embys::Stm32::Base::EV_PERSIST,
                                     {callback, &event_calls});
     event.enable(5);
 
@@ -166,9 +155,9 @@ TEST_SUITE("base")
     };
 
     // Schedule two events to run at different intervals
-    Embys::Stm32::Base::Event event1(&loop, Embys::Stm32::Base::EV_PERSIST,
+    Embys::Stm32::Base::Event event1(loop, Embys::Stm32::Base::EV_PERSIST,
                                      {callback1, &event1_calls});
-    Embys::Stm32::Base::Event event2(&loop, Embys::Stm32::Base::EV_PERSIST,
+    Embys::Stm32::Base::Event event2(loop, Embys::Stm32::Base::EV_PERSIST,
                                      {callback2, &event2_calls});
     event1.enable(5);  // Every 5 us
     event2.enable(10); // Every 10 us

@@ -8,10 +8,10 @@
 namespace Embys::Stm32::Uart
 {
 
-Bus::Bus(USART_TypeDef *usart, Base::Loop *base, uint8_t *rx_buffer,
+Bus::Bus(USART_TypeDef *usart, Base::LoopCore *base, uint8_t *rx_buffer,
          size_t rx_capacity)
   : usart(usart), base(base), rx_buffer(rx_buffer), rx_capacity(rx_capacity),
-    timeout_event(base, Base::EV_RT, {Bus::timeout_handler, this})
+    timeout_event(*base, Base::EV_RT, {Bus::timeout_handler, this})
 {
 }
 

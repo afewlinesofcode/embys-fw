@@ -139,17 +139,11 @@ main()
 
   // events: UART timeout event + loop stop event
   constexpr size_t events_capacity = 2;
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-
   // modules: GPIO bus module + UART module
   constexpr size_t modules_capacity = 2;
-  Base::Module module_slots[modules_capacity];
-
   Base::Timer timer(TIM2);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating

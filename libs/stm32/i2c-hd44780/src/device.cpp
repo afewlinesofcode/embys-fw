@@ -3,7 +3,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Device::Device(Base::Loop *loop, I2c::Bus *bus, uint8_t addr7)
+Device::Device(Base::LoopCore *loop, I2c::Bus *bus, uint8_t addr7)
   : cmd_delay(loop), cmd_write(bus, addr7),
     cmd_pulse_enable(&cmd_write, &cmd_delay),
     cmd_write_bits(&state, &cmd_pulse_enable), cmd_send(&cmd_write_bits),

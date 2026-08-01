@@ -163,20 +163,13 @@ main()
   // - Blink event
   // - Stop event (built into the loop instance)
   constexpr size_t events_capacity = 2;
-  Embys::Stm32::Base::Event *event_slots[events_capacity];
-  Embys::Stm32::Base::Event *active_event_slots[events_capacity];
   // Allocate memory for modules:
   // - GPIO module
   constexpr size_t modules_capacity = 1;
-  Embys::Stm32::Base::Module module_slots[modules_capacity];
-
-  // Initialize the main loop instance
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   // Initialize blink event with a callback to toggle LED state
-  Embys::Stm32::Base::Event blink_event(&loop, Embys::Stm32::Base::EV_PERSIST,
+  Embys::Stm32::Base::Event blink_event(loop, Embys::Stm32::Base::EV_PERSIST,
                                         {toggle_led, &context});
 
   // Allocate memory for GPIO pins:

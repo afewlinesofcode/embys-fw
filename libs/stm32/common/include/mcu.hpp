@@ -11,6 +11,11 @@ struct Stm32f4
 {
 };
 
+// Reserved family tag. F7 target support is intentionally deferred.
+struct Stm32f7
+{
+};
+
 struct Stm32f103xb
 {
 };

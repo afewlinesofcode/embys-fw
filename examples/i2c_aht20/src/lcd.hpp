@@ -30,7 +30,7 @@ public:
   Lcd &
   operator=(Lcd &&) = delete;
 
-  Lcd(Embys::Stm32::Base::Loop *loop, Embys::Stm32::I2c::Bus *i2c_bus)
+  Lcd(Embys::Stm32::Base::LoopCore *loop, Embys::Stm32::I2c::Bus *i2c_bus)
     : lcd(loop, i2c_bus) {};
 
   inline State

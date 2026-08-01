@@ -5,7 +5,7 @@ namespace Embys::Stm32::I2c::Dev::Aht20
 
 static constexpr uint8_t AHT20_ADDR = 0x38u;
 
-Device::Device(Base::Loop *loop, I2c::Bus *bus)
+Device::Device(Base::LoopCore *loop, I2c::Bus *bus)
   : timeout(loop), write(bus), read(bus)
 {
 }

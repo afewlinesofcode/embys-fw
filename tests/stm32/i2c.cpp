@@ -58,17 +58,12 @@ struct I2cLoopFixture : I2cBaseFixture
   static constexpr size_t events_capacity = 2;
   static constexpr size_t modules_capacity = 1;
 
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-  Base::Module module_slots[modules_capacity];
-
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<events_capacity, modules_capacity> loop;
   I2c::Bus bus;
 
   I2cLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        events_capacity, module_slots, modules_capacity),
+    : timer(TIM2), loop(timer),
       bus(I2C1, &loop)
   {
     timer_ptr = &timer;

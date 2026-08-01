@@ -21,7 +21,7 @@
 
 namespace Embys::Stm32::Base
 {
-class Loop;
+class LoopCore;
 }
 
 namespace Embys::Stm32::I2c

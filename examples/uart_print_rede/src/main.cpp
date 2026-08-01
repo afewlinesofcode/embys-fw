@@ -82,7 +82,7 @@ static const char message[] = "Hello from STM32!\r\n";
 struct AppContext
 {
   bool tx_busy = false;
-  Base::Loop *loop = nullptr;
+  Base::LoopCore *loop = nullptr;
   Uart::Bus *uart = nullptr;
   Gpio::Pin *led_pin = nullptr;
   Base::Event *blink_off_event = nullptr;
@@ -138,20 +138,14 @@ main()
   // events:
   // print event, internal UART timeout event, loop stop event, blink-off event
   constexpr size_t events_capacity = 5;
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-
   // modules: GPIO bus module + UART module
   constexpr size_t modules_capacity = 2;
-  Base::Module module_slots[modules_capacity];
-
   Base::Timer timer(TIM2);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Event print_event(&loop, Base::EV_PERSIST, {send_message, &app_ctx});
-  Base::Event blink_off_event(&loop, 0, {on_blink_off, &app_ctx});
+  Base::Event print_event(loop, Base::EV_PERSIST, {send_message, &app_ctx});
+  Base::Event blink_off_event(loop, 0, {on_blink_off, &app_ctx});
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating

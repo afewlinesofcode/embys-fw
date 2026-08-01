@@ -7,7 +7,7 @@
  *
  * Example:
  * ```
- * Event blink_event(&loop, EV_PERSIST, []() { toggle_led(); });
+ * Event blink_event(loop, EV_PERSIST, {toggle_led, nullptr});
  * blink_event.enable(500000); // Schedule to run every half second
  * ```
  *
@@ -25,7 +25,7 @@
 namespace Embys::Stm32::Base
 {
 
-class Loop;
+class LoopCore;
 
 // Event flags
 
@@ -41,7 +41,7 @@ struct Event
   /**
    * @brief Pointer to the Base system loop managing this event
    */
-  Loop *loop;
+  LoopCore *loop;
 
   /**
    * @brief Event flags (EV_PERSIST, EV_RT, etc.)
@@ -84,7 +84,7 @@ struct Event
    * @param flags Event flags (EV_PERSIST, EV_RT, etc.)
    * @param cb Event callback function
    */
-  Event(Loop *loop, uint8_t flags, Callback<> cb);
+  Event(LoopCore &loop, uint8_t flags, Callback<> cb);
 
   /**
    * @brief Enable the event with a specified interval in microseconds

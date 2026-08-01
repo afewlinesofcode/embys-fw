@@ -67,7 +67,7 @@ public:
    * @param i2c  Peripheral instance (I2C1 or I2C2).
    * @param base Main loop for module and event registration.
    */
-  Bus(I2C_TypeDef *i2c, Base::Loop *base);
+  Bus(I2C_TypeDef *i2c, Base::LoopCore *base);
   ~Bus();
 
   inline I2C_TypeDef *
@@ -76,7 +76,7 @@ public:
     return i2c;
   }
 
-  inline Base::Loop *
+  inline Base::LoopCore *
   get_base() const
   {
     return base;
@@ -153,7 +153,7 @@ public:
 
 private:
   I2C_TypeDef *i2c;
-  Base::Loop *base;
+  Base::LoopCore *base;
   Sm sm;
   Base::Module *module = nullptr;
   uint32_t scl_hz = 0u;

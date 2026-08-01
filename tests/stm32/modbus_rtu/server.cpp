@@ -45,7 +45,7 @@ inject_frame(std::vector<uint8_t> frame)
 }
 
 static std::vector<uint8_t>
-run_and_capture(Base::Loop &loop, uint32_t timeout_us = 500U)
+run_and_capture(Base::LoopCore &loop, uint32_t timeout_us = 500U)
 {
   loop.stop(timeout_us);
   loop.run();
@@ -105,19 +105,14 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct RtuLoopFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
   uint8_t rx_buf[Modbus::kFrameSize];
 
   Base::Timer timer;
-  Base::Loop loop;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
   Uart::Bus uart;
 
   RtuLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
+    : timer(TIM2), loop(timer),
       uart(USART2, &loop, rx_buf, sizeof(rx_buf))
   {
     timer_ptr = &timer;
