@@ -222,10 +222,14 @@ Embys::Stm32::cs_end();   // restore PRIMASK (nesting-aware)
 
 Base path: `libs/stm32/gpio/`
 
-Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1. Two classes make up the public API:
+Provides GPIO pin configuration and interrupt-driven input callbacks for F1
+and F4 targets. Two types make up the public API:
 
 - `Embys::Stm32::Gpio::Bus<N>` — a `Module` with an owned, fixed-capacity pin registry. It configures GPIO/EXTI and dispatches callbacks in loop context.
-- `Embys::Stm32::Gpio::Pin` — represents a single GPIO pin. Supports output (push-pull, open-drain, AF) and input (floating, pull-up/pull-down, with optional EXTI interrupt).
+- `Embys::Stm32::Gpio::Pin<Port, Index, Config>` — declares a pin at compile
+  time. Invalid ports, indices, and conflicting configuration flags fail the
+  build. `InputPin`, `OutputPin`, `UartPin`, and `I2cPin` are convenience
+  aliases.
 
 **Caller responsibilities:**
 
@@ -235,32 +239,23 @@ Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1
 
 **Link**: add `libstm32-gpio.a` to `LDLIBS` and include `<embys/stm32/gpio/bus.hpp>` / `<embys/stm32/gpio/pin.hpp>`.
 
-Key enums (from `api.hpp`):
-
-| Enum     | Values                                                                  |
-| -------- | ----------------------------------------------------------------------- |
-| `Mode`   | `IN`, `OUT_2`, `OUT_10`, `OUT_50`                                       |
-| `Cnf`    | `IN_AN`, `IN_FL`, `IN_PU`, `OUT_PP`, `OUT_OD`, `OUT_PP_AF`, `OUT_OD_AF` |
-| `PinCfg` | `NONE`, `PULL_UP`, `PULL_DOWN`, `IRQ`                                   |
+`PinCfg` combines direction, electrical, speed, interrupt, and peripheral-role
+flags such as `IN`, `OUT`, `OD`, `PU`, `LISTEN`, `HIGH`, `UART`, and `I2C`.
 
 #### Example
 
 ```cpp
-using GpioMode = Embys::Stm32::Gpio::Mode;
-using GpioCnf  = Embys::Stm32::Gpio::Cnf;
-using PinCfg   = Embys::Stm32::Gpio::PinCfg;
+namespace Gpio = Embys::Stm32::Gpio;
 
 constexpr size_t gpio_pins_capacity = 2;
-Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
+Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
-// LED on PC13: output 2 MHz, push-pull, no extra config
-Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                GpioCnf::OUT_PP, PinCfg::NONE);
+// LED on PC13: output with medium speed
+Gpio::OutputPin<Gpio::Port::C, 13, Gpio::PinCfg::MEDIUM> led_pin(gpio_bus);
 led_pin.set_init_value(1); // start with LED off (active-low)
 
 // Button on PA0: input floating, EXTI on both edges
-Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
-                                   GpioCnf::IN_FL, PinCfg::IRQ);
+Gpio::InputPin<Gpio::Port::A, 0, Gpio::PinCfg::LISTEN> button_pin(gpio_bus);
 button_pin.set_callback({toggle_btn, &context});
 
 // Wire the IRQ handler (in your IRQ handler .cpp)

@@ -78,7 +78,7 @@ struct AppContext
   /**
    * @brief Pointer to LED pin
    */
-  Embys::Stm32::Gpio::Pin *led = nullptr;
+  Embys::Stm32::Gpio::PinCore *led = nullptr;
 
   /**
    * @brief Pointer to blink event
@@ -180,12 +180,14 @@ main()
   Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // Initialize button pin at PA0 (Input floating with IRQ)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
-                                     PinCfg::IN | PinCfg::LISTEN);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::A, 0,
+                          PinCfg::IN | PinCfg::LISTEN>
+      button_pin(gpio_bus);
   button_pin.set_callback({toggle_btn, &context});
 
   // Initialize LED pin at PC13 (Output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, PinCfg::OUT);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13, PinCfg::OUT> led_pin(
+      gpio_bus);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // Set global pointers for interrupt handlers
@@ -196,8 +198,7 @@ main()
   context.blink_event = &blink_event;
   context.led = &led_pin;
   context.blink_on = true;
-  context.blink_event->enable(
-      std::chrono::microseconds{LED_BLINK_INTERVAL_US});
+  context.blink_event->enable(std::chrono::microseconds{LED_BLINK_INTERVAL_US});
 
   // Enable peripherals before starting main loop
   TRY(gpio_bus.enable());

@@ -187,25 +187,29 @@ main()
   Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // Button on PA0 (input floating, EXTI)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
-                                     PinCfg::IN | PinCfg::LISTEN);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::A, 0,
+                          PinCfg::IN | PinCfg::LISTEN>
+      button_pin(gpio_bus);
   button_pin.set_callback({toggle_btn, &context});
 
   // LED on PC13 (output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                                  PinCfg::OUT | PinCfg::MEDIUM);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13,
+                          PinCfg::OUT | PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 6,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_scl(gpio_bus);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 7,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_sda(gpio_bus);
 
-  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16>
-      i2c_bus(loop);
+  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
+      loop);
 
   Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(&loop, &i2c_bus);
 

@@ -10,6 +10,17 @@
 namespace Sim = Embys::Stm32::Sim;
 using namespace Embys::Stm32;
 
+static_assert(Gpio::port_available<Stm32f103xb, Gpio::Port::D>);
+static_assert(!Gpio::port_available<Stm32f103xb, Gpio::Port::E>);
+static_assert(Gpio::port_available<Stm32f407xx, Gpio::Port::G>);
+static_assert(Gpio::port_available<Stm32f407xx, Gpio::Port::I>);
+static_assert(!Gpio::port_available<Stm32f411xe, Gpio::Port::G>);
+static_assert(!Gpio::port_available<Stm32f411xe, Gpio::Port::I>);
+static_assert(Gpio::port_available<Stm32f411xe, Gpio::Port::H>);
+static_assert(Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU>);
+static_assert(!Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU |
+                                  Gpio::PinCfg::PD>);
+
 // ── fixtures ──────────────────────────────────────────────────────────────
 
 struct GpioBaseFixture
@@ -60,8 +71,7 @@ struct GpioLoopFixture : GpioBaseFixture
   Base::Loop<events_capacity, modules_capacity> loop;
   Gpio::Bus<pins_capacity> bus;
 
-  GpioLoopFixture()
-    : timer(TIM2), loop(timer), bus(loop)
+  GpioLoopFixture() : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     gpio_bus_ptr = &bus;
@@ -84,16 +94,11 @@ read_cr_nibble(GPIO_TypeDef *port, uint8_t index)
 TEST_SUITE("gpio")
 {
 
-  TEST_CASE_FIXTURE(GpioLoopFixture,
-                    "Pin: enable rejects PULL_UP + PULL_DOWN combination")
+  TEST_CASE("Pin: compile-time validation rejects pull-up plus pull-down")
   {
-    bus.enable();
-
-    Gpio::Pin pin(&bus, GPIOA, 0,
-                  Gpio::PinCfg::IN | Gpio::PinCfg::PU | Gpio::PinCfg::PD);
-
-    CHECK(pin.enable() < 0);
-    CHECK(!pin.is_enabled());
+    CHECK((Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU>));
+    CHECK_FALSE((Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU |
+                                    Gpio::PinCfg::PD>));
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
@@ -102,7 +107,7 @@ TEST_SUITE("gpio")
     bus.enable();
 
     // Unified PinCfg allows input pull-up directly without CNF coupling.
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::PU);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::PU> pin(bus);
 
     CHECK(pin.enable() == 0);
     CHECK(pin.is_enabled());
@@ -116,7 +121,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
     CHECK(pin.enable() == 0);
 
@@ -130,7 +135,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PU);
+    Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PU> pin(bus);
 
     CHECK(pin.enable() == 0);
     CHECK((GPIOA->ODR & (1u << 3)) != 0);
@@ -144,7 +149,7 @@ TEST_SUITE("gpio")
     // Pre-set the ODR bit to make sure the test actually clears it
     SET_BIT_V(GPIOA->ODR, (1u << 3));
 
-    Gpio::Pin pin(&bus, GPIOA, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PD);
+    Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PD> pin(bus);
 
     CHECK(pin.enable() == 0);
     CHECK((GPIOA->ODR & (1u << 3)) == 0);
@@ -154,7 +159,8 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
+        bus);
 
     CHECK(pin.enable() == 0);
 
@@ -172,7 +178,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
     CHECK(pin.enable() == 0);
     uint32_t crl_after_first = GPIOA->CRL;
@@ -186,7 +192,7 @@ TEST_SUITE("gpio")
   {
     // bus.enable() deliberately NOT called
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
     CHECK(pin.enable() == Gpio::BUS_NOT_ENABLED);
     CHECK(!pin.is_enabled());
@@ -199,7 +205,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::OUT);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::OUT> pin(bus);
 
     CHECK(pin.enable() == 0);
     CHECK(pin.disable() == 0);
@@ -213,7 +219,8 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
+        bus);
 
     CHECK(pin.enable() == 0);
     CHECK(pin.disable() == 0);
@@ -230,7 +237,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
     CHECK(pin.enable() == 0);
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
@@ -245,7 +252,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::IN> pin(bus);
 
     CHECK(pin.enable() == 0);
 
@@ -265,7 +272,7 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 2, Gpio::PinCfg::OUT);
+    Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::OUT> pin(bus);
 
     CHECK(pin.enable() == 0);
 
@@ -286,16 +293,16 @@ TEST_SUITE("gpio")
     bus.enable();
 
     // Fill all 3 slots (GpioLoopFixture has pins_capacity = 3)
-    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::PinCfg::IN);
-    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::PinCfg::IN);
-    Gpio::Pin pin2(&bus, GPIOA, 2, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin0(bus);
+    Gpio::Pin<Gpio::Port::A, 1, Gpio::PinCfg::IN> pin1(bus);
+    Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::IN> pin2(bus);
 
     CHECK(pin0.enable() == 0);
     CHECK(pin1.enable() == 0);
     CHECK(pin2.enable() == 0);
 
     // Fourth pin exceeds capacity
-    Gpio::Pin pin3(&bus, GPIOA, 3, Gpio::PinCfg::IN);
+    Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN> pin3(bus);
 
     CHECK(pin3.enable() == Gpio::BUS_FULL);
   }
@@ -307,7 +314,8 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
+        bus);
     CHECK(pin.enable() == 0);
 
     std::vector<uint8_t> calls;
@@ -333,7 +341,8 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
+        bus);
     CHECK(pin.enable() == 0);
 
     std::vector<uint8_t> calls;
@@ -361,8 +370,10 @@ TEST_SUITE("gpio")
     bus.enable();
 
     // PA0 → EXTI0, PA1 → EXTI1
-    Gpio::Pin pin0(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
-    Gpio::Pin pin1(&bus, GPIOA, 1, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin0(
+        bus);
+    Gpio::Pin<Gpio::Port::A, 1, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin1(
+        bus);
 
     CHECK(pin0.enable() == 0);
     CHECK(pin1.enable() == 0);
@@ -394,7 +405,8 @@ TEST_SUITE("gpio")
   {
     bus.enable();
 
-    Gpio::Pin pin(&bus, GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN);
+    Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
+        bus);
     CHECK(pin.enable() == 0);
 
     int call_count = 0;

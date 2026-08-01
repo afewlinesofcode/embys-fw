@@ -1,13 +1,15 @@
+#include "bus.hpp"
+
 #include <embys/stm32/def.hpp>
 
-#include "bus.hpp"
 #include "def.hpp"
 #include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
 {
 
-BusCore::BusCore(Base::LoopCore &base, Pin **pin_slots, size_t pins_capacity)
+BusCore::BusCore(Base::LoopCore &base, PinCore **pin_slots,
+                 size_t pins_capacity)
   : base(&base), pins(pin_slots), pins_capacity(pins_capacity)
 {
   // Initialize pin registry
@@ -68,7 +70,7 @@ BusCore::handle_irq(uint8_t start, uint8_t end)
 }
 
 int
-BusCore::add(Pin *pin)
+BusCore::add(PinCore *pin)
 {
   TRY(check_enabled());
 
@@ -87,7 +89,7 @@ BusCore::add(Pin *pin)
 }
 
 int
-BusCore::remove(Pin *pin)
+BusCore::remove(PinCore *pin)
 {
   TRY(check_enabled());
 

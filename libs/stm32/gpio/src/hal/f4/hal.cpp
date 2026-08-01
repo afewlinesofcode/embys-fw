@@ -157,6 +157,10 @@ get_port_num(GPIO_TypeDef *port)
 #endif
   if (port == GPIOH)
     return 7;
+#ifdef GPIOI
+  if (port == GPIOI)
+    return 8;
+#endif
   return 0xFF;
 }
 
@@ -186,6 +190,10 @@ gpio_ahb1_en_mask(GPIO_TypeDef *port)
 #endif
   if (port == GPIOH)
     return RCC_AHB1ENR_GPIOHEN;
+#ifdef GPIOI
+  if (port == GPIOI)
+    return RCC_AHB1ENR_GPIOIEN;
+#endif
   return 0;
 }
 
@@ -212,6 +220,10 @@ gpio_ahb1_rst_mask(GPIO_TypeDef *port)
 #endif
   if (port == GPIOH)
     return RCC_AHB1RSTR_GPIOHRST;
+#ifdef GPIOI
+  if (port == GPIOI)
+    return RCC_AHB1RSTR_GPIOIRST;
+#endif
   return 0;
 }
 

@@ -208,24 +208,25 @@ main()
   Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // PC13: LED (output push-pull, 2 MHz, active-low)
-  Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                    Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::C, 13, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1); // off at start
 
   // PA8: RE/DE (output push-pull, 50 MHz) — MAX485 direction control
-  Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8,
-                      Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::A, 8, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      uart_rede(gpio_bus);
   uart_rede.set_init_value(0); // start in receive mode
 
   // PA9: TX (AF push-pull, 50 MHz)
-  Gpio::Pin uart_tx(&gpio_bus, GPIOA, 9,
-                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 9, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> uart_tx(
+      gpio_bus);
 
   // PA10: RX (AF7 on F4/F7/H7; no-op on F1)
-  Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10,
-                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 10, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> uart_rx(
+      gpio_bus);
 
-  Uart::Bus<Uart::Instance::Usart1, Modbus::kFrameSize, Modbus::kFrameSize> uart_bus(loop);
+  Uart::Bus<Uart::Instance::Usart1, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart_bus(loop);
   uart_bus.set_rede_pin(&uart_rede);
 
   Modbus::Store<MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE,
@@ -244,12 +245,12 @@ main()
   modbus_server.set_on_request_callback({on_request, &context});
 
   // PB6: SCL (open-drain AF, 50 MHz)
-  Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                    Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::B, 6, Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH> i2c_scl(
+      gpio_bus);
 
   // PB7: SDA (open-drain AF, 50 MHz)
-  Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                    Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::B, 7, Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH> i2c_sda(
+      gpio_bus);
 
   I2c::Bus<I2c::Instance::I2c1, 16, 16> i2c_bus(loop);
   ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);

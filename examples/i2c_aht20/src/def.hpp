@@ -18,7 +18,7 @@ constexpr uint32_t LED_BLINK_US = 1000u;
 
 namespace Embys::Stm32::Gpio
 {
-class Pin;
+class PinCore;
 };
 
 namespace Embys::Stm32::Base
@@ -43,7 +43,7 @@ class Lcd;
  */
 struct AppContext
 {
-  Embys::Stm32::Gpio::Pin *led = nullptr;
+  Embys::Stm32::Gpio::PinCore *led = nullptr;
   Embys::Stm32::Base::Event *query_event = nullptr;
   Embys::Stm32::Base::Event *led_off_event = nullptr;
   Embys::Stm32::I2c::Dev::Aht20::Device *aht20 = nullptr;

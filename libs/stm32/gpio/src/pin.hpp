@@ -13,6 +13,7 @@
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
+#include "resource.hpp"
 #include "stm32xx.hpp"
 
 namespace Embys::Stm32::Gpio
@@ -21,28 +22,20 @@ namespace Embys::Stm32::Gpio
 class BusCore;
 class Api;
 
-class Pin
+class PinCore
 {
 public:
-  /**
-   * @brief Construct a new Pin object with specified GPIO port, index, and
-   * configuration
-   * @param bus Pointer to the GPIO bus managing this pin
-   * @param port GPIO port (GPIOA, GPIOB, …)
-   * @param index Pin index within the port (0..15)
-   * @param cfg Pin configuration flags (PinCfg bitmask)
-   */
-  Pin(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
-
-  Pin(BusCore *bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
-    : Pin(*bus, port, index, cfg)
-  {
-  }
+  PinCore(const PinCore &) = delete;
+  PinCore(PinCore &&) = delete;
+  PinCore &
+  operator=(const PinCore &) = delete;
+  PinCore &
+  operator=(PinCore &&) = delete;
 
   /**
    * @brief Destroy the Pin object and release resources
    */
-  ~Pin();
+  ~PinCore();
 
   /**
    * @brief Set the initial output value for this pin. This value will be
@@ -54,11 +47,16 @@ public:
 
   /**
    * @brief Bind a PWM timer to this pin for PWM output
-   * @param timer Pointer to the Base::Timer object for PWM generation
-   * @param channel Timer channel number for PWM output (1..4)
+   * @param timer Timer used for PWM generation.
    */
+  template <uint8_t Channel>
   void
-  bind_pwm(Base::Timer *timer, uint8_t channel);
+  bind_pwm(Base::Timer &timer)
+  {
+    static_assert(Channel >= 1 && Channel <= 4,
+                  "PWM channel must be in the range 1..4");
+    bind_pwm_impl(timer, Channel);
+  }
 
   /**
    * @brief Set the callback to be invoked on pin interrupt events
@@ -145,6 +143,17 @@ public:
 private:
   friend class BusCore;
 
+protected:
+  /**
+   * @brief Construct the capacity-independent core for a typed pin.
+   * @param bus GPIO bus managing this pin.
+   * @param port GPIO peripheral selected by the Pin template.
+   * @param index Compile-time pin index in the range 0..15.
+   * @param cfg Compile-time pin configuration.
+   */
+  PinCore(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg);
+
+private:
   bool enabled;
 
   BusCore *bus;         ///< GPIO controller managing this pin
@@ -164,6 +173,40 @@ private:
    */
   void
   trigger();
+
+  void
+  bind_pwm_impl(Base::Timer &timer, uint8_t channel);
 };
+
+template <Port SelectedPort, uint8_t Index, PinCfg Config>
+class Pin final : public PinCore
+{
+  static_assert(Index < 16, "GPIO pin index must be in the range 0..15");
+  static_assert(port_available<Stm32::TargetDevice, SelectedPort>,
+                "Selected GPIO port is not available on this target");
+  static_assert(config_valid<Config>, "Invalid GPIO pin configuration");
+
+public:
+  static constexpr Port port = SelectedPort;
+  static constexpr uint8_t index = Index;
+  static constexpr PinCfg config = Config;
+
+  explicit Pin(BusCore &bus)
+    : PinCore(bus, port_address<SelectedPort>(), Index, Config)
+  {
+  }
+};
+
+template <Port SelectedPort, uint8_t Index, PinCfg Options = PinCfg::NONE>
+using InputPin = Pin<SelectedPort, Index, PinCfg::IN | Options>;
+
+template <Port SelectedPort, uint8_t Index, PinCfg Options = PinCfg::NONE>
+using OutputPin = Pin<SelectedPort, Index, PinCfg::OUT | Options>;
+
+template <Port SelectedPort, uint8_t Index, PinCfg Options = PinCfg::NONE>
+using UartPin = Pin<SelectedPort, Index, PinCfg::UART | Options>;
+
+template <Port SelectedPort, uint8_t Index, PinCfg Options = PinCfg::NONE>
+using I2cPin = Pin<SelectedPort, Index, PinCfg::I2C | Options>;
 
 }; // namespace Embys::Stm32::Gpio

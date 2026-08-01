@@ -9,12 +9,12 @@
 namespace Embys::Stm32::Gpio
 {
 
-Pin::Pin(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
+PinCore::PinCore(BusCore &bus, GPIO_TypeDef *port, uint8_t index, PinCfg cfg)
   : enabled(false), bus(&bus), port(port), index(index), cfg(cfg)
 {
 }
 
-Pin::~Pin()
+PinCore::~PinCore()
 {
   if (enabled)
   {
@@ -23,33 +23,33 @@ Pin::~Pin()
 }
 
 void
-Pin::set_init_value(uint8_t value)
+PinCore::set_init_value(uint8_t value)
 {
   init_value = value ? 1 : 0;
   has_init_value = true;
 }
 
 void
-Pin::bind_pwm(Base::Timer *timer, uint8_t channel)
+PinCore::bind_pwm_impl(Base::Timer &timer, uint8_t channel)
 {
-  pwm.timer = timer;
+  pwm.timer = &timer;
   pwm.channel = channel;
 }
 
 void
-Pin::set_callback(Callback<uint8_t> cb)
+PinCore::set_callback(Callback<uint8_t> cb)
 {
   this->cb = cb;
 }
 
 void
-Pin::clear_callback()
+PinCore::clear_callback()
 {
   cb.clear();
 }
 
 int
-Pin::enable()
+PinCore::enable()
 {
   if (enabled)
   {
@@ -72,7 +72,7 @@ Pin::enable()
 }
 
 int
-Pin::disable()
+PinCore::disable()
 {
   if (!enabled)
   {
@@ -94,19 +94,19 @@ Pin::disable()
 }
 
 int
-Pin::read(uint8_t *value)
+PinCore::read(uint8_t *value)
 {
   return read_pin(port, index, value);
 }
 
 int
-Pin::write(uint8_t value)
+PinCore::write(uint8_t value)
 {
   return write_pin(port, index, value);
 }
 
 void
-Pin::trigger()
+PinCore::trigger()
 {
   uint8_t value;
 

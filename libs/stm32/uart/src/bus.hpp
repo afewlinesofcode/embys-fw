@@ -14,9 +14,10 @@
 #pragma once
 
 #include <array>
+#include <type_traits>
+
 #include <stddef.h>
 #include <stdint.h>
-#include <type_traits>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/gpio/pin.hpp>
@@ -113,7 +114,7 @@ public:
    * after the TC (transmission-complete) interrupt fires.
    */
   inline void
-  set_rede_pin(Gpio::Pin *pin)
+  set_rede_pin(Gpio::PinCore *pin)
   {
     rede_pin = pin;
   }
@@ -214,7 +215,7 @@ private:
   StopBits stop_bits = StopBits::One;
   uint32_t baud_rate = 0;
 
-  Gpio::Pin *rede_pin = nullptr;
+  Gpio::PinCore *rede_pin = nullptr;
 
   bool enabled = false;
 

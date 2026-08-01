@@ -100,10 +100,10 @@ main()
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
   Gpio::Bus<2> gpio_bus(loop);
-  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
-  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 9, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_tx(
+      gpio_bus);
+  Gpio::Pin<Gpio::Port::A, 10, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_rx(
+      gpio_bus);
 
 
   Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);

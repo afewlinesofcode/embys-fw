@@ -68,8 +68,7 @@ struct UartLoopFixture : UartBaseFixture
   Base::Loop<events_capacity, modules_capacity> loop;
   Uart::Bus<Uart::Instance::Usart2, 16, 32> bus;
 
-  UartLoopFixture()
-    : timer(TIM2), loop(timer), bus(loop)
+  UartLoopFixture() : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &bus;
@@ -81,10 +80,9 @@ struct UartLoopFixture : UartBaseFixture
 struct UartRedeFixture : UartLoopFixture
 {
   Gpio::Bus<1> gpio_bus;
-  Gpio::Pin rede;
+  Gpio::Pin<Gpio::Port::A, 5, Gpio::PinCfg::OUT> rede;
 
-  UartRedeFixture()
-    : gpio_bus(loop), rede(gpio_bus, GPIOA, 5, Gpio::PinCfg::OUT)
+  UartRedeFixture() : gpio_bus(loop), rede(gpio_bus)
   {
   }
 };

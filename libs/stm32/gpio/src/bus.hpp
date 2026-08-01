@@ -34,13 +34,12 @@ namespace Embys::Stm32::Gpio
 class BusCore
 {
 public:
-  /**
-   * @brief Initialize GPIO bus with given Base loop and pin registry
-   * @param base Pointer to the Base loop for event scheduling
-   * @param pin_slots Array of pointers to GPIO pins
-   * @param pins_capacity Capacity of the pin registry
-   */
-  BusCore(Base::LoopCore &base, Pin **pin_slots, size_t pins_capacity);
+  BusCore(const BusCore &) = delete;
+  BusCore(BusCore &&) = delete;
+  BusCore &
+  operator=(const BusCore &) = delete;
+  BusCore &
+  operator=(BusCore &&) = delete;
 
   /**
    * @brief Clean up GPIO bus resources
@@ -90,8 +89,12 @@ public:
   handle_irq(uint8_t start, uint8_t end);
 
 private:
-  friend class Pin;
+  friend class PinCore;
 
+protected:
+  BusCore(Base::LoopCore &base, PinCore **pin_slots, size_t pins_capacity);
+
+private:
   /**
    * @brief Pointer to the Base loop for event scheduling
    */
@@ -100,7 +103,7 @@ private:
   /**
    * @brief Registry of active GPIO pins
    */
-  Pin **pins;
+  PinCore **pins;
 
   /**
    * @brief Capacity of the pins registry
@@ -128,7 +131,7 @@ private:
    * @return int Status code
    */
   int
-  add(Pin *pin);
+  add(PinCore *pin);
 
   /**
    * @brief Remove GPIO pin and clean up resources
@@ -136,7 +139,7 @@ private:
    * @return int Status code
    */
   int
-  remove(Pin *pin);
+  remove(PinCore *pin);
 
   /**
    * @brief Mark EXTI line as activated and notify main loop.
@@ -197,7 +200,7 @@ namespace Detail
 template <size_t PinsCapacity>
 struct BusStorage
 {
-  std::array<Pin *, PinsCapacity> pins{};
+  std::array<PinCore *, PinsCapacity> pins{};
 };
 
 } // namespace Detail

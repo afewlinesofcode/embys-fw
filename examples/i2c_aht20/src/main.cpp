@@ -83,8 +83,8 @@ on_query(void *context, int rc,
   else
   {
     SIM_LOG("AHT20: temp_centi_c=" << values->temperature.centi_celsius
-                                    << " humidity_centi_percent="
-                                    << values->humidity.centi_percent);
+                                   << " humidity_centi_percent="
+                                   << values->humidity.centi_percent);
     ctx->lcd->set_values(values->temperature, values->humidity);
   }
 }
@@ -185,20 +185,23 @@ main()
   Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // LED on PC13 (output push-pull, 2 MHz, active-low)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                                  PinCfg::OUT | PinCfg::MEDIUM);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13,
+                          PinCfg::OUT | PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1);
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 6,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_scl(gpio_bus);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 7,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_sda(gpio_bus);
 
-  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16>
-      i2c_bus(loop);
+  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
+      loop);
 
   Embys::Stm32::I2c::Dev::Aht20::Device aht20(&loop, &i2c_bus);
   Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(&loop, &i2c_bus);
