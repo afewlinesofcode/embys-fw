@@ -133,9 +133,8 @@ Device::parse_query()
                              (static_cast<uint32_t>(buffer[4]) << 8) |
                              buffer[5];
 
-  values.humidity = static_cast<float>(raw_humidity) * 100.0f / 1048576.0f;
-  values.temperature =
-      static_cast<float>(raw_temperature) * 200.0f / 1048576.0f - 50.0f;
+  values.humidity = humidity_from_raw(raw_humidity);
+  values.temperature = temperature_from_raw(raw_temperature);
 
   response(0);
 }

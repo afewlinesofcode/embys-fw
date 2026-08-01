@@ -25,7 +25,7 @@ Lcd::set_unavailable()
 }
 
 void
-Lcd::set_values(float temp, float hum)
+Lcd::set_values(Aht20::Temperature temp, Aht20::RelativeHumidity hum)
 {
   temperature = temp;
   humidity = hum;

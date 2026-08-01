@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/i2c-common/delay.hpp>
@@ -24,13 +24,37 @@
 namespace Embys::Stm32::I2c::Dev::Aht20
 {
 
+struct Temperature
+{
+  int16_t centi_celsius = 0;
+};
+
+struct RelativeHumidity
+{
+  uint16_t centi_percent = 0;
+};
+
+[[nodiscard]] inline constexpr Temperature
+temperature_from_raw(uint32_t raw) noexcept
+{
+  const uint64_t scaled = static_cast<uint64_t>(raw & 0xFFFFFU) * 20000U;
+  return {static_cast<int16_t>(((scaled + (1U << 19U)) >> 20U) - 5000)};
+}
+
+[[nodiscard]] inline constexpr RelativeHumidity
+humidity_from_raw(uint32_t raw) noexcept
+{
+  const uint64_t scaled = static_cast<uint64_t>(raw & 0xFFFFFU) * 10000U;
+  return {static_cast<uint16_t>((scaled + (1U << 19U)) >> 20U)};
+}
+
 class Device
 {
 public:
   struct Values
   {
-    float humidity = 0.0f;
-    float temperature = 0.0f;
+    RelativeHumidity humidity;
+    Temperature temperature;
   };
 
   using QueryCb = Embys::Callback<int, Values *>;

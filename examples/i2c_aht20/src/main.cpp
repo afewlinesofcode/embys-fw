@@ -82,8 +82,9 @@ on_query(void *context, int rc,
   }
   else
   {
-    SIM_LOG("AHT20: temp=" << values->temperature
-                           << " hum=" << values->humidity);
+    SIM_LOG("AHT20: temp_centi_c=" << values->temperature.centi_celsius
+                                    << " humidity_centi_percent="
+                                    << values->humidity.centi_percent);
     ctx->lcd->set_values(values->temperature, values->humidity);
   }
 }

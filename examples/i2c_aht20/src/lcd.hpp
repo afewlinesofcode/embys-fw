@@ -56,7 +56,8 @@ public:
   set_unavailable();
 
   void
-  set_values(float temperature, float humidity);
+  set_values(Aht20::Temperature temperature,
+             Aht20::RelativeHumidity humidity);
 
 private:
   State state = Idle;
@@ -72,8 +73,8 @@ private:
   bool busy = false;
 
   Embys::Callback<int> ready_cb;
-  float temperature = 0.0f;
-  float humidity = 0.0f;
+  Aht20::Temperature temperature;
+  Aht20::RelativeHumidity humidity;
 
   Embys::Stm32::I2c::Dev::Hd44780::Device lcd;
   char line_buf[21];
