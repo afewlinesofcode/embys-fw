@@ -61,7 +61,7 @@ public:
    * pin state (0 or 1) as an argument
    */
   void
-  set_callback(Callable<uint8_t> cb);
+  set_callback(Callback<uint8_t> cb);
 
   /**
    * @brief Clear the interrupt callback, disabling interrupt notifications
@@ -147,7 +147,7 @@ private:
   uint8_t index;        ///< Pin index within the port (0..15)
   PinCfg cfg;           ///< Pin configuration flags (PinCfg bitmask)
   PwmBinding pwm;       ///< PWM timer binding for output pins
-  Callable<uint8_t> cb; ///< Interrupt event callback
+  Callback<uint8_t> cb; ///< Interrupt event callback
 
   bool has_init_value = false; ///< Whether an initial output value has been set
   uint8_t init_value = 0;      ///< Initial output value

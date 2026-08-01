@@ -115,7 +115,7 @@ public:
    * @param cb  Invoked in loop context with 0 on success, negative on error.
    */
   int
-  read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb);
+  read(uint8_t addr7, uint8_t *buf, uint16_t len, Callback<int> cb);
 
   /**
    * @brief Asynchronous register-addressed read.
@@ -124,14 +124,14 @@ public:
    */
   int
   read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-       Callable<int> cb);
+       Callback<int> cb);
 
   /**
    * @brief Asynchronous write of len bytes to I2C address addr7.
    * @param cb  Invoked in loop context with 0 on success, negative on error.
    */
   int
-  write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callable<int> cb);
+  write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callback<int> cb);
 
   /**
    * @brief I2C event IRQ handler — call from I2Cx_EV_IRQHandler.
@@ -158,7 +158,7 @@ private:
   Base::Module *module = nullptr;
   uint32_t scl_hz = 0u;
   bool enabled = false;
-  Callable<int> cb;
+  Callback<int> cb;
 
   static void
   module_callback(void *context);

@@ -10,7 +10,7 @@ Lcd::init()
 }
 
 void
-Lcd::set_ready_cb(Embys::Callable<int> cb)
+Lcd::set_ready_cb(Embys::Callback<int> cb)
 {
   ready_cb = cb;
 }
@@ -71,7 +71,7 @@ Lcd::dispatch_pending()
   }
   else if (!ready_cb.empty())
   {
-    Embys::Callable<int> cb = ready_cb;
+    Embys::Callback<int> cb = ready_cb;
     ready_cb.clear();
     cb(0);
   }

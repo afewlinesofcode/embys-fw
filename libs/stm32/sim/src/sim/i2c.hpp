@@ -66,7 +66,7 @@ extern std::vector<std::vector<uint8_t>> tx_buffers;
  * The callback takes the I2C address and the data bytes that were "sent" by the
  * peripheral.
  */
-extern Callable<uint8_t, std::vector<uint8_t>> on_tx;
+extern Callback<uint8_t, std::vector<uint8_t>> on_tx;
 
 /**
  * @brief Simulate receiving data on the I2C bus.

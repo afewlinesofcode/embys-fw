@@ -39,7 +39,7 @@ namespace Embys::Stm32::Base
 
 struct Module
 {
-  Callable<> cb;
+  Callback<> cb;
   volatile bool interrupted = false;
 };
 
@@ -161,7 +161,7 @@ public:
    * registration fails (e.g., no available slots).
    */
   Module *
-  add_module(Callable<> module_cb);
+  add_module(Callback<> module_cb);
 
   /**
    * @brief Unregister a module callback.

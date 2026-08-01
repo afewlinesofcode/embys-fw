@@ -10,7 +10,7 @@
 
 namespace Sim = Embys::Stm32::Sim;
 using namespace Embys::Stm32;
-using Embys::Callable;
+using Embys::Callback;
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -185,7 +185,7 @@ TEST_SUITE("i2c")
     bus.enable(100000u);
 
     int result = -1;
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     const uint8_t data[] = {0xDE, 0xAD};
@@ -204,9 +204,9 @@ TEST_SUITE("i2c")
     bus.enable(100000u);
 
     int r1 = -1, r2 = -1;
-    auto cb1 = Callable<int>{[](void *ctx, int r)
+    auto cb1 = Callback<int>{[](void *ctx, int r)
                              { *static_cast<int *>(ctx) = r; }, &r1};
-    auto cb2 = Callable<int>{[](void *ctx, int r)
+    auto cb2 = Callback<int>{[](void *ctx, int r)
                              { *static_cast<int *>(ctx) = r; }, &r2};
 
     const uint8_t data[] = {0x01};
@@ -226,7 +226,7 @@ TEST_SUITE("i2c")
 
     int result = -2;
     uint8_t buf[1] = {};
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 1u, cb) == 0);
@@ -249,7 +249,7 @@ TEST_SUITE("i2c")
 
     int result = -1;
     uint8_t buf[2] = {};
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 2u, cb) == 0);
@@ -273,7 +273,7 @@ TEST_SUITE("i2c")
 
     int result = -1;
     uint8_t buf[3] = {};
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 3u, cb) == 0);
@@ -296,7 +296,7 @@ TEST_SUITE("i2c")
 
     int result = -1;
     uint8_t buf[4] = {};
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 4u, cb) == 0);
@@ -322,7 +322,7 @@ TEST_SUITE("i2c")
 
     int result = -1;
     uint8_t buf[2] = {};
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, 0x10u, buf, 2u, cb) == 0);
@@ -346,7 +346,7 @@ TEST_SUITE("i2c")
 
     uint8_t buf[1] = {};
     int result = 0;
-    auto cb = Callable<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r)
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     CHECK(bus.read(0x50u, buf, 1u, cb) == 0);

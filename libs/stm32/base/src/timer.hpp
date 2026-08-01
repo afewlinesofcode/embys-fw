@@ -132,10 +132,10 @@ public:
 
   /**
    * @brief Set the callback to be invoked on timer events
-   * @param cb Callable object representing the callback function and context
+   * @param cb Callback object representing the callback function and context
    */
   void
-  set_callback(Callable<> cb);
+  set_callback(Callback<> cb);
 
   /**
    * @brief Schedule a timer event in microseconds,
@@ -249,9 +249,9 @@ private:
   uint8_t pwm_channel = 0;
 
   /**
-   * @brief Callable object representing the callback function and context
+   * @brief Callback object representing the callback function and context
    */
-  Callable<> cb;
+  Callback<> cb;
 
   /**
    * @brief Maximum auto-reload value in microseconds.

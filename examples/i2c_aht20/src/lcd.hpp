@@ -49,7 +49,7 @@ public:
   init();
 
   void
-  set_ready_cb(Embys::Callable<int> cb);
+  set_ready_cb(Embys::Callback<int> cb);
 
   void
   set_unavailable();
@@ -70,7 +70,7 @@ private:
 
   bool busy = false;
 
-  Embys::Callable<int> ready_cb;
+  Embys::Callback<int> ready_cb;
   float temperature = 0.0f;
   float humidity = 0.0f;
 

@@ -5,7 +5,7 @@
 namespace Embys::Stm32::Base
 {
 
-Event::Event(Loop *loop, uint8_t flags, Callable<> cb)
+Event::Event(Loop *loop, uint8_t flags, Callback<> cb)
   : loop(loop), flags(flags), cb(cb)
 {
 }

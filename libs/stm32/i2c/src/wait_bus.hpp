@@ -48,7 +48,7 @@ public:
    * @param cb   Callback invoked with 0 when the bus is free, or BUS_BUSY
    *             when the check limit is reached.
    */
-  WaitBus(Bus *bus, Callable<int> cb);
+  WaitBus(Bus *bus, Callback<int> cb);
 
   /**
    * @brief Start waiting for the bus to become idle.
@@ -69,7 +69,7 @@ private:
   I2C_TypeDef *i2c;
   uint32_t checks_count;
   uint32_t count = 0;
-  Callable<int> cb;
+  Callback<int> cb;
   Base::Event event;
 
   static void

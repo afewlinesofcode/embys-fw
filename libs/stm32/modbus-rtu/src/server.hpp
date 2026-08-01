@@ -57,7 +57,7 @@ public:
    * Byte layout: [0]=device_id, [1]=FC, [2:3]=starting address.
    */
   inline void
-  set_on_request_callback(Embys::Callable<const uint8_t *, uint16_t> cb)
+  set_on_request_callback(Embys::Callback<const uint8_t *, uint16_t> cb)
   {
     on_request_cb = cb;
   }
@@ -70,7 +70,7 @@ private:
   Modbus::Handler *handler;
   bool handling_request = false;
 
-  Embys::Callable<const uint8_t *, uint16_t> on_request_cb;
+  Embys::Callback<const uint8_t *, uint16_t> on_request_cb;
 
   Modbus::DiagnosticsCounters diag_counters;
 

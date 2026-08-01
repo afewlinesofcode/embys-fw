@@ -20,7 +20,7 @@ USART_TypeDef *usart = &usart1_instance; // Default to usart1
 
 std::vector<std::vector<uint8_t>> tx_buffers;
 
-Callable<std::vector<uint8_t>> on_tx;
+Callback<std::vector<uint8_t>> on_tx;
 
 /**
  * @brief RX shift register: holds a byte being transferred from rx_buffer to

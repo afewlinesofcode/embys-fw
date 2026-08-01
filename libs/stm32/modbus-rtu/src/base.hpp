@@ -64,20 +64,20 @@ protected:
   uint8_t buffer_out[Modbus::kFrameSize];
   uint16_t buffer_out_len = 0;
 
-  Embys::Callable<> frame_in_cb;
-  Embys::Callable<int> frame_out_cb;
+  Embys::Callback<> frame_in_cb;
+  Embys::Callback<int> frame_out_cb;
 
   bool buffer_in_overflow = false;
   bool frame_in_receiving = false;
 
   inline void
-  set_frame_in_callback(Embys::Callable<> cb)
+  set_frame_in_callback(Embys::Callback<> cb)
   {
     frame_in_cb = cb;
   }
 
   inline void
-  set_frame_out_callback(Embys::Callable<int> cb)
+  set_frame_out_callback(Embys::Callback<int> cb)
   {
     frame_out_cb = cb;
   }

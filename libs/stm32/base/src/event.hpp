@@ -51,7 +51,7 @@ struct Event
   /**
    * @brief Event callback function to be executed when the event is triggered
    */
-  Callable<> cb;
+  Callback<> cb;
 
   /**
    * @brief Event timing interval in microseconds
@@ -84,7 +84,7 @@ struct Event
    * @param flags Event flags (EV_PERSIST, EV_RT, etc.)
    * @param cb Event callback function
    */
-  Event(Loop *loop, uint8_t flags, Callable<> cb);
+  Event(Loop *loop, uint8_t flags, Callback<> cb);
 
   /**
    * @brief Enable the event with a specified interval in microseconds

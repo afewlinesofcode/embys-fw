@@ -155,7 +155,7 @@ public:
    * Called in main-loop context.
    */
   inline void
-  set_rx_callback(Callable<uint8_t> cb)
+  set_rx_callback(Callback<uint8_t> cb)
   {
     rx_cb = cb;
   }
@@ -172,7 +172,7 @@ public:
    * Called in main-loop context.
    */
   inline void
-  set_tx_callback(Callable<int> cb)
+  set_tx_callback(Callback<int> cb)
   {
     tx_cb = cb;
   }
@@ -193,7 +193,7 @@ private:
   volatile size_t rx_buffer_len = 0;
   size_t rx_buffer_pos = 0;
   volatile bool rx_overflow = false;
-  Callable<uint8_t> rx_cb;
+  Callback<uint8_t> rx_cb;
 
   // ── TX state ─────────────────────────────────────────────────────────
   const uint8_t *tx_buffer = nullptr;
@@ -202,7 +202,7 @@ private:
   volatile bool tx_active = false;
   volatile bool tx_ready = false;
   volatile int tx_result = 0;
-  Callable<int> tx_cb;
+  Callback<int> tx_cb;
 
   WordLength word_length = WordLength::W8;
   StopBits stop_bits = StopBits::One;

@@ -59,7 +59,7 @@ Bus::disable()
 }
 
 int
-Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb)
+Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callback<int> cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
@@ -72,7 +72,7 @@ Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb)
 
 int
 Bus::read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-          Callable<int> cb)
+          Callback<int> cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
@@ -84,7 +84,7 @@ Bus::read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
 }
 
 int
-Bus::write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callable<int> cb)
+Bus::write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callback<int> cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;

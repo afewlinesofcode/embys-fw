@@ -151,7 +151,7 @@ Loop::remove(Event *event)
 }
 
 Module *
-Loop::add_module(Callable<> module_cb)
+Loop::add_module(Callback<> module_cb)
 {
   for (size_t i = 0; i < modules_capacity; ++i)
   {

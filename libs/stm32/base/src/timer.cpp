@@ -52,7 +52,7 @@ Timer::~Timer()
 }
 
 void
-Timer::set_callback(Callable<> cb)
+Timer::set_callback(Callback<> cb)
 {
   this->cb = cb;
 }

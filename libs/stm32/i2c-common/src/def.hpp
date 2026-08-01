@@ -15,6 +15,6 @@
 namespace Embys::Stm32::I2c::Dev
 {
 
-using Cb = Embys::Callable<int>;
+using Cb = Embys::Callback<int>;
 
 }; // namespace Embys::Stm32::I2c::Dev

@@ -4,7 +4,7 @@
  * @brief Modbus RTU client (master)
  *
  * Client serialises Modbus requests over an RTU bus and dispatches the parsed
- * response (or a timeout notification) via a caller-supplied ResponseCallable.
+ * response (or a timeout notification) via a caller-supplied ResponseCallback.
  *
  * Only one request may be in flight at a time; is_available() returns false
  * while a response is pending.  Broadcast requests (device_id == 0) do not
@@ -48,8 +48,8 @@ public:
    * On timeout, quantity == 0 and data_ptr == nullptr.
    * On exception response, function_code has bit 7 set.
    */
-  using ResponseCallable =
-      Embys::Callable<uint8_t, uint8_t, uint8_t, uint8_t *>;
+  using ResponseCallback =
+      Embys::Callback<uint8_t, uint8_t, uint8_t, uint8_t *>;
 
   static inline uint32_t kRequestTimeoutUs = 5U * 1000000U; // 5 seconds
 
@@ -75,42 +75,42 @@ public:
 
   int
   read_coils(uint8_t device_id, uint16_t starting_address, uint16_t quantity,
-             ResponseCallable cb);
+             ResponseCallback cb);
 
   int
   read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
-                       uint16_t quantity, ResponseCallable cb);
+                       uint16_t quantity, ResponseCallback cb);
 
   int
   read_holding_registers(uint8_t device_id, uint16_t starting_address,
-                         uint16_t quantity, ResponseCallable cb);
+                         uint16_t quantity, ResponseCallback cb);
 
   int
   read_input_registers(uint8_t device_id, uint16_t starting_address,
-                       uint16_t quantity, ResponseCallable cb);
+                       uint16_t quantity, ResponseCallback cb);
 
   int
   write_single_coil(uint8_t device_id, uint16_t address, bool value,
-                    ResponseCallable cb);
+                    ResponseCallback cb);
 
   int
   write_single_register(uint8_t device_id, uint16_t address, uint16_t value,
-                        ResponseCallable cb);
+                        ResponseCallback cb);
 
   int
   write_multiple_coils(uint8_t device_id, uint16_t starting_address,
                        uint16_t quantity, const uint8_t *coil_data,
-                       ResponseCallable cb);
+                       ResponseCallback cb);
 
   int
   write_multiple_registers(uint8_t device_id, uint16_t starting_address,
                            uint16_t quantity, const uint16_t *register_data,
-                           ResponseCallable cb);
+                           ResponseCallback cb);
 
 private:
   Stm32::Base::Loop *loop;
   Stm32::Base::Event response_timeout_event;
-  ResponseCallable response_cb;
+  ResponseCallback response_cb;
   bool expecting_response = false;
   uint8_t current_device_id = 0;
   uint8_t current_function_code = 0;

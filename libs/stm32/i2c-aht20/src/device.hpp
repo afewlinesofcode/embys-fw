@@ -33,7 +33,7 @@ public:
     float temperature = 0.0f;
   };
 
-  using QueryCb = Embys::Callable<int, Values *>;
+  using QueryCb = Embys::Callback<int, Values *>;
 
   Device() = delete;
   Device(const Device &) = delete;

@@ -37,7 +37,7 @@ Pin::bind_pwm(Base::Timer *timer, uint8_t channel)
 }
 
 void
-Pin::set_callback(Callable<uint8_t> cb)
+Pin::set_callback(Callback<uint8_t> cb)
 {
   this->cb = cb;
 }

@@ -29,7 +29,7 @@ Client::enable()
 
 int
 Client::read_coils(uint8_t device_id, uint16_t starting_address,
-                   uint16_t quantity, ResponseCallable cb)
+                   uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadCoils;
@@ -43,7 +43,7 @@ Client::read_coils(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
-                             uint16_t quantity, ResponseCallable cb)
+                             uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadDiscreteInputs;
@@ -57,7 +57,7 @@ Client::read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_holding_registers(uint8_t device_id, uint16_t starting_address,
-                               uint16_t quantity, ResponseCallable cb)
+                               uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadHoldingRegisters;
@@ -71,7 +71,7 @@ Client::read_holding_registers(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_input_registers(uint8_t device_id, uint16_t starting_address,
-                             uint16_t quantity, ResponseCallable cb)
+                             uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadInputRegisters;
@@ -85,7 +85,7 @@ Client::read_input_registers(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::write_single_coil(uint8_t device_id, uint16_t address, bool value,
-                          ResponseCallable cb)
+                          ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleCoil;
@@ -99,7 +99,7 @@ Client::write_single_coil(uint8_t device_id, uint16_t address, bool value,
 
 int
 Client::write_single_register(uint8_t device_id, uint16_t address,
-                              uint16_t value, ResponseCallable cb)
+                              uint16_t value, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleRegister;
@@ -114,7 +114,7 @@ Client::write_single_register(uint8_t device_id, uint16_t address,
 int
 Client::write_multiple_coils(uint8_t device_id, uint16_t starting_address,
                              uint16_t quantity, const uint8_t *coil_data,
-                             ResponseCallable cb)
+                             ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleCoils;
@@ -136,7 +136,7 @@ int
 Client::write_multiple_registers(uint8_t device_id, uint16_t starting_address,
                                  uint16_t quantity,
                                  const uint16_t *register_data,
-                                 ResponseCallable cb)
+                                 ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleRegisters;

@@ -15,7 +15,7 @@
 namespace Embys::Stm32::I2c::Dev::Aht20
 {
 
-using Cb = Embys::Callable<int>;
+using Cb = Embys::Callback<int>;
 
 enum Diag : int
 {
