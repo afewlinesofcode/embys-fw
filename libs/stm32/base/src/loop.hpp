@@ -181,7 +181,7 @@ public:
   inline void
   set_module_pending(Module *module)
   {
-    IrqGuard();
+    IrqGuard guard;
 
     if (!module->interrupted)
     {

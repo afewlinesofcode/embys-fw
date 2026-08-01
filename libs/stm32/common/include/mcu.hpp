@@ -11,26 +11,63 @@ struct Stm32f4
 {
 };
 
-struct Stm32f7
+struct Stm32f103xb
 {
 };
 
-#if defined(STM32F1xx)
+struct Stm32f407xx
+{
+};
 
-using Family = Stm32f1;
+struct Stm32f411xe
+{
+};
 
-#elif defined(STM32F4xx)
+template <typename Device>
+struct DeviceTraits;
 
-using Family = Stm32f4;
+template <>
+struct DeviceTraits<Stm32f103xb>
+{
+  using Family = Stm32f1;
+  static constexpr const char *name = "stm32f103xb";
+};
 
-#elif defined(STM32F7xx)
+template <>
+struct DeviceTraits<Stm32f407xx>
+{
+  using Family = Stm32f4;
+  static constexpr const char *name = "stm32f407xx";
+};
 
-using Family = Stm32f7;
+template <>
+struct DeviceTraits<Stm32f411xe>
+{
+  using Family = Stm32f4;
+  static constexpr const char *name = "stm32f411xe";
+};
+
+template <typename Device>
+using FamilyOf = typename DeviceTraits<Device>::Family;
+
+#if defined(STM32F103xB)
+
+using TargetDevice = Stm32f103xb;
+
+#elif defined(STM32F407xx)
+
+using TargetDevice = Stm32f407xx;
+
+#elif defined(STM32F411xE)
+
+using TargetDevice = Stm32f411xe;
 
 #else
 
-#error "Unsupported or unspecified STM32 family"
+#error "Unsupported STM32 target. Supported: STM32F103xB, STM32F407xx, STM32F411xE"
 
 #endif
+
+using Family = FamilyOf<TargetDevice>;
 
 }; // namespace Embys::Stm32

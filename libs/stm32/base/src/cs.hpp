@@ -14,16 +14,6 @@
 namespace Embys::Stm32
 {
 
-/**
- * @brief Stores the previous PRIMASK value
- */
-extern uint32_t cs_primask;
-
-/**
- * @brief Stores the current critical section nesting level
- */
-extern uint32_t cs_stack;
-
 class IrqGuard
 {
 public:
@@ -33,11 +23,21 @@ public:
    */
   IrqGuard();
 
+  IrqGuard(const IrqGuard &) = delete;
+  IrqGuard(IrqGuard &&) = delete;
+  IrqGuard &
+  operator=(const IrqGuard &) = delete;
+  IrqGuard &
+  operator=(IrqGuard &&) = delete;
+
   /**
    * @brief Exit a critical section, restoring the previous PRIMASK if this is
    * the outermost level
    */
   ~IrqGuard();
+
+private:
+  uint32_t primask;
 }; // class IrqGuard
 
 } // namespace Embys::Stm32

@@ -10,6 +10,8 @@
  */
 #pragma once
 
+#include "result.hpp"
+
 namespace Embys
 {
 
@@ -33,8 +35,20 @@ public:
   {
   }
 
+  template <auto Method, typename Object>
+  [[nodiscard]] static constexpr Callback
+  bind(Object &object) noexcept
+  {
+    return Callback{
+        [](void *context, Args... args)
+        {
+          (static_cast<Object *>(context)->*Method)(args...);
+        },
+        &object};
+  }
+
   constexpr void
-  operator()(Args... args) const
+  operator()(Args... args) const noexcept
   {
     if (callback_)
     {

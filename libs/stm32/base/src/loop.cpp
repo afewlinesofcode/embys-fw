@@ -62,7 +62,7 @@ Loop::run()
     run_modules();
 
     {
-      IrqGuard();
+      IrqGuard guard;
 
       if (interrupted_modules_count == 0)
       {
@@ -109,7 +109,7 @@ Loop::add(Event *event)
    */
 
   {
-    IrqGuard();
+    IrqGuard guard;
 
     if (event->pending)
     {
@@ -270,7 +270,7 @@ Loop::run_modules()
     if (modules[i].interrupted)
     {
       {
-        IrqGuard();
+        IrqGuard guard;
 
         modules[i].interrupted = false;
         DEC_V(interrupted_modules_count);

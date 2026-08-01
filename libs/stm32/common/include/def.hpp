@@ -13,6 +13,7 @@
 #include "debug.hpp"
 #include "mcu.hpp"
 #include "mcu_traits.hpp"
+#include "register.hpp"
 #include "types.hpp"
 
 #define SET_BIT_V(REG, BIT) ((REG) = (REG) | (BIT))

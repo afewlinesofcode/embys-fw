@@ -182,7 +182,7 @@ void
 Bus::tx_complete(int result)
 {
   {
-    IrqGuard();
+    IrqGuard guard;
 
     tx_active = false;
     tx_ready = true;
@@ -213,7 +213,7 @@ Bus::module_callback(void *context)
     bool is_overflow = false;
 
     {
-      IrqGuard();
+      IrqGuard guard;
 
       self->rx_buffer_pos = 0;
       self->rx_buffer_len = 0;

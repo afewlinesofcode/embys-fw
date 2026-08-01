@@ -132,7 +132,7 @@ Bus::trigger_activated_pins()
         has_cfg(pin_ptr->get_cfg(), PinCfg::LISTEN))
     {
       {
-        IrqGuard();
+        IrqGuard guard;
         CLEAR_BIT_V(activated_exti_lines, pin_bit);
       }
 
