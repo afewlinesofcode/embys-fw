@@ -67,7 +67,7 @@ led_off(void *context)
  */
 static void
 on_query(void *context, int rc,
-         Embys::Stm32::I2c::Dev::Aht20::Device::Values *values)
+         Embys::Stm32::I2c::Dev::Aht20::Device::Values values)
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -82,10 +82,10 @@ on_query(void *context, int rc,
   }
   else
   {
-    SIM_LOG("AHT20: temp_centi_c=" << values->temperature.centi_celsius
+    SIM_LOG("AHT20: temp_centi_c=" << values.temperature.centi_celsius
                                    << " humidity_centi_percent="
-                                   << values->humidity.centi_percent);
-    ctx->lcd->set_values(values->temperature, values->humidity);
+                                   << values.humidity.centi_percent);
+    ctx->lcd->set_values(values.temperature, values.humidity);
   }
 }
 
@@ -203,8 +203,8 @@ main()
   Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
       loop);
 
-  Embys::Stm32::I2c::Dev::Aht20::Device aht20(&loop, &i2c_bus);
-  Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(&loop, &i2c_bus);
+  Embys::Stm32::I2c::Dev::Aht20::Device aht20(loop, i2c_bus);
+  Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(loop, i2c_bus);
 
   // Set global pointers for interrupt handlers
   timer_ptr = &timer;

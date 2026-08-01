@@ -15,8 +15,9 @@
 
 #include <array>
 #include <span>
-#include <stdint.h>
 #include <type_traits>
+
+#include <stdint.h>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/mcu.hpp>
@@ -136,7 +137,7 @@ public:
    * @param cb  Invoked in loop context with 0 on success, negative on error.
    */
   int
-  write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callback<int> cb);
+  write(uint8_t addr7, std::span<const uint8_t> data, Callback<int> cb);
 
   /**
    * @brief I2C event IRQ handler — call from I2Cx_EV_IRQHandler.
@@ -198,6 +199,8 @@ class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
 {
   static_assert(RxCapacity > 0, "An I2C bus needs RX storage");
   static_assert(TxCapacity > 0, "An I2C bus needs TX storage");
+  static_assert(RxCapacity <= UINT16_MAX, "I2C RX capacity exceeds its API");
+  static_assert(TxCapacity <= UINT16_MAX, "I2C TX capacity exceeds its API");
   using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
 
 public:

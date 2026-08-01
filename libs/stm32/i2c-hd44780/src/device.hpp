@@ -10,7 +10,9 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
+#include <string_view>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/i2c-common/delay.hpp>
@@ -43,7 +45,7 @@ public:
   Device &
   operator=(Device &&) = delete;
 
-  Device(Base::LoopCore *loop, I2c::BusCore *bus, uint8_t addr7 = 0x27u);
+  Device(Base::LoopCore &loop, I2c::BusCore &bus, uint8_t addr7 = 0x27u);
 
   void
   enable(Cb cb);
@@ -64,13 +66,13 @@ public:
   }
 
   void
-  print(const char *str, Cb cb);
+  print(std::string_view text, Cb cb);
 
   void
-  print_at(uint8_t row, uint8_t col, const char *str, Cb cb);
+  print_at(uint8_t row, uint8_t col, std::string_view text, Cb cb);
 
   void
-  print_line(uint8_t row, const char *str, Cb cb);
+  print_line(uint8_t row, std::string_view text, Cb cb);
 
   void
   clear_line(uint8_t line, Cb cb);
@@ -100,7 +102,7 @@ public:
   autoscroll(bool on, Cb cb);
 
   void
-  create_char(uint8_t location, const uint8_t char_map[8], Cb cb);
+  create_char(uint8_t location, std::span<const uint8_t, 8> char_map, Cb cb);
 
   inline bool
   is_initialized() const

@@ -3,16 +3,16 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Device::Device(Base::LoopCore *loop, I2c::BusCore *bus, uint8_t addr7)
+Device::Device(Base::LoopCore &loop, I2c::BusCore &bus, uint8_t addr7)
   : cmd_delay(loop), cmd_write(bus, addr7),
-    cmd_pulse_enable(&cmd_write, &cmd_delay),
-    cmd_write_bits(&state, &cmd_pulse_enable), cmd_send(&cmd_write_bits),
-    cmd_set_cursor(&state, &cmd_send),
-    cmd_clear(&cmd_send, &cmd_set_cursor, &cmd_delay),
-    cmd_home(&state, &cmd_send, &cmd_delay),
-    cmd_print(&state, &cmd_send, &cmd_clear, &cmd_set_cursor),
-    cmd_create_char(&cmd_send), cmd_init(&state, &cmd_write, &cmd_write_bits,
-                                         &cmd_send, &cmd_clear, &cmd_delay)
+    cmd_pulse_enable(cmd_write, cmd_delay),
+    cmd_write_bits(state, cmd_pulse_enable), cmd_send(cmd_write_bits),
+    cmd_set_cursor(state, cmd_send),
+    cmd_clear(cmd_send, cmd_set_cursor, cmd_delay),
+    cmd_home(state, cmd_send, cmd_delay),
+    cmd_print(state, cmd_send, cmd_clear, cmd_set_cursor),
+    cmd_create_char(cmd_send),
+    cmd_init(state, cmd_write, cmd_write_bits, cmd_send, cmd_clear, cmd_delay)
 {
 }
 
@@ -42,21 +42,21 @@ Device::set_cursor(uint8_t col, uint8_t row, Cb cb)
 }
 
 void
-Device::print(const char *str, Cb cb)
+Device::print(std::string_view text, Cb cb)
 {
-  cmd_print.print_string(str, cb);
+  cmd_print.print_string(text, cb);
 }
 
 void
-Device::print_at(uint8_t row, uint8_t col, const char *str, Cb cb)
+Device::print_at(uint8_t row, uint8_t col, std::string_view text, Cb cb)
 {
-  cmd_print.print_string_at(row, col, str, cb);
+  cmd_print.print_string_at(row, col, text, cb);
 }
 
 void
-Device::print_line(uint8_t row, const char *str, Cb cb)
+Device::print_line(uint8_t row, std::string_view text, Cb cb)
 {
-  cmd_print.print_line(row, str, cb);
+  cmd_print.print_line(row, text, cb);
 }
 
 void
@@ -154,7 +154,8 @@ Device::autoscroll(bool on, Cb cb)
 }
 
 void
-Device::create_char(uint8_t location, const uint8_t char_map[8], Cb cb)
+Device::create_char(uint8_t location, std::span<const uint8_t, 8> char_map,
+                    Cb cb)
 {
   cmd_create_char.exec(location, char_map, cb);
 }

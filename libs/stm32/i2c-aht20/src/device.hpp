@@ -10,7 +10,9 @@
  */
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <span>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/i2c-common/delay.hpp>
@@ -57,7 +59,7 @@ public:
     Temperature temperature;
   };
 
-  using QueryCb = Embys::Callback<int, Values *>;
+  using QueryCb = Embys::Callback<int, Values>;
 
   Device() = delete;
   Device(const Device &) = delete;
@@ -67,7 +69,7 @@ public:
   Device &
   operator=(Device &&) = delete;
 
-  Device(Base::LoopCore *loop, I2c::BusCore *bus);
+  Device(Base::LoopCore &loop, I2c::BusCore &bus);
 
   inline bool
   is_initialized() const
@@ -87,7 +89,7 @@ private:
   I2c::Dev::Read read;
 
   bool initialized = false;
-  uint8_t buffer[8] = {};
+  std::array<uint8_t, 8> buffer{};
   Values values;
   Cb enable_cb;
   QueryCb cb;
@@ -137,7 +139,7 @@ private:
   response(int rc);
 
   bool
-  check_crc(const uint8_t *buf);
+  check_crc(std::span<const uint8_t, 7> data);
 
   static void
   command_callback(void *ctx, int result);

@@ -22,13 +22,13 @@ class WriteBits;
 class Send
 {
 public:
-  explicit Send(WriteBits *write_bits);
+  explicit Send(WriteBits &write_bits);
 
   void
   exec(uint8_t value, uint8_t mode, Cb cb);
 
 private:
-  WriteBits *write_bits;
+  WriteBits &write_bits;
   Cb cb;
   uint8_t mode = 0;
   uint8_t high = 0;

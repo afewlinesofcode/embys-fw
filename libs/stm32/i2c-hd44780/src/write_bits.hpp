@@ -24,15 +24,15 @@ class Write;
 class WriteBits
 {
 public:
-  WriteBits(State *state, PulseEnable *pulse_enable);
+  WriteBits(State &state, PulseEnable &pulse_enable);
 
   void
   exec(uint8_t value, uint8_t mode, Cb cb);
 
 private:
-  State *state;
-  PulseEnable *pulse_enable;
-  Write *write;
+  State &state;
+  PulseEnable &pulse_enable;
+  Write &write;
   Cb cb;
   uint8_t data = 0;
 

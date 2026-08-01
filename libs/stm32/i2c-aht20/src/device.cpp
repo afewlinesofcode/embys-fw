@@ -5,7 +5,7 @@ namespace Embys::Stm32::I2c::Dev::Aht20
 
 static constexpr uint8_t AHT20_ADDR = 0x38u;
 
-Device::Device(Base::LoopCore *loop, I2c::BusCore *bus)
+Device::Device(Base::LoopCore &loop, I2c::BusCore &bus)
   : timeout(loop), write(bus), read(bus)
 {
 }
@@ -46,7 +46,8 @@ void
 Device::read_calibration_status()
 {
   stage = ReadCalibration;
-  read.exec(AHT20_ADDR, 0x71u, buffer, 1, {command_callback, this});
+  read.exec(AHT20_ADDR, 0x71u, std::span{buffer}.first<1>(),
+            {command_callback, this});
 }
 
 void
@@ -67,7 +68,7 @@ Device::send_initialization()
 {
   stage = SendInitialization;
   static const uint8_t INIT_CMD[] = {0xE1u, 0x08u, 0x00u};
-  write.exec(AHT20_ADDR, INIT_CMD, sizeof(INIT_CMD), {command_callback, this});
+  write.exec(AHT20_ADDR, INIT_CMD, {command_callback, this});
 }
 
 void
@@ -89,8 +90,7 @@ Device::request_query()
 {
   stage = RequestQuery;
   static const uint8_t QUERY_CMD[] = {0xACu, 0x33u, 0x00u};
-  write.exec(AHT20_ADDR, QUERY_CMD, sizeof(QUERY_CMD),
-             {command_callback, this});
+  write.exec(AHT20_ADDR, QUERY_CMD, {command_callback, this});
 }
 
 void
@@ -108,7 +108,7 @@ void
 Device::read_query()
 {
   stage = ReadQuery;
-  read.exec(AHT20_ADDR, buffer, 7u, {command_callback, this});
+  read.exec(AHT20_ADDR, std::span{buffer}.first<7>(), {command_callback, this});
 }
 
 void
@@ -120,7 +120,7 @@ Device::parse_query()
     return;
   }
 
-  if (!check_crc(buffer))
+  if (!check_crc(std::span{buffer}.first<7>()))
   {
     response(CRC_ERROR);
     return;
@@ -142,20 +142,20 @@ Device::parse_query()
 void
 Device::response(int rc)
 {
-  cb(rc, &values);
+  cb(rc, values);
   cb.clear();
 }
 
 bool
-Device::check_crc(const uint8_t *buf)
+Device::check_crc(std::span<const uint8_t, 7> data)
 {
-  uint8_t expected_crc = buf[6];
+  uint8_t expected_crc = data[6];
   uint8_t crc = 0xFFu;
   static constexpr uint8_t POLY = 0x31u;
 
   for (uint8_t i = 0; i < 6; i++)
   {
-    crc ^= buf[i];
+    crc ^= data[i];
     for (int b = 0; b < 8; b++)
     {
       if (crc & 0x80u)

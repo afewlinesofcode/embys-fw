@@ -5,7 +5,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-PulseEnable::PulseEnable(Write *write, I2c::Dev::Delay *delay)
+PulseEnable::PulseEnable(Write &write, I2c::Dev::Delay &delay)
   : write(write), delay(delay)
 {
 }
@@ -23,21 +23,21 @@ void
 PulseEnable::timeout_us(uint32_t us, Stage st)
 {
   stage = st;
-  delay->exec(std::chrono::microseconds{us}, {command_callback, this});
+  delay.exec(std::chrono::microseconds{us}, {command_callback, this});
 }
 
 void
 PulseEnable::write_en_high()
 {
   stage = WriteENHigh;
-  write->exec(high, {command_callback, this});
+  write.exec(high, {command_callback, this});
 }
 
 void
 PulseEnable::write_en_low()
 {
   stage = WriteENLow;
-  write->exec(low, {command_callback, this});
+  write.exec(low, {command_callback, this});
 }
 
 void

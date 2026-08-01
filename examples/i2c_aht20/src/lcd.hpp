@@ -30,8 +30,7 @@ public:
   Lcd &
   operator=(Lcd &&) = delete;
 
-  Lcd(Embys::Stm32::Base::LoopCore *loop,
-      Embys::Stm32::I2c::BusCore *i2c_bus)
+  Lcd(Embys::Stm32::Base::LoopCore &loop, Embys::Stm32::I2c::BusCore &i2c_bus)
     : lcd(loop, i2c_bus) {};
 
   inline State
@@ -56,8 +55,7 @@ public:
   set_unavailable();
 
   void
-  set_values(Aht20::Temperature temperature,
-             Aht20::RelativeHumidity humidity);
+  set_values(Aht20::Temperature temperature, Aht20::RelativeHumidity humidity);
 
 private:
   State state = Idle;

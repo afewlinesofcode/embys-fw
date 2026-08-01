@@ -253,7 +253,7 @@ main()
       gpio_bus);
 
   I2c::Bus<I2c::Instance::I2c1, 16, 16> i2c_bus(loop);
-  ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
+  ModbusRtuServer::Lcd lcd(loop, i2c_bus);
 
   // Global pointers for IRQ handlers
   timer_ptr = &timer;

@@ -24,7 +24,7 @@ namespace Embys::Stm32::I2c::Dev::Hd44780
 class Write
 {
 public:
-  Write(I2c::BusCore *bus, uint8_t addr7);
+  Write(I2c::BusCore &bus, uint8_t addr7);
 
   void
   exec(uint8_t data, Cb cb);

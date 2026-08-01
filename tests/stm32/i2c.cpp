@@ -67,8 +67,7 @@ struct I2cLoopFixture : I2cBaseFixture
   Base::Loop<events_capacity, modules_capacity> loop;
   I2c::Bus<I2c::Instance::I2c1, 16, 16> bus;
 
-  I2cLoopFixture()
-    : timer(TIM2), loop(timer), bus(loop)
+  I2cLoopFixture() : timer(TIM2), loop(timer), bus(loop)
   {
     timer_ptr = &timer;
     i2c_bus_ptr = &bus;
@@ -187,7 +186,7 @@ TEST_SUITE("i2c")
   {
     const uint8_t data[] = {0x01};
     int result = -1;
-    CHECK(bus.write(0x50u, data, 1u,
+    CHECK(bus.write(0x50u, std::span{data}.first<1>(),
                     {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; },
                      &result}) == I2c::BUS_NOT_ENABLED);
   }
@@ -202,7 +201,7 @@ TEST_SUITE("i2c")
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     const uint8_t data[] = {0xDE, 0xAD};
-    CHECK(bus.write(0x50u, data, 2u, cb) == 0);
+    CHECK(bus.write(0x50u, data, cb) == 0);
 
     loop.stop(std::chrono::microseconds{100});
     loop.run();
@@ -223,8 +222,8 @@ TEST_SUITE("i2c")
                              { *static_cast<int *>(ctx) = r; }, &r2};
 
     const uint8_t data[] = {0x01};
-    CHECK(bus.write(0x50u, data, 1u, cb1) == 0);
-    CHECK(bus.write(0x50u, data, 1u, cb2) == I2c::INVALID_STATE);
+    CHECK(bus.write(0x50u, data, cb1) == 0);
+    CHECK(bus.write(0x50u, data, cb2) == I2c::INVALID_STATE);
   }
 
   TEST_CASE_FIXTURE(I2cLoopFixture,
@@ -232,7 +231,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
     uint8_t data[17] = {};
-    CHECK(bus.write(0x50u, data, sizeof(data), {}) == I2c::BUFFER_TOO_SMALL);
+    CHECK(bus.write(0x50u, data, {}) == I2c::BUFFER_TOO_SMALL);
   }
 
   TEST_CASE_FIXTURE(I2cLoopFixture,
@@ -240,7 +239,7 @@ TEST_SUITE("i2c")
   {
     bus.enable(100000u);
     uint8_t data[] = {0x12, 0x34};
-    REQUIRE(bus.write(0x50u, data, sizeof(data), {}) == 0);
+    REQUIRE(bus.write(0x50u, data, {}) == 0);
     data[0] = 0xFF;
     data[1] = 0xFF;
 

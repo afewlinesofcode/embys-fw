@@ -10,7 +10,8 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <string_view>
 
 #include "def.hpp"
 
@@ -25,7 +26,7 @@ class SetCursor;
 class Print
 {
 public:
-  Print(State *state, Send *send, Clear *clear, SetCursor *set_cursor);
+  Print(State &state, Send &send, Clear &clear, SetCursor &set_cursor);
 
   void
   set_auto_clear(bool enable)
@@ -40,24 +41,24 @@ public:
   }
 
   void
-  print_string(const char *text, Cb cb);
+  print_string(std::string_view text, Cb cb);
 
   void
-  print_string_at(uint8_t row, uint8_t col, const char *text, Cb cb);
+  print_string_at(uint8_t row, uint8_t col, std::string_view text, Cb cb);
 
   void
-  print_line(uint8_t row, const char *text, Cb cb);
+  print_line(uint8_t row, std::string_view text, Cb cb);
 
   void
   clear_line(uint8_t row, Cb cb);
 
 private:
-  State *state;
-  Send *send;
-  Clear *clear;
-  SetCursor *set_cursor;
+  State &state;
+  Send &send;
+  Clear &clear;
+  SetCursor &set_cursor;
   bool auto_clear = false;
-  const char *text = nullptr;
+  std::string_view text;
   char current_char = '\0';
   uint8_t row = 0;
   uint8_t col = 0;

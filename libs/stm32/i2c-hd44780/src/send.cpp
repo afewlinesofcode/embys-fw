@@ -5,7 +5,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Send::Send(WriteBits *write_bits) : write_bits(write_bits)
+Send::Send(WriteBits &write_bits) : write_bits(write_bits)
 {
 }
 
@@ -23,14 +23,14 @@ void
 Send::write_high()
 {
   stage = WriteHigh;
-  write_bits->exec(high, mode, {command_callback, this});
+  write_bits.exec(high, mode, {command_callback, this});
 }
 
 void
 Send::write_low()
 {
   stage = WriteLow;
-  write_bits->exec(low, mode, {command_callback, this});
+  write_bits.exec(low, mode, {command_callback, this});
 }
 
 void

@@ -9,9 +9,8 @@
 namespace Embys::Stm32::I2c
 {
 
-BusCore::BusCore(I2C_TypeDef *i2c_, Base::LoopCore &base_,
-                 uint8_t *rx_buffer_, size_t rx_capacity_,
-                 uint8_t *tx_buffer_, size_t tx_capacity_)
+BusCore::BusCore(I2C_TypeDef *i2c_, Base::LoopCore &base_, uint8_t *rx_buffer_,
+                 size_t rx_capacity_, uint8_t *tx_buffer_, size_t tx_capacity_)
   : i2c(i2c_), base(&base_), sm(this), rx_buffer(rx_buffer_),
     rx_capacity(rx_capacity_), tx_buffer(tx_buffer_), tx_capacity(tx_capacity_)
 {
@@ -98,20 +97,20 @@ BusCore::read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb)
 }
 
 int
-BusCore::write(uint8_t addr7, const uint8_t *buf, uint16_t len,
-               Callback<int> cb)
+BusCore::write(uint8_t addr7, std::span<const uint8_t> data, Callback<int> cb)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
 
-  if (len > tx_capacity)
+  if (data.size() > tx_capacity)
     return BUFFER_TOO_SMALL;
 
-  std::memcpy(tx_buffer, buf, len);
+  if (!data.empty())
+    std::memcpy(tx_buffer, data.data(), data.size());
   this->cb = cb;
   reading = false;
-  transfer_len = len;
-  TRY(sm.start_write(addr7, tx_buffer, len));
+  transfer_len = static_cast<uint16_t>(data.size());
+  TRY(sm.start_write(addr7, tx_buffer, transfer_len));
 
   return 0;
 }

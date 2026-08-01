@@ -211,7 +211,7 @@ main()
   Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
       loop);
 
-  Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(&loop, &i2c_bus);
+  Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(loop, i2c_bus);
 
   // Set global pointers for interrupt handlers
   timer_ptr = &timer;

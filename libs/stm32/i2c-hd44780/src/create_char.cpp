@@ -5,12 +5,12 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-CreateChar::CreateChar(Send *send) : send(send)
+CreateChar::CreateChar(Send &send) : send(send)
 {
 }
 
 void
-CreateChar::exec(uint8_t location, const uint8_t char_map[8], Cb cb)
+CreateChar::exec(uint8_t location, std::span<const uint8_t, 8> char_map, Cb cb)
 {
   this->location = location;
   this->char_map = char_map;
@@ -24,8 +24,8 @@ CreateChar::set_cgram_address()
 {
   stage = SetCGRAM;
   uint8_t address = static_cast<uint8_t>((location & 0x07u) << 3);
-  send->exec(static_cast<uint8_t>(LCD_SET_CGRAM_ADDR | address), LCD_COMMAND,
-             {command_callback, this});
+  send.exec(static_cast<uint8_t>(LCD_SET_CGRAM_ADDR | address), LCD_COMMAND,
+            {command_callback, this});
 }
 
 void
@@ -39,14 +39,14 @@ CreateChar::write_bytes()
     return;
   }
 
-  send->exec(char_map[byte_index++], LCD_DATA, {command_callback, this});
+  send.exec(char_map[byte_index++], LCD_DATA, {command_callback, this});
 }
 
 void
 CreateChar::set_ddram_address()
 {
   stage = SetDDRAM;
-  send->exec(LCD_SET_DDRAM_ADDR, LCD_COMMAND, {command_callback, this});
+  send.exec(LCD_SET_DDRAM_ADDR, LCD_COMMAND, {command_callback, this});
 }
 
 void

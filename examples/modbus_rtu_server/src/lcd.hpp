@@ -22,8 +22,7 @@ public:
   Lcd &
   operator=(Lcd &&) = delete;
 
-  Lcd(Embys::Stm32::Base::LoopCore *loop,
-      Embys::Stm32::I2c::BusCore *i2c_bus)
+  Lcd(Embys::Stm32::Base::LoopCore &loop, Embys::Stm32::I2c::BusCore &i2c_bus)
     : lcd(loop, i2c_bus)
   {
   }

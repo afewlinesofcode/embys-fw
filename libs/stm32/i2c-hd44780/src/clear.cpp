@@ -6,7 +6,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Clear::Clear(Send *send, SetCursor *set_cursor, I2c::Dev::Delay *timeout)
+Clear::Clear(Send &send, SetCursor &set_cursor, I2c::Dev::Delay &timeout)
   : send(send), set_cursor(set_cursor), timeout(timeout)
 {
 }
@@ -22,21 +22,21 @@ void
 Clear::send_clear_command()
 {
   stage = SendClearCommand;
-  send->exec(LCD_CLEAR_DISPLAY, LCD_COMMAND, {command_callback, this});
+  send.exec(LCD_CLEAR_DISPLAY, LCD_COMMAND, {command_callback, this});
 }
 
 void
 Clear::wait_clear()
 {
   stage = WaitClear;
-  timeout->exec(std::chrono::milliseconds{2}, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{2}, {command_callback, this});
 }
 
 void
 Clear::set_cursor_home()
 {
   stage = SetCursorHome;
-  set_cursor->exec(0, 0, {command_callback, this});
+  set_cursor.exec(0, 0, {command_callback, this});
 }
 
 void

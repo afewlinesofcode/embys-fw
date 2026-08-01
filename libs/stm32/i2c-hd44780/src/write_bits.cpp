@@ -7,8 +7,8 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-WriteBits::WriteBits(State *state, PulseEnable *pulse_enable)
-  : state(state), pulse_enable(pulse_enable), write(pulse_enable->get_write())
+WriteBits::WriteBits(State &state, PulseEnable &pulse_enable)
+  : state(state), pulse_enable(pulse_enable), write(pulse_enable.get_write())
 {
 }
 
@@ -21,7 +21,7 @@ WriteBits::exec(uint8_t value, uint8_t mode, Cb cb)
       static_cast<uint8_t>(data | ((value << LCD_DATA_SHIFT) & LCD_DATA_MASK));
   data = static_cast<uint8_t>(data | mode);
 
-  if (state->backlight)
+  if (state.backlight)
     data = static_cast<uint8_t>(data | LCD_BL);
 
   write_i2c_cmd();
@@ -31,14 +31,14 @@ void
 WriteBits::write_i2c_cmd()
 {
   stage = WriteI2cCmd;
-  write->exec(data, {command_callback, this});
+  write.exec(data, {command_callback, this});
 }
 
 void
 WriteBits::write_pulse()
 {
   stage = WritePulse;
-  pulse_enable->exec(data, {command_callback, this});
+  pulse_enable.exec(data, {command_callback, this});
 }
 
 void

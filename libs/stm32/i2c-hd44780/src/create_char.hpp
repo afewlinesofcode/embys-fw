@@ -10,7 +10,8 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
 
 #include "def.hpp"
 
@@ -22,16 +23,16 @@ class Send;
 class CreateChar
 {
 public:
-  explicit CreateChar(Send *send);
+  explicit CreateChar(Send &send);
 
   void
-  exec(uint8_t location, const uint8_t char_map[8], Cb cb);
+  exec(uint8_t location, std::span<const uint8_t, 8> char_map, Cb cb);
 
 private:
-  Send *send;
+  Send &send;
   Cb cb;
   uint8_t location = 0;
-  const uint8_t *char_map = nullptr;
+  std::span<const uint8_t> char_map;
   uint8_t byte_index = 0;
 
   enum

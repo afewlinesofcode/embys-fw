@@ -340,13 +340,17 @@ void I2C1_EV_IRQHandler() { i2c_bus.handle_ev_irq(); }
 void I2C1_ER_IRQHandler() { i2c_bus.handle_er_irq(); }
 
 // Asynchronous write — callback fires in loop context
-i2c_bus.write(0x27, buf, sizeof(buf), {on_done, &context});
+i2c_bus.write(0x27, std::span{buf}, {on_done, &context});
 
 // Asynchronous register-addressed read (write reg, repeated START, read)
 i2c_bus.read(0x38, 0xAC, 6, {on_read, &context});
 ```
 
 Error codes are defined in `Embys::Stm32::I2c::Diag` (e.g. `NACK`, `TIMEOUT`, `BUS_BUSY`).
+
+I2C device helpers accept references for required loop/bus dependencies and
+use spans for byte buffers. The HD44780 text API accepts `std::string_view`;
+the referenced text must remain valid until its asynchronous callback runs.
 
 ### Modbus RTU
 
