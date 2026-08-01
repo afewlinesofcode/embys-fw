@@ -1,6 +1,6 @@
 #include "sm.hpp"
 
-#ifdef I2C_HAL_V1
+#ifdef EMBYS_I2C_CLASSIC_REGISTERS
 
 #include <embys/stm32/def.hpp>
 
@@ -391,4 +391,4 @@ Sm::wait_bus_callback(void *context, int res)
 
 }; // namespace Embys::Stm32::I2c
 
-#endif // I2C_HAL_V1
+#endif // EMBYS_I2C_CLASSIC_REGISTERS

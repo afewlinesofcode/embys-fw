@@ -10,7 +10,7 @@
 
 #include "../../stm32xx.hpp"
 
-#ifdef UART_HAL_V1
+#ifdef EMBYS_UART_CLASSIC_REGISTERS
 
 #include <stdint.h>
 
@@ -131,4 +131,4 @@ has_error(USART_TypeDef *usart)
 
 }; // namespace Embys::Stm32::Uart
 
-#endif // UART_HAL_V1
+#endif // EMBYS_UART_CLASSIC_REGISTERS

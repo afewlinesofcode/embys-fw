@@ -11,7 +11,7 @@
 
 #include "../../stm32xx.hpp"
 
-#ifdef I2C_HAL_V1
+#ifdef EMBYS_I2C_CLASSIC_REGISTERS
 
 #include <stdint.h>
 
@@ -185,4 +185,4 @@ clear_error_flags(I2C_TypeDef *i2c)
 
 }; // namespace Embys::Stm32::I2c
 
-#endif // I2C_HAL_V1
+#endif // EMBYS_I2C_CLASSIC_REGISTERS

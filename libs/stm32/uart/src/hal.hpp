@@ -1,11 +1,7 @@
 /**
  * @file hal.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
- * @brief UART HAL shim — selects the versioned register-level helpers.
- *
- * Delegates to hal/v1/hal.hpp (F1/F4/sim, SR/DR layout) or
- * hal/v2/hal.hpp (F7/H7, ISR/RDR/TDR/ICR layout) based on UART_HAL_V1/V2
- * macros defined in stm32xx.hpp.
+ * @brief UART HAL shim selecting an explicit family backend.
  *
  * @version 0.1
  * @date 2026-04-29
@@ -21,12 +17,12 @@
 #include "def.hpp"
 #include "stm32xx.hpp"
 
-#if defined(UART_HAL_V1)
-#include "hal/v1/hal.hpp"
-#elif defined(UART_HAL_V2)
-#include "hal/v2/hal.hpp"
+#if defined(STM32F1xx)
+#include "hal/f1/backend.hpp"
+#elif defined(STM32F4xx)
+#include "hal/f4/backend.hpp"
 #else
-#error "No UART HAL version selected. Check stm32xx.hpp."
+#error "Unsupported UART backend"
 #endif
 
 namespace Embys::Stm32::Uart

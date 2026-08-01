@@ -17,7 +17,7 @@
 
 #include "../../stm32xx.hpp"
 
-#ifdef I2C_HAL_V1
+#ifdef EMBYS_I2C_CLASSIC_REGISTERS
 
 #include <stdint.h>
 
@@ -182,4 +182,4 @@ private:
 
 }; // namespace Embys::Stm32::I2c
 
-#endif // I2C_HAL_V1
+#endif // EMBYS_I2C_CLASSIC_REGISTERS
