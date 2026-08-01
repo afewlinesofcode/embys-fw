@@ -10,9 +10,8 @@
 namespace Embys::Stm32::Uart
 {
 
-BusCore::BusCore(USART_TypeDef *usart, Base::LoopCore &base,
-                 uint8_t *rx_buffer, size_t rx_capacity, uint8_t *tx_buffer,
-                 size_t tx_capacity)
+BusCore::BusCore(USART_TypeDef *usart, Base::LoopCore &base, uint8_t *rx_buffer,
+                 size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity)
   : usart(usart), base(&base), rx_buffer(rx_buffer), rx_capacity(rx_capacity),
     tx_storage(tx_buffer), tx_capacity(tx_capacity),
     timeout_event(base, Base::EV_RT, {BusCore::timeout_handler, this})
@@ -26,8 +25,8 @@ BusCore::~BusCore()
 }
 
 int
-BusCore::enable(uint32_t baud_rate_, WordLength word_length_, StopBits stop_bits_,
-            Parity parity_)
+BusCore::enable(uint32_t baud_rate_, WordLength word_length_,
+                StopBits stop_bits_, Parity parity_)
 {
   if (enabled)
     return 0;
@@ -79,7 +78,7 @@ BusCore::disable()
 }
 
 int
-BusCore::write(const uint8_t *buf, size_t len)
+BusCore::write(std::span<const uint8_t> data)
 {
   if (!enabled)
     return BUS_NOT_ENABLED;
@@ -87,12 +86,13 @@ BusCore::write(const uint8_t *buf, size_t len)
   if (tx_active)
     return TX_BUSY;
 
-  if (len > tx_capacity)
+  if (data.size() > tx_capacity)
     return BUFFER_TOO_SMALL;
 
-  std::memcpy(tx_storage, buf, len);
+  if (!data.empty())
+    std::memcpy(tx_storage, data.data(), data.size());
   tx_buffer = tx_storage;
-  tx_buffer_len = len;
+  tx_buffer_len = data.size();
   tx_buffer_pos = 0;
   tx_active = true;
   tx_ready = false;
@@ -108,7 +108,7 @@ BusCore::write(const uint8_t *buf, size_t len)
   enable_txe_irq(usart);
 
   (void)timeout_event.enable(
-      std::chrono::microseconds{calc_tx_timeout_us(len)});
+      std::chrono::microseconds{calc_tx_timeout_us(data.size())});
 
   return 0;
 }

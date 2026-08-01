@@ -120,8 +120,7 @@ send_message(void *context)
     return; // Previous transmission still in progress — skip this tick.
 
   ctx->tx_busy = true;
-  TRY_ASYNC(ctx,
-            ctx->uart->write((const uint8_t *)message, sizeof(message) - 1));
+  TRY_ASYNC(ctx, ctx->uart->write(message));
   blink(ctx);
   SIM_LOG(message);
 }

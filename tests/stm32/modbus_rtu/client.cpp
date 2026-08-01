@@ -46,7 +46,7 @@ namespace
 
 struct TestablClient : Modbus::Rtu::Client
 {
-  TestablClient(Uart::BusCore *uart, Embys::Stm32::Base::LoopCore *loop)
+  TestablClient(Uart::BusCore &uart, Embys::Stm32::Base::LoopCore &loop)
     : Modbus::Rtu::Client(uart, loop)
   {
   }
@@ -96,11 +96,11 @@ struct ClientFixture : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
   TestablClient client;
 
-  ClientFixture()
-    : timer(TIM2), loop(timer), uart(loop), client(&uart, &loop)
+  ClientFixture() : timer(TIM2), loop(timer), uart(loop), client(uart, loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
@@ -217,8 +217,8 @@ TEST_SUITE("modbus_rtu_client")
          &ctx});
 
     // Run long enough for the timeout to fire
-    loop.stop(std::chrono::microseconds{
-        Modbus::Rtu::Client::kRequestTimeoutUs + 100U});
+    loop.stop(std::chrono::microseconds{Modbus::Rtu::Client::kRequestTimeoutUs +
+                                        100U});
     loop.run();
 
     CHECK(timeout_device == 0x01U);

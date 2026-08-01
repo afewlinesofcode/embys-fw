@@ -19,7 +19,7 @@ namespace
 
 struct TestablBase : Modbus::Rtu::Base
 {
-  explicit TestablBase(Uart::BusCore *uart) : Modbus::Rtu::Base(uart)
+  explicit TestablBase(Uart::BusCore &uart) : Modbus::Rtu::Base(uart)
   {
   }
 
@@ -77,10 +77,10 @@ struct RtuLoopFixture : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
 
-  RtuLoopFixture()
-    : timer(TIM2), loop(timer), uart(loop)
+  RtuLoopFixture() : timer(TIM2), loop(timer), uart(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
@@ -92,7 +92,7 @@ struct BaseFixture : RtuLoopFixture
 {
   TestablBase base;
 
-  BaseFixture() : base(&uart)
+  BaseFixture() : base(uart)
   {
     base.enable();
   }
@@ -102,11 +102,11 @@ struct BaseFixture38400 : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
   TestablBase base;
 
-  BaseFixture38400()
-    : timer(TIM2), loop(timer), uart(loop), base(&uart)
+  BaseFixture38400() : timer(TIM2), loop(timer), uart(loop), base(uart)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;

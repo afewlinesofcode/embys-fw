@@ -77,7 +77,7 @@ send_message(void *context)
     return; // Previous transmission still in progress — skip this tick.
 
   tx_busy = true;
-  bus->write(reinterpret_cast<const uint8_t *>(message), sizeof(message) - 1);
+  bus->write(message);
   SIM_LOG(message);
 }
 

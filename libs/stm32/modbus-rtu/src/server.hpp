@@ -42,8 +42,7 @@ public:
   Server &
   operator=(Server &&) = delete;
 
-  Server(uint8_t device_id, Modbus::Handler *handler,
-         Uart::BusCore *transport);
+  Server(uint8_t device_id, Modbus::Handler &handler, Uart::BusCore &transport);
   ~Server();
 
   inline const Modbus::DiagnosticsCounters &
@@ -68,7 +67,7 @@ public:
 
 private:
   uint8_t device_id;
-  Modbus::Handler *handler;
+  Modbus::Handler &handler;
   bool handling_request = false;
 
   Embys::Callback<const uint8_t *, uint16_t> on_request_cb;

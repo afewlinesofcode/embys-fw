@@ -240,8 +240,8 @@ main()
   modbus_handler.set_holding_registers_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_input_registers_offset(MODBUS_BASE_ADDR);
 
-  Modbus::Rtu::Server modbus_server(MODBUS_SLAVE_ADDR, &modbus_handler,
-                                    &uart_bus);
+  Modbus::Rtu::Server modbus_server(MODBUS_SLAVE_ADDR, modbus_handler,
+                                    uart_bus);
   modbus_server.set_on_request_callback({on_request, &context});
 
   // PB6: SCL (open-drain AF, 50 MHz)

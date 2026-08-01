@@ -8,18 +8,18 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Base::Base(Uart::BusCore *transport)
+Base::Base(Uart::BusCore &transport)
   : transport(transport),
-    frame_timeout_event(*transport->get_base(), 0,
+    frame_timeout_event(*transport.get_base(), 0,
                         {Base::frame_timeout_callback, this})
 {
-  transport->set_rx_callback({Base::recv_callback, this});
-  transport->set_tx_callback({Base::sent_callback, this});
+  transport.set_rx_callback({Base::recv_callback, this});
+  transport.set_tx_callback({Base::sent_callback, this});
 }
 
 Base::~Base()
 {
-  transport->clear_rx_callback();
+  transport.clear_rx_callback();
 }
 
 void
@@ -32,7 +32,7 @@ int
 Base::send_frame()
 {
   append_crc(buffer_out, &buffer_out_len);
-  TRY(transport->write(buffer_out, buffer_out_len));
+  TRY(transport.write(std::span{buffer_out}.first(buffer_out_len)));
   return 0;
 }
 
@@ -85,7 +85,7 @@ Base::validate_crc(const uint8_t *buffer, uint16_t len) const
 void
 Base::calculate_timing()
 {
-  uint32_t baud_rate = transport->get_baud_rate();
+  uint32_t baud_rate = transport.get_baud_rate();
 
   if (baud_rate == 0U)
   {
@@ -101,7 +101,7 @@ Base::calculate_timing()
   }
   else
   {
-    uint32_t frame_bits = transport->get_frame_bits();
+    uint32_t frame_bits = transport.get_frame_bits();
     uint32_t char_time_us = (frame_bits * 1000000U) / baud_rate;
     frame_delay_us = (char_time_us * 7U) >> 1U; // 3.5 character times
   }

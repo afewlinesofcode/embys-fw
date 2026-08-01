@@ -125,7 +125,7 @@ flush_line(AppContext *ctx)
   ctx->line_len = 0;
 
   ctx->tx_busy = true;
-  ctx->uart->write(ctx->tx_buf, ctx->tx_len);
+  ctx->uart->write(std::span{ctx->tx_buf}.first(ctx->tx_len));
 }
 
 // ── main ──────────────────────────────────────────────────────────────────

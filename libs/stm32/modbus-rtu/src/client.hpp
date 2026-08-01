@@ -61,7 +61,7 @@ public:
   Client &
   operator=(Client &&) = delete;
 
-  Client(Uart::BusCore *transport, Stm32::Base::LoopCore *loop);
+  Client(Uart::BusCore &transport, Stm32::Base::LoopCore &loop);
   ~Client();
 
   void
@@ -108,7 +108,7 @@ public:
                            ResponseCallback cb);
 
 private:
-  Stm32::Base::LoopCore *loop;
+  Stm32::Base::LoopCore &loop;
   Stm32::Base::Event response_timeout_event;
   ResponseCallback response_cb;
   bool expecting_response = false;

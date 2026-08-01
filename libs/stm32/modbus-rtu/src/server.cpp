@@ -5,11 +5,11 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Server::Server(uint8_t device_id, Modbus::Handler *handler,
-               Uart::BusCore *transport)
+Server::Server(uint8_t device_id, Modbus::Handler &handler,
+               Uart::BusCore &transport)
   : Base(transport), device_id(device_id), handler(handler)
 {
-  handler->set_diagnostics_counters(&diag_counters);
+  handler.set_diagnostics_counters(&diag_counters);
 }
 
 Server::~Server()
@@ -59,7 +59,7 @@ Server::process_request()
 
   handling_request = true;
   uint8_t exception =
-      handler->handle(buffer_in, buffer_in_len, buffer_out, &buffer_out_len);
+      handler.handle(buffer_in, buffer_in_len, buffer_out, &buffer_out_len);
 
   if (buffer_in[0] == 0U)
   {

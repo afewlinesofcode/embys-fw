@@ -107,10 +107,10 @@ struct RtuLoopFixture : RtuBaseFixture
 {
   Base::Timer timer;
   Base::Loop<kEventsCapacity, kModulesCapacity> loop;
-  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize> uart;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
 
-  RtuLoopFixture()
-    : timer(TIM2), loop(timer), uart(loop)
+  RtuLoopFixture() : timer(TIM2), loop(timer), uart(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
@@ -127,7 +127,7 @@ struct StoreFixture
 
 struct ServerFixture : RtuLoopFixture, StoreFixture
 {
-  Modbus::Rtu::Server server{1, &handler, &uart};
+  Modbus::Rtu::Server server{1, handler, uart};
 
   ServerFixture()
   {

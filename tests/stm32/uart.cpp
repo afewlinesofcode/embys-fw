@@ -217,7 +217,7 @@ TEST_SUITE("uart")
                     "Bus::write returns BUS_NOT_ENABLED when not enabled")
   {
     const uint8_t data[] = {0x01};
-    CHECK(bus.write(data, sizeof(data)) == Uart::BUS_NOT_ENABLED);
+    CHECK(bus.write(data) == Uart::BUS_NOT_ENABLED);
   }
 
   TEST_CASE_FIXTURE(UartLoopFixture,
@@ -226,7 +226,7 @@ TEST_SUITE("uart")
     bus.enable(115200);
 
     const uint8_t data[] = {0xAB};
-    CHECK(bus.write(data, sizeof(data)) == 0);
+    CHECK(bus.write(data) == 0);
 
     CHECK(bus.is_tx_busy());
     CHECK((USART2->CR1 & USART_CR1_TXEIE) != 0);
@@ -238,8 +238,8 @@ TEST_SUITE("uart")
     bus.enable(115200);
 
     const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
-    CHECK(bus.write(data, sizeof(data)) == 0);
-    CHECK(bus.write(data, sizeof(data)) == Uart::TX_BUSY);
+    CHECK(bus.write(data) == 0);
+    CHECK(bus.write(data) == Uart::TX_BUSY);
   }
 
   TEST_CASE_FIXTURE(UartLoopFixture,
@@ -247,7 +247,7 @@ TEST_SUITE("uart")
   {
     bus.enable(115200);
     uint8_t data[33] = {};
-    CHECK(bus.write(data, sizeof(data)) == Uart::BUFFER_TOO_SMALL);
+    CHECK(bus.write(data) == Uart::BUFFER_TOO_SMALL);
     CHECK(!bus.is_tx_busy());
   }
 
@@ -256,7 +256,7 @@ TEST_SUITE("uart")
   {
     bus.enable(115200);
     uint8_t data[] = {0x12, 0x34};
-    REQUIRE(bus.write(data, sizeof(data)) == 0);
+    REQUIRE(bus.write(data) == 0);
     data[0] = 0xFF;
     data[1] = 0xFF;
 
@@ -278,7 +278,7 @@ TEST_SUITE("uart")
         {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
 
     const uint8_t data[] = {0xDE, 0xAD};
-    bus.write(data, sizeof(data));
+    bus.write(data);
 
     loop.stop(std::chrono::microseconds{100});
     loop.run();
@@ -347,7 +347,7 @@ TEST_SUITE("uart")
 
     const uint8_t data[] = {0xCC};
     GPIOA->BSRR = 0;
-    bus.write(data, sizeof(data));
+    bus.write(data);
 
     // REDE must be asserted immediately when write() is called
     CHECK((GPIOA->BSRR & (1u << 5)) != 0);

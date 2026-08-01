@@ -14,6 +14,8 @@
 #pragma once
 
 #include <array>
+#include <span>
+#include <string_view>
 #include <type_traits>
 
 #include <stddef.h>
@@ -137,12 +139,17 @@ public:
   /**
    * @brief Start an asynchronous transmit operation.
    * Completion (or timeout) is signalled via the TX callback.
-   * @param buf  Data to transmit.
-   * @param len  Number of bytes to transmit.
+   * @param data Data copied into owned transmit storage before returning.
    * @return 0 on success, TX_BUSY if a transmit is already in progress.
    */
   int
-  write(const uint8_t *buf, size_t len);
+  write(std::span<const uint8_t> data);
+
+  int
+  write(std::string_view text)
+  {
+    return write({reinterpret_cast<const uint8_t *>(text.data()), text.size()});
+  }
 
   /**
    * @brief USART IRQ handler — must be called from the application's
