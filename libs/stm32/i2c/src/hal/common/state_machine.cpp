@@ -1,4 +1,4 @@
-#include "sm.hpp"
+#include "state_machine.hpp"
 
 #ifdef EMBYS_I2C_CLASSIC_REGISTERS
 

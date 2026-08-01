@@ -1,11 +1,10 @@
 /**
- * @file hal/v1/hal.hpp
- * @brief I2C V1 register-level helpers (STM32F1 / STM32F4 / sim).
+ * @file hal/common/registers.hpp
+ * @brief Shared SR1/SR2/DR I2C helpers (STM32F1 / STM32F4 / sim).
  *
- * Provides inline register accessors and control helpers for the V1 I2C
- * peripheral (SR1/SR2/DR/CCR/TRISE layout).  Included by src/hal.hpp when
- * I2C_HAL_V1 is defined; also included directly by the family-specific HAL
- * implementation files (hal/f1/hal.cpp, hal/f4/hal.cpp).
+ * Both supported families use the classic SR1/SR2/DR/CCR/TRISE layout.
+ * Family backends include these helpers while retaining family-specific
+ * clock, reset, and peripheral-selection logic.
  */
 #pragma once
 

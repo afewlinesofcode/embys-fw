@@ -1,10 +1,10 @@
 /**
- * @file hal/v1/sm.hpp
+ * @file hal/common/state_machine.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
- * @brief I2C V1 interrupt-driven state machine (STM32F1 / STM32F4 / sim).
+ * @brief Shared interrupt-driven I2C state machine (STM32F1 / STM32F4 / sim).
  *
  * Implements the I2C protocol state machine driven by EV and ER interrupt
- * handlers for the V1 peripheral (SR1/SR2/DR layout).  Supports single-byte,
+ * handlers for the classic SR1/SR2/DR layout. Supports single-byte,
  * two-byte, and N-byte read sequences with register address and repeated-start,
  * plus write operations.
  *
@@ -32,7 +32,7 @@ namespace Embys::Stm32::I2c
 class BusCore;
 
 /**
- * @brief Interrupt-driven I2C V1 state machine.
+ * @brief Interrupt-driven state machine for the shared classic I2C layout.
  *
  * Manages a single I2C transaction (read, register-addressed read, or write)
  * driven entirely by EV and ER interrupts. No blocking waits.

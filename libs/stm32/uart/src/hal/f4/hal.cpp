@@ -1,4 +1,4 @@
-// F4 UART HAL implementation (UART V1 peripheral, SR/DR layout).
+// F4 UART HAL implementation (classic SR/DR register layout).
 // USART1/6 are on APB2; USART2/3 are on APB1.
 // PPRE2 (APB2 prescaler) is RCC_CFGR bits [15:13] on F4.
 // PPRE1 (APB1 prescaler) is RCC_CFGR bits [12:10] on F4.
@@ -6,7 +6,7 @@
 
 #ifdef STM32F4xx
 
-#include "../v1/hal.hpp"
+#include "../common/registers.hpp"
 
 #include <embys/stm32/def.hpp>
 

@@ -1,12 +1,12 @@
 #ifdef STM32F1xx
 
-#include "../v1/hal.hpp"
+#include "../common/registers.hpp"
 
 #include <embys/stm32/def.hpp>
 
 // F1 I2C HAL implementation.
 // I2C1 and I2C2 are on APB1. PCLK1 is derived from RCC->CFGR PPRE1 field.
-// Uses I2C V1 register layout: SR1/SR2/DR/CCR/TRISE.
+// Uses the classic I2C register layout: SR1/SR2/DR/CCR/TRISE.
 
 namespace Embys::Stm32::I2c
 {
