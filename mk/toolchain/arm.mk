@@ -16,8 +16,6 @@ ifeq ($(HAL_FAMILY),f1)
   MCUFLAGS += -mcpu=cortex-m3 -mthumb
 else ifeq ($(HAL_FAMILY),f4)
   MCUFLAGS += -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb
-else ifneq (,$(filter $(HAL_FAMILY),f7 h7))
-  MCUFLAGS += -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
 else
   $(error Unknown HAL_FAMILY '$(HAL_FAMILY)' derived from MCU=$(MCU))
 endif

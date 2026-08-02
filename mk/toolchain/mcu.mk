@@ -1,14 +1,19 @@
 MCU ?= stm32f103xb
 
-HAL_FAMILY := $(shell echo $(MCU) | cut -c6-7)
-ARCH_DIR   := $(PROJECT_ROOT)/arch/$(MCU)
-ARCH_NAME  := $(MCU)
-CMSIS_DEV  := $(PROJECT_ROOT)/third_party/cmsis-device-$(HAL_FAMILY)/Include
-MCU_UPPER  := $(shell echo $(MCU) | tr 'a-wyz' 'A-WYZ')
-HAL_UPPER  := $(shell echo $(HAL_FAMILY) | tr 'a-z' 'A-Z')
-MCU_DEFINES := -D$(MCU_UPPER) -DSTM32$(HAL_UPPER)xx
-
 SUPPORTED_MCUS := stm32f103xb stm32f407xx stm32f411xe
-ifeq (,$(filter $(MCU),$(SUPPORTED_MCUS)))
+ifeq ($(MCU),stm32f103xb)
+  HAL_FAMILY := f1
+  MCU_DEFINES := -DSTM32F103xB -DSTM32F1xx
+else ifeq ($(MCU),stm32f407xx)
+  HAL_FAMILY := f4
+  MCU_DEFINES := -DSTM32F407xx -DSTM32F4xx
+else ifeq ($(MCU),stm32f411xe)
+  HAL_FAMILY := f4
+  MCU_DEFINES := -DSTM32F411xE -DSTM32F4xx
+else
   $(error Unsupported MCU '$(MCU)'; supported MCUs: $(SUPPORTED_MCUS))
 endif
+
+ARCH_DIR  := $(PROJECT_ROOT)/arch/$(MCU)
+ARCH_NAME := $(MCU)
+CMSIS_DEV := $(PROJECT_ROOT)/third_party/cmsis-device-$(HAL_FAMILY)/Include
