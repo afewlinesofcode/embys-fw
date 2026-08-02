@@ -76,3 +76,7 @@ jobs:
       - name: Build examples
         run: |
           make examples TC=arm MCU=${{ matrix.mcu }}
+
+      - name: Check firmware runtime policy
+        run: |
+          make firmware-check TC=arm MCU=${{ matrix.mcu }}

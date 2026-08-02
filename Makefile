@@ -37,6 +37,11 @@ all:
 examples:
 	cd examples && $(MAKE) TC=$(TC) MCU=$(MCU) clean all
 
+firmware-check:
+	@test "$(TC)" = "arm" || \
+		(echo "firmware-check requires TC=arm" >&2; exit 2)
+	tools/check-firmware-symbols.sh $(MCU)
+
 clean:
 	cd libs/stm32/common && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 	cd libs/stm32/sim && $(MAKE) TC=$(TC) MCU=$(MCU) clean
@@ -50,4 +55,4 @@ clean:
 	cd libs/stm32/modbus && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 	cd libs/stm32/modbus-rtu && $(MAKE) TC=$(TC) MCU=$(MCU) clean
 
-.PHONY: all test clean-tests examples clean
+.PHONY: all test clean-tests examples firmware-check clean
