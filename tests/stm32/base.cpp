@@ -92,6 +92,23 @@ TEST_SUITE("base")
   }
 
   TEST_CASE_FIXTURE(Stm32BaseFixture,
+                    "Destroying an event releases its scheduler slot")
+  {
+    Embys::Stm32::Base::Timer timer(TIM2);
+    Embys::Stm32::Base::Loop<1, 1> loop(timer);
+
+    {
+      Embys::Stm32::Base::Event first(
+          loop, Embys::Stm32::Base::EventMode::Deferred, {});
+      CHECK(first.enable(std::chrono::microseconds{1}) == 0);
+    }
+
+    Embys::Stm32::Base::Event second(
+        loop, Embys::Stm32::Base::EventMode::Deferred, {});
+    CHECK(second.enable(std::chrono::microseconds{1}) == 0);
+  }
+
+  TEST_CASE_FIXTURE(Stm32BaseFixture,
                     "Initialize loop instance, run and stop after 10us")
   {
     // Create a timer instance (using TIM2 for testing)

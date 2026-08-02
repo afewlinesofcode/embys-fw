@@ -51,9 +51,9 @@ has_mode(EventMode value, EventMode flag) noexcept
 struct Event
 {
   /**
-   * @brief Pointer to the Base system loop managing this event
+   * @brief Base system loop managing this event; it must outlive the event.
    */
-  LoopCore *loop;
+  LoopCore &loop;
 
   /**
    * @brief Scheduling and callback execution mode.
@@ -97,6 +97,11 @@ struct Event
    * @param cb Event callback function
    */
   Event(LoopCore &loop, EventMode mode, Callback<> cb);
+
+  /**
+   * @brief Unregister the event if it is still scheduled.
+   */
+  ~Event();
 
   /**
    * @brief Enable the event with a specified interval.

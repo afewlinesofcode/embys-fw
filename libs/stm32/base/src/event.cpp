@@ -8,8 +8,16 @@ namespace Embys::Stm32::Base
 {
 
 Event::Event(LoopCore &loop, EventMode mode, Callback<> cb)
-  : loop(&loop), mode(mode), cb(cb)
+  : loop(loop), mode(mode), cb(cb)
 {
+}
+
+Event::~Event()
+{
+  if (pending)
+  {
+    (void)loop.remove(this);
+  }
 }
 
 int
@@ -24,13 +32,13 @@ Event::enable(std::chrono::microseconds interval)
 
   interval_us = static_cast<uint32_t>(count);
   next_time_us = interval_us;
-  return loop->add(this);
+  return loop.add(this);
 }
 
 int
 Event::disable()
 {
-  return loop->remove(this);
+  return loop.remove(this);
 }
 
 bool
