@@ -255,7 +255,7 @@ private:
 
   /**
    * @brief Maximum auto-reload value in microseconds.
-   * Defaults to 16-bit on F1 (TIM2 is 16-bit) and 32-bit on F4/F7/H7.
+   * Defaults to the exact target's TIM2 register width.
    */
   uint32_t arr_max = McuTraits::timer2_arr_max;
 

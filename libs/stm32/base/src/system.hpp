@@ -27,23 +27,6 @@ reset() noexcept
   reset_dwt();
 }
 
-template <>
-inline void
-reset<Stm32f7>() noexcept
-{
-  // Enable instruction and data caches on cores that have them (F7, H7).
-  // SCB_EnableICache/SCB_EnableDCache are only defined in core_cm7.h, so
-  // guard with preprocessor to avoid undefined-symbol errors on other targets.
-#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1)
-  // TODO: explore what to do before this
-  SCB_InvalidateICache();
-  SCB_EnableICache();
-  SCB_EnableDCache();
-#endif
-
-  reset_dwt();
-}
-
 inline void
 reset_dwt() noexcept
 {

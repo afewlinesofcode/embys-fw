@@ -108,32 +108,33 @@ namespace Core
 void
 reset()
 {
-  memset(&tim2_instance, 0, sizeof(tim2_instance));
-  memset(&tim3_instance, 0, sizeof(tim3_instance));
-  memset(&tim4_instance, 0, sizeof(tim4_instance));
+  std::memset(&tim2_instance, 0, sizeof(tim2_instance));
+  std::memset(&tim3_instance, 0, sizeof(tim3_instance));
+  std::memset(&tim4_instance, 0, sizeof(tim4_instance));
   // Suppress -Wclass-memaccess warning
-  memset(static_cast<void *>(&systick_instance), 0, sizeof(systick_instance));
-  memset(&nvic_instance, 0, sizeof(nvic_instance));
+  std::memset(static_cast<void *>(&systick_instance), 0,
+              sizeof(systick_instance));
+  std::memset(&nvic_instance, 0, sizeof(nvic_instance));
   // Suppress -Wclass-memaccess warning
-  memset(static_cast<void *>(&scb_instance), 0, sizeof(scb_instance));
-  memset(&rcc_instance, 0, sizeof(rcc_instance));
-  memset(&exti_instance, 0, sizeof(exti_instance));
+  std::memset(static_cast<void *>(&scb_instance), 0, sizeof(scb_instance));
+  std::memset(&rcc_instance, 0, sizeof(rcc_instance));
+  std::memset(&exti_instance, 0, sizeof(exti_instance));
 #ifdef MCU_HAS_AFIO
-  memset(&afio_instance, 0, sizeof(afio_instance));
+  std::memset(&afio_instance, 0, sizeof(afio_instance));
 #endif
-  memset(&gpioa_instance, 0, sizeof(gpioa_instance));
-  memset(&gpiob_instance, 0, sizeof(gpiob_instance));
-  memset(&gpioc_instance, 0, sizeof(gpioc_instance));
-  memset(&i2c1_instance, 0, sizeof(i2c1_instance));
-  memset(&i2c2_instance, 0, sizeof(i2c2_instance));
-  memset(&spi1_instance, 0, sizeof(spi1_instance));
-  memset(&spi2_instance, 0, sizeof(spi2_instance));
-  memset(&usart1_instance, 0, sizeof(usart1_instance));
-  memset(&usart2_instance, 0, sizeof(usart2_instance));
-  memset(&usart3_instance, 0, sizeof(usart3_instance));
-  memset(&coredebug_instance, 0, sizeof(coredebug_instance));
+  std::memset(&gpioa_instance, 0, sizeof(gpioa_instance));
+  std::memset(&gpiob_instance, 0, sizeof(gpiob_instance));
+  std::memset(&gpioc_instance, 0, sizeof(gpioc_instance));
+  std::memset(&i2c1_instance, 0, sizeof(i2c1_instance));
+  std::memset(&i2c2_instance, 0, sizeof(i2c2_instance));
+  std::memset(&spi1_instance, 0, sizeof(spi1_instance));
+  std::memset(&spi2_instance, 0, sizeof(spi2_instance));
+  std::memset(&usart1_instance, 0, sizeof(usart1_instance));
+  std::memset(&usart2_instance, 0, sizeof(usart2_instance));
+  std::memset(&usart3_instance, 0, sizeof(usart3_instance));
+  std::memset(&coredebug_instance, 0, sizeof(coredebug_instance));
   // Suppress -Wclass-memaccess warning
-  memset(static_cast<void *>(&dwt_instance), 0, sizeof(dwt_instance));
+  std::memset(static_cast<void *>(&dwt_instance), 0, sizeof(dwt_instance));
 
   TIM2_IRQHandler_ptr = nullptr;
   TIM3_IRQHandler_ptr = nullptr;
