@@ -14,7 +14,8 @@ BusCore::BusCore(USART_TypeDef *usart, Base::LoopCore &base, uint8_t *rx_buffer,
                  size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity)
   : usart(usart), base(&base), rx_buffer(rx_buffer), rx_capacity(rx_capacity),
     tx_storage(tx_buffer), tx_capacity(tx_capacity),
-    timeout_event(base, Base::EventMode::Realtime, {BusCore::timeout_handler, this})
+    timeout_event(base, Base::EventMode::Realtime,
+                  {BusCore::timeout_handler, this})
 {
 }
 

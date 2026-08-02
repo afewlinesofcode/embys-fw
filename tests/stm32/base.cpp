@@ -43,8 +43,7 @@ struct Stm32BaseLoopFixture : Stm32BaseFixture
   Embys::Stm32::Base::Timer timer;
   Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop;
 
-  Stm32BaseLoopFixture()
-    : timer(TIM2), loop(timer)
+  Stm32BaseLoopFixture() : timer(TIM2), loop(timer)
   {
     timer_ptr = &timer;
   }
@@ -75,10 +74,9 @@ TEST_SUITE("base")
     CHECK(negative.error() == Embys::Stm32::Base::EventError::InvalidDuration);
     CHECK_FALSE(event.pending);
 
-    constexpr auto too_large =
-        static_cast<std::chrono::microseconds::rep>(
-            std::numeric_limits<uint32_t>::max()) +
-        1;
+    constexpr auto too_large = static_cast<std::chrono::microseconds::rep>(
+                                   std::numeric_limits<uint32_t>::max()) +
+                               1;
     const auto out_of_range =
         event.enable(std::chrono::microseconds{too_large});
     CHECK(out_of_range.error() ==
@@ -162,9 +160,9 @@ TEST_SUITE("base")
     };
 
     // Schedule an event to run after 5 microseconds
-    Embys::Stm32::Base::Event event(
-        loop, Embys::Stm32::Base::EventMode::Deferred,
-        {callback, &event_calls});
+    Embys::Stm32::Base::Event event(loop,
+                                    Embys::Stm32::Base::EventMode::Deferred,
+                                    {callback, &event_calls});
     (void)event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 10 microseconds
@@ -193,9 +191,9 @@ TEST_SUITE("base")
     };
 
     // Schedule a persisted event to run every 5 microseconds
-    Embys::Stm32::Base::Event event(
-        loop, Embys::Stm32::Base::EventMode::Persistent,
-        {callback, &event_calls});
+    Embys::Stm32::Base::Event event(loop,
+                                    Embys::Stm32::Base::EventMode::Persistent,
+                                    {callback, &event_calls});
     (void)event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 16 microseconds
@@ -235,12 +233,12 @@ TEST_SUITE("base")
     };
 
     // Schedule two events to run at different intervals
-    Embys::Stm32::Base::Event event1(
-        loop, Embys::Stm32::Base::EventMode::Persistent,
-        {callback1, &event1_calls});
-    Embys::Stm32::Base::Event event2(
-        loop, Embys::Stm32::Base::EventMode::Persistent,
-        {callback2, &event2_calls});
+    Embys::Stm32::Base::Event event1(loop,
+                                     Embys::Stm32::Base::EventMode::Persistent,
+                                     {callback1, &event1_calls});
+    Embys::Stm32::Base::Event event2(loop,
+                                     Embys::Stm32::Base::EventMode::Persistent,
+                                     {callback2, &event2_calls});
     (void)event1.enable(std::chrono::microseconds{5});  // Every 5 us
     (void)event2.enable(std::chrono::microseconds{10}); // Every 10 us
 

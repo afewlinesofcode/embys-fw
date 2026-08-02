@@ -80,8 +80,7 @@ static void
 blink(AppContext *ctx)
 {
   ctx->led_pin->write(0); // active-low: 0 = on
-  (void)ctx->blink_off_event->enable(
-      std::chrono::microseconds{LED_BLINK_US});
+  (void)ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 }
 
 static void

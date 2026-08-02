@@ -218,8 +218,8 @@ TEST_SUITE("modbus_rtu_client")
          &ctx});
 
     // Run long enough for the timeout to fire
-    (void)loop.stop(std::chrono::microseconds{Modbus::Rtu::Client::kRequestTimeoutUs +
-                                        100U});
+    (void)loop.stop(std::chrono::microseconds{
+        Modbus::Rtu::Client::kRequestTimeoutUs + 100U});
     loop.run();
 
     CHECK(timeout_device == 0x01U);

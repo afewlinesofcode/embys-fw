@@ -46,3 +46,4 @@ build
 CLAUDE.md
 /.old
 .ccache/
+compile_commands.json

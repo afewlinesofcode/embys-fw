@@ -24,9 +24,8 @@ inline void
 modify(volatile Register &reg, std::uint8_t shift, Register mask,
        Value value) noexcept
 {
-  reg = static_cast<Register>(
-      (reg & ~(mask << shift)) |
-      ((static_cast<Register>(value) & mask) << shift));
+  reg = static_cast<Register>((reg & ~(mask << shift)) |
+                              ((static_cast<Register>(value) & mask) << shift));
 }
 
 template <typename Register, typename Mask>

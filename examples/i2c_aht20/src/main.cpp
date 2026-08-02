@@ -115,8 +115,7 @@ on_aht20_enabled(void *context, int rc)
   }
 
   SIM_LOG("AHT20 ready, starting periodic query");
-  (void)ctx->query_event->enable(
-      std::chrono::microseconds{QUERY_INTERVAL_US});
+  (void)ctx->query_event->enable(std::chrono::microseconds{QUERY_INTERVAL_US});
 }
 
 /**
@@ -179,8 +178,7 @@ main()
       loop, Embys::Stm32::Base::EventMode::Deferred, {on_start, &context});
 
   Embys::Stm32::Base::Event query_event(
-      loop, Embys::Stm32::Base::EventMode::Persistent,
-      {do_query, &context});
+      loop, Embys::Stm32::Base::EventMode::Persistent, {do_query, &context});
 
   Embys::Stm32::Base::Event led_off_event(
       loop, Embys::Stm32::Base::EventMode::Deferred, {led_off, &context});

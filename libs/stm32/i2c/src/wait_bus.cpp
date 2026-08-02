@@ -8,9 +8,8 @@ namespace Embys::Stm32::I2c
 
 WaitBus::WaitBus(BusCore *bus, Callback<int> cb_)
   : i2c(bus->get_i2c()), checks_count(bus->get_scl_hz() > 100000u ? 20u : 50u),
-    cb(cb_),
-    event(*bus->get_base(), Base::EventMode::Deferred,
-          {WaitBus::event_callback, this})
+    cb(cb_), event(*bus->get_base(), Base::EventMode::Deferred,
+                   {WaitBus::event_callback, this})
 {
 }
 

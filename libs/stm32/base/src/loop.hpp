@@ -330,9 +330,8 @@ struct LoopStorage
 } // namespace Detail
 
 template <size_t EventsCapacity, size_t ModulesCapacity>
-class Loop final
-  : private Detail::LoopStorage<EventsCapacity, ModulesCapacity>,
-    public LoopCore
+class Loop final : private Detail::LoopStorage<EventsCapacity, ModulesCapacity>,
+                   public LoopCore
 {
   using Storage = Detail::LoopStorage<EventsCapacity, ModulesCapacity>;
 

@@ -6,11 +6,10 @@
 
 #ifdef STM32F1xx
 
-#include "../common/registers.hpp"
-
 #include <embys/stm32/def.hpp>
 
 #include "../../diag.hpp"
+#include "../common/registers.hpp"
 
 namespace Embys::Stm32::Uart
 {

@@ -87,7 +87,8 @@ using TargetDevice = Stm32f411xe;
 
 #else
 
-#error "Unsupported STM32 target. Supported: STM32F103xB, STM32F407xx, STM32F411xE"
+#error                                                                         \
+    "Unsupported STM32 target. Supported: STM32F103xB, STM32F407xx, STM32F411xE"
 
 #endif
 

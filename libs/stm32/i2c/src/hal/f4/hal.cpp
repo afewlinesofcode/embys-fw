@@ -1,8 +1,8 @@
 #ifdef STM32F4xx
 
-#include "../common/registers.hpp"
-
 #include <embys/stm32/def.hpp>
+
+#include "../common/registers.hpp"
 
 // F4 I2C HAL implementation.
 // I2C1, I2C2, I2C3 are on APB1. PCLK1 is derived from RCC->CFGR PPRE1 field.

@@ -159,8 +159,7 @@ main()
 
   // Initialize blink event with a callback to toggle LED state
   Embys::Stm32::Base::Event blink_event(
-      loop, Embys::Stm32::Base::EventMode::Persistent,
-      {toggle_led, &context});
+      loop, Embys::Stm32::Base::EventMode::Persistent, {toggle_led, &context});
 
   // Allocate memory for GPIO pins:
   // - One pin for button input

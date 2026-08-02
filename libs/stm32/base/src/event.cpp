@@ -24,8 +24,8 @@ EventResult
 Event::enable(std::chrono::microseconds interval)
 {
   const auto count = interval.count();
-  if (count < 0 || static_cast<uint64_t>(count) >
-                       std::numeric_limits<uint32_t>::max())
+  if (count < 0 ||
+      static_cast<uint64_t>(count) > std::numeric_limits<uint32_t>::max())
   {
     return EventResult::failure(EventError::InvalidDuration);
   }

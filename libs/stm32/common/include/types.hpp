@@ -39,12 +39,9 @@ public:
   [[nodiscard]] static constexpr Callback
   bind(Object &object) noexcept
   {
-    return Callback{
-        [](void *context, Args... args)
-        {
-          (static_cast<Object *>(context)->*Method)(args...);
-        },
-        &object};
+    return Callback{[](void *context, Args... args)
+                    { (static_cast<Object *>(context)->*Method)(args...); },
+                    &object};
   }
 
   constexpr void

@@ -17,6 +17,11 @@ test-only: test-only-local
 test-only-suite: test-only-suite-local
 examples: examples-local
 firmware-check: firmware-check-local
+format: format-local
+format-check: format-check-local
+lint: lint-local
+lint-fix: lint-fix-local
+compile-db: compile-db-local
 else
 all: all-in-docker
 test: test-in-docker
@@ -24,6 +29,11 @@ test-only: test-only-in-docker
 test-only-suite: test-only-suite-in-docker
 examples: examples-in-docker
 firmware-check: firmware-check-in-docker
+format: format-local
+format-check: format-check-local
+lint: lint-local
+lint-fix: lint-fix-local
+compile-db: compile-db-local
 endif
 
 sim:
@@ -77,4 +87,5 @@ clean:
 
 .PHONY: all all-local test test-local test-only test-only-local \
 	test-only-suite test-only-suite-local clean-tests examples examples-local \
-	firmware-check firmware-check-local clean
+	firmware-check firmware-check-local format format-check lint lint-fix \
+	compile-db clean

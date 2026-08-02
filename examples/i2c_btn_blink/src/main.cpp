@@ -166,8 +166,7 @@ main()
   Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   Embys::Stm32::Base::Event blink_event(
-      loop, Embys::Stm32::Base::EventMode::Persistent,
-      {toggle_led, &context});
+      loop, Embys::Stm32::Base::EventMode::Persistent, {toggle_led, &context});
 
   // One-shot startup event: fires on the first loop iteration (us=0)
   Embys::Stm32::Base::Event startup_event(

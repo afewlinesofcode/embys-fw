@@ -101,7 +101,8 @@ struct Event
 
   /**
    * @brief Initialize a new Event object
-   * @param loop Base system loop managing this event; it must outlive the event.
+   * @param loop Base system loop managing this event; it must outlive the
+   * event.
    * @param mode Scheduling and callback execution mode.
    * @param cb Event callback function
    */
