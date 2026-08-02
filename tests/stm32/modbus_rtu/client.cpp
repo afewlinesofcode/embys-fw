@@ -104,7 +104,7 @@ struct ClientFixture : RtuBaseFixture
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
     client.enable();
   }
 };

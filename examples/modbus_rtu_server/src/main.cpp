@@ -259,7 +259,8 @@ main()
       !uart_tx.enable() || !uart_rx.enable() || !i2c_scl.enable() ||
       !i2c_sda.enable())
     return 1;
-  TRY(uart_bus.enable(UART_BAUD));
+  if (!uart_bus.enable(UART_BAUD))
+    return 1;
   TRY(i2c_bus.enable(100000));
 
   modbus_server.enable();

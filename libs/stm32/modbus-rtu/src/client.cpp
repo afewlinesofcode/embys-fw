@@ -279,7 +279,7 @@ Client::response_timeout_callback(void *context) noexcept
 }
 
 void
-Client::request_sent_callback(void *context, int status) noexcept
+Client::request_sent_callback(void *context, Uart::Status status) noexcept
 {
   auto *client = static_cast<Client *>(context);
   client->sending_request = false;

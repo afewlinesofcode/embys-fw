@@ -8,7 +8,6 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "../../diag.hpp"
 #include "../common/registers.hpp"
 
 namespace Embys::Stm32::Uart
@@ -73,10 +72,13 @@ configure_cr(USART_TypeDef *usart, uint32_t baud_rate, WordLength word_length,
   disable_tc_irq(usart);
 }
 
-int
+Status
 enable_uart(USART_TypeDef *usart, uint32_t baud_rate, WordLength word_length,
             StopBits stop_bits, Parity parity)
 {
+  if (baud_rate == 0U)
+    return Status::failure(Error::InvalidBaudRate);
+
   uint32_t pclk;
 
   if (usart == USART1)
@@ -102,19 +104,22 @@ enable_uart(USART_TypeDef *usart, uint32_t baud_rate, WordLength word_length,
   }
   else
   {
-    return INVALID_USART;
+    return Status::failure(Error::InvalidInstance);
   }
 
   (void)RCC->APB2ENR; // read-back for bus completion
   __DSB();            // ensure clock is stable before accessing peripheral
 
   configure_cr(usart, baud_rate, word_length, stop_bits, parity, pclk);
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 disable_uart(USART_TypeDef *usart)
 {
+  if (usart != USART1 && usart != USART2 && usart != USART3)
+    return Status::failure(Error::InvalidInstance);
+
   disable_rxne_irq(usart);
   disable_txe_irq(usart);
   disable_tc_irq(usart);
@@ -127,10 +132,7 @@ disable_uart(USART_TypeDef *usart)
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_USART2EN);
   else if (usart == USART3)
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_USART3EN);
-  else
-    return INVALID_USART;
-
-  return 0;
+  return Status::success();
 }
 
 }; // namespace Embys::Stm32::Uart

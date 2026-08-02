@@ -140,7 +140,7 @@ private:
   response_timeout_callback(void *context) noexcept;
 
   static void
-  request_sent_callback(void *context, int status) noexcept;
+  request_sent_callback(void *context, Uart::Status status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

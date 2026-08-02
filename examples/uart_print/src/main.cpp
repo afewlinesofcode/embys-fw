@@ -56,12 +56,9 @@ static const char message[] = "Hello from Blue Pill!\r\n";
 static bool tx_busy = false;
 
 static void
-on_tx_done(void *, int result) noexcept
+on_tx_done(void *, Uart::Status /* result */) noexcept
 {
-  // Result 0 = OK; negative = TX_TIMEOUT or other error.
-  // For this example we simply clear the flag regardless — the next
-  // periodic timer tick will schedule the next transmission.
-  (void)result;
+  // The next periodic timer tick schedules a new transfer after either result.
   tx_busy = false;
 }
 
@@ -73,9 +70,11 @@ send_message(void *context) noexcept
   if (tx_busy)
     return; // Previous transmission still in progress — skip this tick.
 
-  tx_busy = true;
-  bus->write(message);
-  SIM_LOG(message);
+  if (bus->write(message))
+  {
+    tx_busy = true;
+    SIM_LOG(message);
+  }
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
@@ -118,7 +117,8 @@ main()
   // Enable peripherals
   if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable())
     return 1;
-  uart.enable(UART_BAUD);
+  if (!uart.enable(UART_BAUD))
+    return 1;
   (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 
   // Enable IRQs

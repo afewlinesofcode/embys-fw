@@ -84,7 +84,7 @@ struct RtuLoopFixture : RtuBaseFixture
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
   }
 };
 
@@ -110,7 +110,7 @@ struct BaseFixture38400 : RtuBaseFixture
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(38400);
+    (void)uart.enable(38400);
     base.enable();
   }
 };

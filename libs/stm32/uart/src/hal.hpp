@@ -31,17 +31,17 @@ namespace Embys::Stm32::Uart
 /**
  * @brief Enable USART clock, reset peripheral, and configure CR1/CR2/BRR.
  * Enables RXNE interrupt; TXE and TC interrupts are disabled.
- * @return 0 on success, negative error code on failure.
+ * @return Success or the hardware configuration failure.
  */
-int
+Status
 enable_uart(USART_TypeDef *usart, uint32_t baud_rate, WordLength word_length,
             StopBits stop_bits, Parity parity);
 
 /**
  * @brief Disable all USART interrupts, clear UE, disable peripheral clock.
- * @return 0 on success, negative error code on failure.
+ * @return Success or Error::InvalidInstance.
  */
-int
+Status
 disable_uart(USART_TypeDef *usart);
 
 /**

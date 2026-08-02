@@ -289,7 +289,10 @@ STM32F4 backends. The central `Uart::Bus<Instance, RxCapacity, TxCapacity>` owns
 its bounded buffers, integrates with `Base::Loop`, and registers an internal TX
 timeout event.
 
-TX is fully asynchronous — `write()` copies into owned bounded storage, returns immediately, and signals completion (or timeout) via the TX callback. RX bytes are also accumulated in owned storage and dispatched in loop context.
+TX is fully asynchronous — `write()` copies into owned bounded storage and
+returns `Uart::Status`. A successful start signals completion (or timeout) via
+the TX callback. RX data is dispatched in loop context as
+`Uart::ReceiveResult`, so overflow cannot be confused with a byte value.
 
 **Caller responsibilities:**
 
@@ -308,7 +311,8 @@ Configuration enums (from `def.hpp`):
 | `StopBits`   | `One`, `Two`          |
 | `WordLength` | `W8`, `W9`            |
 
-Error codes are defined in `Embys::Stm32::Uart::Diag` (e.g. `TX_BUSY`, `TX_TIMEOUT`, `RX_OVERFLOW`).
+Errors use `Embys::Stm32::Uart::Error` (for example,
+`TransmitBusy`, `TransmitTimeout`, and `ReceiveOverflow`).
 
 ```cpp
 Embys::Stm32::Uart::Bus<Embys::Stm32::Uart::Instance::Usart1, 64, 64>
@@ -321,11 +325,13 @@ uart.set_tx_callback({on_tx_done, &context});
 extern "C" void USART1_IRQHandler() { uart.handle_irq(); }
 
 // Enable at 115200 8N1 (defaults)
-uart.enable(115200);
+if (!uart.enable(115200))
+  return;
 
 // Asynchronous transmit
 const uint8_t msg[] = "hello\r\n";
-uart.write(msg, sizeof(msg) - 1);
+if (!uart.write(std::span{msg}.first(sizeof(msg) - 1)))
+  return;
 ```
 
 ### I2C

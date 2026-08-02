@@ -82,9 +82,16 @@ static void
 flush_line(AppContext *ctx);
 
 static void
-on_rx_byte(void *context, uint8_t byte) noexcept
+on_rx_byte(void *context, Uart::ReceiveResult result) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
+  if (!result)
+  {
+    ctx->line_len = 0;
+    return;
+  }
+
+  const uint8_t byte = result.value();
 
   bool end_of_line = (byte == '\r' || byte == '\n');
 
@@ -100,7 +107,7 @@ on_rx_byte(void *context, uint8_t byte) noexcept
 }
 
 static void
-on_tx_done(void *context, int /* result */) noexcept
+on_tx_done(void *context, Uart::Status /* result */) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->tx_busy = false;
@@ -121,8 +128,8 @@ flush_line(AppContext *ctx)
   ctx->tx_len = ctx->line_len + 2;
   ctx->line_len = 0;
 
-  ctx->tx_busy = true;
-  ctx->uart->write(std::span{ctx->tx_buf}.first(ctx->tx_len));
+  if (ctx->uart->write(std::span{ctx->tx_buf}.first(ctx->tx_len)))
+    ctx->tx_busy = true;
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
@@ -163,7 +170,8 @@ main()
 
   if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable())
     return 1;
-  uart.enable(UART_BAUD);
+  if (!uart.enable(UART_BAUD))
+    return 1;
 
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0);

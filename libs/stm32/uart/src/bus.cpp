@@ -5,8 +5,6 @@
 #include <embys/stm32/base/cs.hpp>
 #include <embys/stm32/def.hpp>
 
-#include "diag.hpp"
-
 namespace Embys::Stm32::Uart
 {
 
@@ -25,20 +23,23 @@ BusCore::~BusCore()
     (void)disable();
 }
 
-int
+Status
 BusCore::enable(uint32_t baud_rate_, WordLength word_length_,
                 StopBits stop_bits_, Parity parity_)
 {
   if (enabled)
-    return 0;
+    return Status::success();
 
-  TRY(enable_uart(usart, baud_rate_, word_length_, stop_bits_, parity_));
+  const Status uart_result =
+      enable_uart(usart, baud_rate_, word_length_, stop_bits_, parity_);
+  if (!uart_result)
+    return uart_result;
 
   module = base->add_module({BusCore::module_callback, this});
   if (!module)
   {
     (void)disable_uart(usart);
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::ModuleCapacity);
   }
 
   baud_rate = baud_rate_;
@@ -54,50 +55,63 @@ BusCore::enable(uint32_t baud_rate_, WordLength word_length_,
   tx_buffer_pos = 0;
   tx_active = false;
   tx_ready = false;
-  tx_result = 0;
+  tx_success = false;
+  tx_error = Error::NotEnabled;
 
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::disable()
 {
   if (!enabled)
-    return 0;
+    return Status::success();
 
   (void)timeout_event.disable();
   base->remove_module(module);
   module = nullptr;
 
-  TRY(disable_uart(usart));
+  const Status uart_result = disable_uart(usart);
+  if (!uart_result)
+    return uart_result;
 
   enabled = false;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::write(std::span<const uint8_t> data)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
   if (tx_active)
-    return TX_BUSY;
+    return Status::failure(Error::TransmitBusy);
 
   if (data.size() > tx_capacity)
-    return BUFFER_TOO_SMALL;
+    return Status::failure(Error::BufferTooSmall);
 
   if (!data.empty())
     std::memcpy(tx_storage, data.data(), data.size());
   tx_buffer = tx_storage;
   tx_buffer_len = data.size();
   tx_buffer_pos = 0;
+  const Base::EventResult schedule_result = timeout_event.enable(
+      std::chrono::microseconds{calc_tx_timeout_us(data.size())});
+  if (!schedule_result)
+  {
+    tx_buffer = nullptr;
+    tx_buffer_len = 0;
+    return Status::failure(Error::Schedule);
+  }
+
   tx_active = true;
   tx_ready = false;
-  tx_result = 0;
+  tx_success = false;
+  tx_error = Error::NotEnabled;
 
   if (rede_pin)
   {
@@ -108,10 +122,7 @@ BusCore::write(std::span<const uint8_t> data)
   // Enable TXE interrupt — first byte sent from IRQ
   enable_txe_irq(usart);
 
-  (void)timeout_event.enable(
-      std::chrono::microseconds{calc_tx_timeout_us(data.size())});
-
-  return 0;
+  return Status::success();
 }
 
 void
@@ -156,7 +167,7 @@ BusCore::handle_irq()
       }
       else
       {
-        tx_complete(0);
+        tx_complete(Status::success());
       }
     }
   }
@@ -170,7 +181,7 @@ BusCore::handle_irq()
     if (rede_pin)
       (void)rede_pin->write(0);
 
-    tx_complete(0);
+    tx_complete(Status::success());
   }
 }
 
@@ -189,14 +200,16 @@ BusCore::calc_tx_timeout_us(size_t len) const
 }
 
 void
-BusCore::tx_complete(int result)
+BusCore::tx_complete(Status result)
 {
   {
     IrqGuard guard;
 
     tx_active = false;
     tx_ready = true;
-    tx_result = result;
+    tx_success = result.has_value();
+    if (!tx_success)
+      tx_error = result.error();
     disable_txe_irq(usart);
     if (rede_pin)
       disable_tc_irq(usart);
@@ -215,7 +228,7 @@ BusCore::module_callback(void *context) noexcept
   {
     uint8_t byte = self->rx_buffer[self->rx_buffer_pos];
     self->rx_buffer_pos = self->rx_buffer_pos + 1;
-    self->rx_cb(byte);
+    self->rx_cb(ReceiveResult::success(byte));
   }
 
   if (self->rx_buffer_pos >= self->rx_buffer_len)
@@ -235,7 +248,7 @@ BusCore::module_callback(void *context) noexcept
     }
 
     if (is_overflow)
-      self->rx_cb(static_cast<uint8_t>(RX_OVERFLOW));
+      self->rx_cb(ReceiveResult::failure(Error::ReceiveOverflow));
   }
 
   // TX completion
@@ -243,7 +256,10 @@ BusCore::module_callback(void *context) noexcept
   {
     self->tx_ready = false;
     (void)self->timeout_event.disable();
-    self->tx_cb(self->tx_result);
+    if (self->tx_success)
+      self->tx_cb(Status::success());
+    else
+      self->tx_cb(Status::failure(self->tx_error));
   }
 }
 
@@ -253,7 +269,7 @@ BusCore::timeout_handler(void *context) noexcept
   auto *self = static_cast<BusCore *>(context);
 
   if (self->tx_active)
-    self->tx_complete(TX_TIMEOUT);
+    self->tx_complete(Status::failure(Error::TransmitTimeout));
 }
 
 }; // namespace Embys::Stm32::Uart

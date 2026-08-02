@@ -114,7 +114,7 @@ struct RtuLoopFixture : RtuBaseFixture
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
   }
 };
 
@@ -150,7 +150,7 @@ TEST_SUITE("modbus_rtu_server")
     store.set_holding_register(1, 0x5678U);
 
     std::vector<uint8_t> sent;
-    uart.set_tx_callback({[](void *ctx, int) noexcept
+    uart.set_tx_callback({[](void *ctx, Uart::Status) noexcept
                           {
                             auto *v = static_cast<std::vector<uint8_t> *>(ctx);
                             if (!Embys::Stm32::Sim::Uart::tx_buffers.empty())
@@ -217,7 +217,7 @@ TEST_SUITE("modbus_rtu_server")
   TEST_CASE_FIXTURE(ServerFixture, "Server: unknown FC gets exception response")
   {
     std::vector<uint8_t> sent;
-    uart.set_tx_callback({[](void *ctx, int) noexcept
+    uart.set_tx_callback({[](void *ctx, Uart::Status) noexcept
                           {
                             auto *v = static_cast<std::vector<uint8_t> *>(ctx);
                             if (!Embys::Stm32::Sim::Uart::tx_buffers.empty())

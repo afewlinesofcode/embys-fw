@@ -24,14 +24,6 @@
 #include "def.hpp"
 #include "sim.hpp"
 
-#define TRY_ASYNC(ctx, op)                                                     \
-  do                                                                           \
-  {                                                                            \
-    int res = (op);                                                            \
-    if (res < 0)                                                               \
-      static_cast<AppContext *>(ctx)->loop->terminate(res, ctx);               \
-  } while (0)
-
 namespace Gpio = Embys::Stm32::Gpio;
 namespace Uart = Embys::Stm32::Uart;
 namespace Base = Embys::Stm32::Base;
@@ -91,10 +83,15 @@ on_blink_off(void *ctx) noexcept
 }
 
 static void
-on_tx_done(void *context, int result) noexcept
+on_tx_done(void *context, Uart::Status result) noexcept
 {
-  TRY_ASYNC(context, result);
   auto *ctx = static_cast<AppContext *>(context);
+  if (!result)
+  {
+    ctx->loop->terminate(1, ctx);
+    return;
+  }
+
   ctx->tx_busy = false;
 }
 
@@ -107,8 +104,13 @@ send_message(void *context) noexcept
   if (ctx->tx_busy)
     return; // Previous transmission still in progress — skip this tick.
 
+  if (!ctx->uart->write(message))
+  {
+    ctx->loop->terminate(1, ctx);
+    return;
+  }
+
   ctx->tx_busy = true;
-  TRY_ASYNC(ctx, ctx->uart->write(message));
   blink(ctx);
   SIM_LOG(message);
 }
@@ -174,7 +176,8 @@ main()
   if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable() ||
       !uart_rede.enable() || !led_pin.enable())
     return 1;
-  uart.enable(UART_BAUD);
+  if (!uart.enable(UART_BAUD))
+    return 1;
   (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 
   // Enable IRQs

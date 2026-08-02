@@ -99,13 +99,13 @@ protected:
 
 private:
   static void
-  recv_callback(void *context, uint8_t byte) noexcept;
+  recv_callback(void *context, Uart::ReceiveResult result) noexcept;
 
   static void
   frame_timeout_callback(void *context) noexcept;
 
   static void
-  sent_callback(void *context, int status) noexcept;
+  sent_callback(void *context, Uart::Status status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

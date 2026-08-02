@@ -123,29 +123,30 @@ public:
 
   /**
    * @brief Enable the USART peripheral and register with the loop.
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the peripheral/module-registration failure.
    */
-  int
+  [[nodiscard]] Status
   enable(uint32_t baud_rate, WordLength word_length = WordLength::W8,
          StopBits stop_bits = StopBits::One, Parity parity = Parity::None);
 
   /**
    * @brief Disable the USART peripheral and unregister from the loop.
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the hardware disable failure.
    */
-  int
+  [[nodiscard]] Status
   disable();
 
   /**
    * @brief Start an asynchronous transmit operation.
    * Completion (or timeout) is signalled via the TX callback.
    * @param data Data copied into owned transmit storage before returning.
-   * @return 0 on success, TX_BUSY if a transmit is already in progress.
+   * @return Success or an immediate start failure. Completion is reported only
+   * through the TX callback after a successful start.
    */
-  int
+  [[nodiscard]] Status
   write(std::span<const uint8_t> data);
 
-  int
+  [[nodiscard]] Status
   write(std::string_view text)
   {
     return write({reinterpret_cast<const uint8_t *>(text.data()), text.size()});
@@ -163,7 +164,7 @@ public:
    * Called in main-loop context.
    */
   inline void
-  set_rx_callback(Callback<uint8_t> cb)
+  set_rx_callback(Callback<ReceiveResult> cb)
   {
     rx_cb = cb;
   }
@@ -176,11 +177,11 @@ public:
 
   /**
    * @brief Register a callback invoked when a transmit completes or times out.
-   * Argument is 0 on success, negative error code on failure.
+   * Receives the final transmit result in main-loop context.
    * Called in main-loop context.
    */
   inline void
-  set_tx_callback(Callback<int> cb)
+  set_tx_callback(Callback<Status> cb)
   {
     tx_cb = cb;
   }
@@ -205,7 +206,7 @@ private:
   volatile size_t rx_buffer_len = 0;
   size_t rx_buffer_pos = 0;
   volatile bool rx_overflow = false;
-  Callback<uint8_t> rx_cb;
+  Callback<ReceiveResult> rx_cb;
 
   // ── TX state ─────────────────────────────────────────────────────────
   const uint8_t *tx_buffer = nullptr;
@@ -215,8 +216,9 @@ private:
   volatile size_t tx_buffer_pos = 0;
   volatile bool tx_active = false;
   volatile bool tx_ready = false;
-  volatile int tx_result = 0;
-  Callback<int> tx_cb;
+  volatile bool tx_success = false;
+  volatile Error tx_error = Error::NotEnabled;
+  Callback<Status> tx_cb;
 
   WordLength word_length = WordLength::W8;
   StopBits stop_bits = StopBits::One;
@@ -245,7 +247,7 @@ private:
    * Called from IRQ context; must be short and non-blocking.
    */
   void
-  tx_complete(int result);
+  tx_complete(Status result);
 
   inline void
   set_module_pending()
