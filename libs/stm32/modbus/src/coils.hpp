@@ -11,6 +11,9 @@
  */
 #pragma once
 
+#include <algorithm>
+#include <span>
+
 #include <stdint.h>
 
 #include "diag.hpp"
@@ -36,12 +39,13 @@ public:
   Coils &
   operator=(Coils &&) = delete;
 
-  Coils(uint8_t *buffer, uint16_t capacity) : data(buffer), capacity(capacity)
+  Coils(std::span<uint8_t> buffer, uint16_t capacity)
+    : data(buffer), capacity(capacity)
   {
   }
 
   inline int
-  get(uint16_t index, bool *value) const
+  get(uint16_t index, bool &value) const
   {
     if (index >= capacity)
     {
@@ -50,17 +54,36 @@ public:
 
     uint16_t byte_index = index / 8U;
     uint8_t bit_index = static_cast<uint8_t>(index % 8U);
-    *value = ((data[byte_index] >> bit_index) & 0x01U) != 0U;
+    if (byte_index >= data.size())
+    {
+      return Diag::BUFFER_TOO_SMALL;
+    }
+
+    value = ((data[byte_index] >> bit_index) & 0x01U) != 0U;
     return 0;
   }
 
   inline int
-  get(uint16_t index, uint8_t *value, uint16_t quantity) const
+  get(uint16_t index, std::span<uint8_t> value, uint16_t quantity) const
   {
     if (static_cast<uint32_t>(index) + quantity > capacity)
     {
       return Diag::COIL_OUT_OF_RANGE;
     }
+
+    const auto bytes = static_cast<std::size_t>((quantity + 7U) / 8U);
+    if (value.size() < bytes)
+    {
+      return Diag::BUFFER_TOO_SMALL;
+    }
+
+    if (quantity != 0U &&
+        static_cast<std::size_t>(index + quantity - 1U) / 8U >= data.size())
+    {
+      return Diag::BUFFER_TOO_SMALL;
+    }
+
+    std::fill_n(value.begin(), bytes, uint8_t{0});
 
     for (uint16_t i = 0; i < quantity; i++)
     {
@@ -90,6 +113,10 @@ public:
 
     uint16_t byte_index = index / 8U;
     uint8_t bit_index = static_cast<uint8_t>(index % 8U);
+    if (byte_index >= data.size())
+    {
+      return Diag::BUFFER_TOO_SMALL;
+    }
 
     if (value)
     {
@@ -104,11 +131,22 @@ public:
   }
 
   inline int
-  set(uint16_t index, const uint8_t *value, uint16_t quantity)
+  set(uint16_t index, std::span<const uint8_t> value, uint16_t quantity)
   {
     if (static_cast<uint32_t>(index) + quantity > capacity)
     {
       return Diag::COIL_OUT_OF_RANGE;
+    }
+
+    if (value.size() < static_cast<std::size_t>((quantity + 7U) / 8U))
+    {
+      return Diag::BUFFER_TOO_SMALL;
+    }
+
+    if (quantity != 0U &&
+        static_cast<std::size_t>(index + quantity - 1U) / 8U >= data.size())
+    {
+      return Diag::BUFFER_TOO_SMALL;
     }
 
     for (uint16_t i = 0; i < quantity; i++)
@@ -132,7 +170,7 @@ public:
   }
 
 private:
-  uint8_t *data;
+  std::span<uint8_t> data;
   uint16_t capacity;
 };
 

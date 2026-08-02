@@ -33,8 +33,8 @@ Client::read_coils(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadCoils;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -47,8 +47,8 @@ Client::read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadDiscreteInputs;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -61,8 +61,8 @@ Client::read_holding_registers(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadHoldingRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -75,8 +75,8 @@ Client::read_input_registers(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadInputRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -89,8 +89,9 @@ Client::write_single_coil(uint8_t device_id, uint16_t address, bool value,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleCoil;
-  Modbus::write_u16_be(&buffer_out[2], address);
-  Modbus::write_u16_be(&buffer_out[4], value ? 0xFF00U : 0x0000U);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U),
+                       value ? 0xFF00U : 0x0000U);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = 2U;
@@ -103,8 +104,8 @@ Client::write_single_register(uint8_t device_id, uint16_t address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleRegister;
-  Modbus::write_u16_be(&buffer_out[2], address);
-  Modbus::write_u16_be(&buffer_out[4], value);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), value);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = 2U;
@@ -118,8 +119,8 @@ Client::write_multiple_coils(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleCoils;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out[6] = Modbus::calculate_coil_bytes(quantity);
   for (uint8_t i = 0; i < buffer_out[6]; i++)
   {
@@ -140,12 +141,13 @@ Client::write_multiple_registers(uint8_t device_id, uint16_t starting_address,
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out[6] = static_cast<uint8_t>(quantity * 2U);
   for (uint16_t i = 0; i < quantity; i++)
   {
-    Modbus::write_u16_be(&buffer_out[7U + (i * 2U)], register_data[i]);
+    Modbus::write_u16_be(std::span{buffer_out}.subspan(7U + (i * 2U), 2U),
+                         register_data[i]);
   }
   buffer_out_len =
       static_cast<uint16_t>(Modbus::kFrameHeaderSize + 5U + buffer_out[6]);

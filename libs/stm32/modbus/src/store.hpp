@@ -22,6 +22,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #include "coils.hpp"
 #include "registers.hpp"
@@ -40,69 +41,63 @@ public:
   operator=(StoreCore &&) = delete;
 
 protected:
-  StoreCore(uint8_t *coils_buf, uint16_t coils_capacity, uint8_t *di_buf,
-            uint16_t di_capacity, uint16_t *hr_buf, uint16_t hr_capacity,
-            uint16_t *ir_buf, uint16_t ir_capacity)
+  StoreCore(std::span<uint8_t> coils_buf, uint16_t coils_capacity,
+            std::span<uint8_t> di_buf, uint16_t di_capacity,
+            std::span<uint16_t> hr_buf, std::span<uint16_t> ir_buf)
     : coils(coils_buf, coils_capacity), discrete_inputs(di_buf, di_capacity),
-      holding_registers(hr_buf, hr_capacity),
-      input_registers(ir_buf, ir_capacity)
+      holding_registers(hr_buf), input_registers(ir_buf)
   {
   }
 
 public:
+  int
+  get_coils(uint16_t address, std::span<uint8_t> value,
+            uint16_t quantity) const;
 
   int
-  get_coils(uint16_t address, uint8_t *value, uint16_t quantity) const;
-
-  int
-  get_discrete_inputs(uint16_t address, uint8_t *value,
+  get_discrete_inputs(uint16_t address, std::span<uint8_t> value,
                       uint16_t quantity) const;
 
   int
-  get_holding_register(uint16_t address, uint16_t *value) const;
+  get_holding_register(uint16_t address, uint16_t &value) const;
 
   int
-  get_holding_registers(uint16_t address, uint16_t *value,
-                        uint16_t quantity) const;
+  get_holding_registers(uint16_t address, std::span<uint16_t> value) const;
 
   int
-  get_holding_registers_be(uint16_t address, uint8_t *value,
-                           uint16_t quantity) const;
+  get_holding_registers_be(uint16_t address, std::span<uint8_t> value) const;
 
   int
-  get_input_registers_be(uint16_t address, uint8_t *value,
-                         uint16_t quantity) const;
+  get_input_registers_be(uint16_t address, std::span<uint8_t> value) const;
 
   int
   set_coil(uint16_t address, bool value);
 
   int
-  set_coils(uint16_t address, const uint8_t *value, uint16_t quantity);
+  set_coils(uint16_t address, std::span<const uint8_t> value,
+            uint16_t quantity);
 
   int
   set_discrete_input(uint16_t address, bool value);
 
   int
-  set_discrete_inputs(uint16_t address, const uint8_t *value,
+  set_discrete_inputs(uint16_t address, std::span<const uint8_t> value,
                       uint16_t quantity);
 
   int
   set_holding_register(uint16_t address, uint16_t value);
 
   int
-  set_holding_registers(uint16_t address, const uint16_t *value,
-                        uint16_t quantity);
+  set_holding_registers(uint16_t address, std::span<const uint16_t> value);
 
   int
-  set_holding_registers_be(uint16_t address, const uint8_t *value,
-                           uint16_t quantity);
+  set_holding_registers_be(uint16_t address, std::span<const uint8_t> value);
 
   int
   set_input_register(uint16_t address, uint16_t value);
 
   int
-  set_input_registers(uint16_t address, const uint16_t *value,
-                      uint16_t quantity);
+  set_input_registers(uint16_t address, std::span<const uint16_t> value);
 
 private:
   Coils coils;
@@ -149,12 +144,9 @@ class Store final
 public:
   Store()
     : Storage{},
-      StoreCore(Storage::coils.data(), static_cast<uint16_t>(CoilsN),
-                Storage::discrete_inputs.data(),
-                static_cast<uint16_t>(DiscreteN),
-                Storage::holding_registers.data(),
-                static_cast<uint16_t>(HoldingN),
-                Storage::input_registers.data(), static_cast<uint16_t>(InputN))
+      StoreCore(Storage::coils, static_cast<uint16_t>(CoilsN),
+                Storage::discrete_inputs, static_cast<uint16_t>(DiscreteN),
+                Storage::holding_registers, Storage::input_registers)
   {
   }
 };

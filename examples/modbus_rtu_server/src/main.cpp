@@ -32,6 +32,8 @@
 #endif
 #endif
 
+#include <span>
+
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
@@ -117,17 +119,17 @@ on_blink_off(void *ctx)
 // Modbus
 
 static void
-on_request(void *ctx, const uint8_t *buf, uint16_t len)
+on_request(void *ctx, std::span<const uint8_t> request)
 {
-  if (len < 4U) // need at least: device_id + FC + 2-byte address
+  if (request.size() < 4U) // device ID + function + 2-byte address
     return;
 
   auto *context = static_cast<AppContext *>(ctx);
   blink(context);
 
-  uint8_t fc = buf[1];
-  uint16_t addr =
-      (static_cast<uint16_t>(buf[2]) << 8) | static_cast<uint16_t>(buf[3]);
+  uint8_t fc = request[1];
+  uint16_t addr = (static_cast<uint16_t>(request[2]) << 8) |
+                  static_cast<uint16_t>(request[3]);
 
   char op = '?';
   const char *type = "??";
@@ -234,7 +236,8 @@ main()
       modbus_store;
 
   Modbus::Handler modbus_handler(modbus_store);
-  modbus_handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
+  static constexpr uint8_t server_id[] = {'E', 'M', 'B', 'Y', 'S'};
+  modbus_handler.set_server_id(server_id);
   modbus_handler.set_coils_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_discrete_inputs_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_holding_registers_offset(MODBUS_BASE_ADDR);

@@ -55,11 +55,11 @@ Server::process_request()
 
   ++diag_counters.slave_message_count;
 
-  on_request_cb(buffer_in, buffer_in_len);
+  on_request_cb(std::span{buffer_in}.first(buffer_in_len));
 
   handling_request = true;
-  uint8_t exception =
-      handler.handle(buffer_in, buffer_in_len, buffer_out, &buffer_out_len);
+  uint8_t exception = handler.handle(std::span{buffer_in}.first(buffer_in_len),
+                                     buffer_out, buffer_out_len);
 
   if (buffer_in[0] == 0U)
   {

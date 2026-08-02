@@ -579,7 +579,7 @@ TEST_SUITE("modbus_rtu_server_report_server_id")
                     "FC 0x11 custom server id: response reflects set_server_id")
   {
     const uint8_t id[] = {0xAB, 0xCD};
-    handler.set_server_id(id, sizeof(id));
+    handler.set_server_id(id);
 
     inject_frame({0x01, 0x11});
     auto sent = run_and_capture(loop);

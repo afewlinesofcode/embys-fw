@@ -10,6 +10,8 @@
  */
 #pragma once
 
+#include <span>
+
 #include <stdint.h>
 
 #include "diag.hpp"
@@ -34,44 +36,31 @@ public:
   Registers &
   operator=(Registers &&) = delete;
 
-  Registers(uint16_t *buffer, uint16_t capacity)
-    : data(buffer), capacity(capacity)
+  explicit Registers(std::span<uint16_t> buffer) : data(buffer)
   {
   }
 
   inline int
-  get(uint16_t index, uint16_t *value) const
+  get(uint16_t index, uint16_t &value) const
   {
-    if (index >= capacity)
+    if (index >= data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
 
-    *value = data[index];
+    value = data[index];
     return 0;
   }
 
   inline int
-  get_be(uint16_t index, uint8_t *value) const
+  get(uint16_t index, std::span<uint16_t> value) const
   {
-    if (index >= capacity)
+    if (static_cast<std::size_t>(index) + value.size() > data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
 
-    write_u16_be(value, data[index]);
-    return 0;
-  }
-
-  inline int
-  get(uint16_t index, uint16_t *value, uint16_t quantity) const
-  {
-    if (static_cast<uint32_t>(index) + quantity > capacity)
-    {
-      return Diag::REGISTER_OUT_OF_RANGE;
-    }
-
-    for (uint16_t i = 0; i < quantity; i++)
+    for (std::size_t i = 0; i < value.size(); i++)
     {
       value[i] = data[index + i];
     }
@@ -80,16 +69,22 @@ public:
   }
 
   inline int
-  get_be(uint16_t index, uint8_t *value, uint16_t quantity) const
+  get_be(uint16_t index, std::span<uint8_t> value) const
   {
-    if (static_cast<uint32_t>(index) + quantity > capacity)
+    if ((value.size() % 2U) != 0U)
+    {
+      return Diag::INVALID_BUFFER_SIZE;
+    }
+
+    const std::size_t quantity = value.size() / 2U;
+    if (static_cast<std::size_t>(index) + quantity > data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
 
-    for (uint16_t i = 0; i < quantity; i++)
+    for (std::size_t i = 0; i < quantity; i++)
     {
-      write_u16_be(&value[i * 2U], data[index + i]);
+      write_u16_be(value.subspan(i * 2U, 2U), data[index + i]);
     }
 
     return 0;
@@ -98,7 +93,7 @@ public:
   inline int
   set(uint16_t index, uint16_t value)
   {
-    if (index >= capacity)
+    if (index >= data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
@@ -108,14 +103,14 @@ public:
   }
 
   inline int
-  set(uint16_t index, const uint16_t *value, uint16_t quantity)
+  set(uint16_t index, std::span<const uint16_t> value)
   {
-    if (static_cast<uint32_t>(index) + quantity > capacity)
+    if (static_cast<std::size_t>(index) + value.size() > data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
 
-    for (uint16_t i = 0; i < quantity; i++)
+    for (std::size_t i = 0; i < value.size(); i++)
     {
       data[index + i] = value[i];
     }
@@ -124,24 +119,29 @@ public:
   }
 
   inline int
-  set_be(uint16_t index, const uint8_t *value, uint16_t quantity)
+  set_be(uint16_t index, std::span<const uint8_t> value)
   {
-    if (static_cast<uint32_t>(index) + quantity > capacity)
+    if ((value.size() % 2U) != 0U)
+    {
+      return Diag::INVALID_BUFFER_SIZE;
+    }
+
+    const std::size_t quantity = value.size() / 2U;
+    if (static_cast<std::size_t>(index) + quantity > data.size())
     {
       return Diag::REGISTER_OUT_OF_RANGE;
     }
 
-    for (uint16_t i = 0; i < quantity; i++)
+    for (std::size_t i = 0; i < quantity; i++)
     {
-      data[index + i] = read_u16_be(&value[i * 2U]);
+      data[index + i] = read_u16_be(value.subspan(i * 2U, 2U));
     }
 
     return 0;
   }
 
 private:
-  uint16_t *data;
-  uint16_t capacity;
+  std::span<uint16_t> data;
 };
 
 }; // namespace Embys::Stm32::Modbus

@@ -26,7 +26,7 @@ TEST_SUITE("modbus_coils")
   {
     CHECK(coils.set(0, true) == 0);
     bool v = false;
-    CHECK(coils.get(0, &v) == 0);
+    CHECK(coils.get(0, v) == 0);
     CHECK(v == true);
   }
 
@@ -34,7 +34,7 @@ TEST_SUITE("modbus_coils")
   {
     coils.set(0, true);
     bool v = false;
-    coils.get(1, &v);
+    coils.get(1, v);
     CHECK(v == false);
   }
 
@@ -43,7 +43,7 @@ TEST_SUITE("modbus_coils")
     coils.set(3, true);
     coils.set(3, false);
     bool v = true;
-    coils.get(3, &v);
+    coils.get(3, v);
     CHECK(v == false);
   }
 
@@ -71,9 +71,9 @@ TEST_SUITE("modbus_coils")
     CHECK(coils.set(0, src, 3) == 0);
 
     bool v0 = false, v1 = true, v2 = false;
-    coils.get(0, &v0);
-    coils.get(1, &v1);
-    coils.get(2, &v2);
+    coils.get(0, v0);
+    coils.get(1, v1);
+    coils.get(2, v2);
     CHECK(v0 == true);
     CHECK(v1 == false);
     CHECK(v2 == true);
@@ -82,13 +82,20 @@ TEST_SUITE("modbus_coils")
   TEST_CASE_FIXTURE(CoilsFixture, "out-of-range single get returns error")
   {
     bool v = false;
-    CHECK(coils.get(N, &v) == Diag::COIL_OUT_OF_RANGE);
+    CHECK(coils.get(N, v) == Diag::COIL_OUT_OF_RANGE);
   }
 
   TEST_CASE_FIXTURE(CoilsFixture, "out-of-range batch get returns error")
   {
     uint8_t out[4] = {};
     CHECK(coils.get(N - 1U, out, 2) == Diag::COIL_OUT_OF_RANGE);
+  }
+
+  TEST_CASE_FIXTURE(CoilsFixture, "batch operations reject undersized views")
+  {
+    uint8_t one_byte[1] = {};
+    CHECK(coils.get(0, one_byte, 9) == Diag::BUFFER_TOO_SMALL);
+    CHECK(coils.set(0, one_byte, 9) == Diag::BUFFER_TOO_SMALL);
   }
 
 } // TEST_SUITE("modbus_coils")
