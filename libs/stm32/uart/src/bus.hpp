@@ -39,7 +39,7 @@ namespace Embys::Stm32::Uart
  * @brief Interrupt-driven UART transceiver for STM32F1.
  *
  * Integrates with Base::Loop via a Module (for deferred RX/TX callbacks) and
- * an EV_RT Event (for TX timeout detection in timer-IRQ context).
+ * a realtime Event (for TX timeout detection in timer-IRQ context).
  *
  * GPIO configuration for TX and RX pins must be done by the caller before
  * calling enable(). The Bus only manages the USART peripheral.
@@ -229,7 +229,7 @@ private:
   Base::Module *module = nullptr;
 
   /**
-   * @brief EV_RT event used to detect TX timeout inside timer-IRQ context.
+   * @brief Realtime event used to detect TX timeout inside timer-IRQ context.
    * Caller must provision one extra event slot in the Loop for this event.
    */
   Base::Event timeout_event;

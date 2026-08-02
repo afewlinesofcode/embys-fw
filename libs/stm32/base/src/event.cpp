@@ -7,8 +7,8 @@
 namespace Embys::Stm32::Base
 {
 
-Event::Event(LoopCore &loop, uint8_t flags, Callback<> cb)
-  : loop(&loop), flags(flags), cb(cb)
+Event::Event(LoopCore &loop, EventMode mode, Callback<> cb)
+  : loop(&loop), mode(mode), cb(cb)
 {
 }
 

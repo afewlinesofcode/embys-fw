@@ -7,7 +7,7 @@
  *
  * Example:
  * ```
- * Event blink_event(loop, EV_PERSIST, {toggle_led, nullptr});
+ * Event blink_event(loop, EventMode::Persistent, {toggle_led, nullptr});
  * blink_event.enable(std::chrono::milliseconds{500});
  * ```
  *
@@ -28,14 +28,25 @@ namespace Embys::Stm32::Base
 
 class LoopCore;
 
-// Event flags
+enum class EventMode : uint8_t
+{
+  Deferred = 0,
+  Persistent = 1U << 0,
+  Realtime = 1U << 1,
+};
 
-// Event should persist after execution (rescheduled automatically)
-constexpr uint8_t EV_PERSIST = 1 << 0;
+[[nodiscard]] constexpr EventMode
+operator|(EventMode lhs, EventMode rhs) noexcept
+{
+  return static_cast<EventMode>(static_cast<uint8_t>(lhs) |
+                                static_cast<uint8_t>(rhs));
+}
 
-// Event is real-time (executed in IRQ context, should be short and
-// non-blocking)
-constexpr uint8_t EV_RT = 1 << 1;
+[[nodiscard]] constexpr bool
+has_mode(EventMode value, EventMode flag) noexcept
+{
+  return (static_cast<uint8_t>(value) & static_cast<uint8_t>(flag)) != 0U;
+}
 
 struct Event
 {
@@ -45,9 +56,9 @@ struct Event
   LoopCore *loop;
 
   /**
-   * @brief Event flags (EV_PERSIST, EV_RT, etc.)
+   * @brief Scheduling and callback execution mode.
    */
-  uint8_t flags;
+  EventMode mode;
 
   /**
    * @brief Event callback function to be executed when the event is triggered
@@ -82,10 +93,10 @@ struct Event
   /**
    * @brief Initialize a new Event object
    * @param loop Pointer to the Base system loop managing this event
-   * @param flags Event flags (EV_PERSIST, EV_RT, etc.)
+   * @param mode Scheduling and callback execution mode.
    * @param cb Event callback function
    */
-  Event(LoopCore &loop, uint8_t flags, Callback<> cb);
+  Event(LoopCore &loop, EventMode mode, Callback<> cb);
 
   /**
    * @brief Enable the event with a specified interval.

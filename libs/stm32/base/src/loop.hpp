@@ -10,7 +10,7 @@
  * ```
  * Timer timer(TIM2);
  * Loop<10, 5> loop(timer);
- * Event startup_event(loop, 0, {check_sensors, nullptr});
+ * Event startup_event(loop, EventMode::Deferred, {check_sensors, nullptr});
  * loop.run();
  * ```
  *

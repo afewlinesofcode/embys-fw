@@ -165,11 +165,13 @@ main()
   constexpr size_t modules_capacity = 2;
   Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Embys::Stm32::Base::Event blink_event(loop, Embys::Stm32::Base::EV_PERSIST,
-                                        {toggle_led, &context});
+  Embys::Stm32::Base::Event blink_event(
+      loop, Embys::Stm32::Base::EventMode::Persistent,
+      {toggle_led, &context});
 
   // One-shot startup event: fires on the first loop iteration (us=0)
-  Embys::Stm32::Base::Event startup_event(loop, 0, {on_start, &context});
+  Embys::Stm32::Base::Event startup_event(
+      loop, Embys::Stm32::Base::EventMode::Deferred, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 4;
   Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);

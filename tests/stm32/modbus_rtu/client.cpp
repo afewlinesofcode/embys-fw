@@ -150,7 +150,8 @@ TEST_SUITE("modbus_rtu_client")
       inject_frame({0x01, 0x03, 0x04, 0xAAU, 0xBBU, 0xCCU, 0xDDU});
     };
 
-    Base::Event response_event(loop, 0, {response_handler, nullptr});
+    Base::Event response_event(loop, Base::EventMode::Deferred,
+                               {response_handler, nullptr});
     response_event.enable(std::chrono::microseconds{100});
 
     // Run long enough for both events to execute and for the client to process

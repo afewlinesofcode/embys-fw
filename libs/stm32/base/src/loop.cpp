@@ -9,7 +9,8 @@ LoopCore::LoopCore(Timer &timer, Event **event_slots,
   : timer(&timer), events(event_slots), active_events(active_event_slots),
     events_capacity(events_capacity), modules(module_slots),
     modules_capacity(modules_capacity),
-    stop_event(*this, EV_RT, {loopbreak_callback, this}), active(false)
+    stop_event(*this, EventMode::Realtime, {loopbreak_callback, this}),
+    active(false)
 {
   // Initialize event arrays
   for (size_t i = 0; i < events_capacity; ++i)
@@ -104,7 +105,7 @@ LoopCore::add(Event *event)
 {
   /*
    * Event may suddenly become not pending after the check below,
-   * if it is not EV_PERSIST,  and become removed from the list, thus critical
+   * if it is not persistent, and become removed from the list, thus critical
    * section
    */
 
@@ -199,13 +200,13 @@ LoopCore::tick()
       // Event is due - execute callback
 
       // Handle persistence
-      if ((event->flags & EV_PERSIST) == 0)
+      if (!has_mode(event->mode, EventMode::Persistent))
       {
         events[i] = nullptr; // Single-shot
         event->pending = false;
       }
 
-      if (event->flags & EV_RT)
+      if (has_mode(event->mode, EventMode::Realtime))
       {
         event->cb();
       }

@@ -131,8 +131,10 @@ main()
 
   Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Event print_event(loop, Base::EV_PERSIST, {send_message, &app_ctx});
-  Base::Event blink_off_event(loop, 0, {on_blink_off, &app_ctx});
+  Base::Event print_event(loop, Base::EventMode::Persistent,
+                          {send_message, &app_ctx});
+  Base::Event blink_off_event(loop, Base::EventMode::Deferred,
+                              {on_blink_off, &app_ctx});
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating

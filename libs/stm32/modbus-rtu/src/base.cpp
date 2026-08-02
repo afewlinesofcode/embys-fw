@@ -10,7 +10,8 @@ namespace Embys::Stm32::Modbus::Rtu
 
 Base::Base(Uart::BusCore &transport)
   : transport(transport),
-    frame_timeout_event(*transport.get_base(), 0,
+    frame_timeout_event(*transport.get_base(),
+                        ::Embys::Stm32::Base::EventMode::Deferred,
                         {Base::frame_timeout_callback, this})
 {
   transport.set_rx_callback({Base::recv_callback, this});

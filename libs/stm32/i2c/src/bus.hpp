@@ -36,7 +36,7 @@ namespace Embys::Stm32::I2c
  * @brief Interrupt-driven I2C master for STM32F1.
  *
  * Integrates with Base::Loop via a Module (deferred completion callbacks) and
- * an EV_RT Event (transaction timeout).
+ * a realtime Event (transaction timeout).
  *
  * GPIO configuration for SCL and SDA pins must be done by the caller before
  * calling enable() (open-drain AF output, appropriate speed).

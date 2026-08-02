@@ -106,7 +106,8 @@ main()
   Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);
   uart.set_tx_callback({on_tx_done, nullptr});
 
-  Base::Event print_event(loop, Base::EV_PERSIST, {send_message, &uart});
+  Base::Event print_event(loop, Base::EventMode::Persistent,
+                          {send_message, &uart});
 
   // Set global pointers for IRQ handlers (not strictly necessary in this
   // example since handlers are simple, but included for demonstration and

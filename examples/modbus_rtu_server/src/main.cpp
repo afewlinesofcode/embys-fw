@@ -185,8 +185,10 @@ main()
   constexpr size_t modules_capacity = 3;
   Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Event blink_off_event(loop, 0, {on_blink_off, &context});
-  Base::Event startup_event(loop, 0, {on_start, &context});
+  Base::Event blink_off_event(loop, Base::EventMode::Deferred,
+                              {on_blink_off, &context});
+  Base::Event startup_event(loop, Base::EventMode::Deferred,
+                            {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 6;
   Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);

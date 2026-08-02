@@ -13,7 +13,7 @@ namespace Embys::Stm32::I2c
 Sm::Sm(BusCore *bus_)
   : bus(bus_), i2c(bus_->get_i2c()),
     wait_bus(bus_, {Sm::wait_bus_callback, this}),
-    timeout_event(*bus_->get_base(), Base::EV_RT,
+    timeout_event(*bus_->get_base(), Base::EventMode::Realtime,
                   {Sm::timeout_handler, this})
 {
 }

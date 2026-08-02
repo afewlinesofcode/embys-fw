@@ -114,7 +114,7 @@ main()
 
   // Create an event to toggle the LED
   Embys::Stm32::Base::Event toggle_led_event(
-      loop, Embys::Stm32::Base::EV_PERSIST, {toggle_led, &context});
+      loop, Embys::Stm32::Base::EventMode::Persistent, {toggle_led, &context});
 
   // Set global pointer for timer interrupt handler
   timer_ptr = &timer;
