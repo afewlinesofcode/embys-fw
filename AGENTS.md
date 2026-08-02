@@ -20,7 +20,7 @@ From the repository root:
 - `make examples TC=sim` builds all examples for simulation; in an example directory, `make TC=sim run` runs that example.
 - `make examples TC=arm MCU=stm32f411xe` builds examples for a selected MCU.
 - `make clean` and `make clean-tests` remove corresponding build artifacts.
-- `make -C libs/stm32/<module> format-check` checks formatting; use `format` to apply it. Docker-backed CI targets are available through `make docker` and `make TARGET=test in-docker`.
+- `make format-check` checks formatting on the host; use `make format` to apply it. Build, test, and firmware targets use the Docker toolchain automatically.
 
 ## Coding Style & Naming Conventions
 
