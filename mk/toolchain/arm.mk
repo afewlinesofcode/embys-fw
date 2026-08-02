@@ -16,8 +16,6 @@ ifeq ($(HAL_FAMILY),f1)
   MCUFLAGS += -mcpu=cortex-m3 -mthumb
 else ifeq ($(HAL_FAMILY),f4)
   MCUFLAGS += -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb
-else ifneq (,$(filter $(HAL_FAMILY),f7 h7))
-  MCUFLAGS += -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
 else
   $(error Unknown HAL_FAMILY '$(HAL_FAMILY)' derived from MCU=$(MCU))
 endif
@@ -47,16 +45,16 @@ INCLUDES     += -I$(PROJECT_ROOT)/third_party/CMSIS_6/CMSIS/Core/Include \
 CPPFLAGS     += $(MCUFLAGS) $(INCLUDES) $(DEFINES) $(MCU_DEFINES)
 CFLAGS       += -Wall -Wextra -Werror \
 			          -Os -flto \
-			          -ffunction-sections -fdata-sections -fno-builtin \
+			          -ffunction-sections -fdata-sections \
 			          -std=c11 -MMD -MP
 CXXFLAGS     += -Wall -Wextra -Werror -Wundef \
 			          -Os -g3 -flto -ffunction-sections -fdata-sections \
 			          -std=c++20 -fno-rtti -fno-exceptions -fno-threadsafe-statics \
 			          -fno-unwind-tables -fno-asynchronous-unwind-tables \
-			          -ffreestanding -fno-builtin -fstack-usage \
+			          -ffreestanding -fstack-usage \
 			          -fno-use-cxa-atexit -MMD -MP
 LDFLAGS      += $(MCUFLAGS) -flto -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-Map,$(MAP) -T $(LINKER_LD) -Wl,--print-memory-usage -L$(PROJECT_ROOT)/build/arm/$(ARCH_NAME)
-LDLIBS       += -lgcc
+LDLIBS       += -lc -lgcc
 
 $(APP_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
@@ -66,9 +64,10 @@ $(ARCH_OBJ_DIR)/%.o: $(ARCH_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-$(TARGET_LIB): $(APP_OBJ) $(ARCH_OBJ)
+$(TARGET_LIB): $(APP_OBJ) $(MAKEFILE_LIST)
 	mkdir -p $(dir $@)
-	$(AR) rcs $@ $^
+	$(RM) $@
+	$(AR) rcs $@ $(APP_OBJ)
 	$(RANLIB) $@
 
 $(TARGET): $(APP_OBJ) $(ARCH_OBJ)

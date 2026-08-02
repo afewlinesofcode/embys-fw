@@ -10,7 +10,9 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+
+#include <embys/stm32/result.hpp>
 
 namespace Embys::Stm32::Uart
 {
@@ -33,5 +35,21 @@ enum class WordLength : uint32_t
   W8 = 0,
   W9 = 1,
 };
+
+enum class Error : uint8_t
+{
+  InvalidInstance,
+  InvalidBaudRate,
+  NotEnabled,
+  TransmitBusy,
+  ReceiveOverflow,
+  TransmitTimeout,
+  BufferTooSmall,
+  ModuleCapacity,
+  Schedule,
+};
+
+using Status = Embys::Result<void, Error>;
+using ReceiveResult = Embys::Result<uint8_t, Error>;
 
 }; // namespace Embys::Stm32::Uart

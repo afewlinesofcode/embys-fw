@@ -1,5 +1,7 @@
 #include "bus.hpp"
 
+#include <cstring>
+
 #include <embys/stm32/def.hpp>
 
 #include "hal.hpp"
@@ -7,96 +9,144 @@
 namespace Embys::Stm32::I2c
 {
 
-Bus::Bus(I2C_TypeDef *i2c_, Base::Loop *base_)
-  : i2c(i2c_), base(base_), sm(this)
+BusCore::BusCore(I2C_TypeDef *i2c_, Base::LoopCore &base_, uint8_t *rx_buffer_,
+                 size_t rx_capacity_, uint8_t *tx_buffer_, size_t tx_capacity_)
+  : i2c(i2c_), base(&base_), sm(this), rx_buffer(rx_buffer_),
+    rx_capacity(rx_capacity_), tx_buffer(tx_buffer_), tx_capacity(tx_capacity_)
 {
 }
 
-Bus::~Bus()
+BusCore::~BusCore()
 {
   if (enabled)
     (void)disable();
 }
 
-int
-Bus::enable(uint32_t scl_hz_)
+Status
+BusCore::enable(uint32_t scl_hz_)
 {
   if (enabled)
-    return 0;
+    return Status::success();
 
-  TRY(enable_i2c(i2c, scl_hz_));
-  TRY(reset_i2c(i2c));
+  const Status enable_result = enable_i2c(i2c, scl_hz_);
+  if (!enable_result)
+    return enable_result;
+
+  const Status reset_result = reset_i2c(i2c);
+  if (!reset_result)
+  {
+    (void)disable_i2c(i2c);
+    return reset_result;
+  }
 
 
-  module = base->add_module({Bus::module_callback, this});
+  module = base->add_module({BusCore::module_callback, this});
   if (!module)
   {
     (void)disable_i2c(i2c);
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::ModuleCapacity);
   }
 
   scl_hz = scl_hz_;
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
-Bus::disable()
+Status
+BusCore::disable()
 {
   if (!enabled)
-    return 0;
+    return Status::success();
 
   sm.reset();
   base->remove_module(module);
   module = nullptr;
 
-  TRY(disable_i2c(i2c));
+  const Status disable_result = disable_i2c(i2c);
+  if (!disable_result)
+    return disable_result;
 
   enabled = false;
 
-  return 0;
+  return Status::success();
 }
 
-int
-Bus::read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb)
+Status
+BusCore::read(uint8_t addr7, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
-  this->cb = cb;
-  TRY(sm.start_read(addr7, buf, len));
+  if (len > rx_capacity)
+    return Status::failure(Error::BufferTooSmall);
 
-  return 0;
+  read_cb = cb;
+  reading = true;
+  transfer_len = len;
+  const Status start_result = sm.start_read(addr7, rx_buffer, len);
+  if (!start_result)
+  {
+    reading = false;
+    transfer_len = 0;
+    read_cb.clear();
+    return start_result;
+  }
+
+  return Status::success();
 }
 
-int
-Bus::read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-          Callable<int> cb)
+Status
+BusCore::read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
-  this->cb = cb;
-  TRY(sm.start_read(addr7, reg, buf, len));
+  if (len > rx_capacity)
+    return Status::failure(Error::BufferTooSmall);
 
-  return 0;
+  read_cb = cb;
+  reading = true;
+  transfer_len = len;
+  const Status start_result = sm.start_read(addr7, reg, rx_buffer, len);
+  if (!start_result)
+  {
+    reading = false;
+    transfer_len = 0;
+    read_cb.clear();
+    return start_result;
+  }
+
+  return Status::success();
 }
 
-int
-Bus::write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callable<int> cb)
+Status
+BusCore::write(uint8_t addr7, std::span<const uint8_t> data, WriteCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
+  if (data.size() > tx_capacity)
+    return Status::failure(Error::BufferTooSmall);
+
+  if (!data.empty())
+    std::memcpy(tx_buffer, data.data(), data.size());
   this->cb = cb;
-  TRY(sm.start_write(addr7, buf, len));
+  reading = false;
+  transfer_len = static_cast<uint16_t>(data.size());
+  const Status start_result = sm.start_write(addr7, tx_buffer, transfer_len);
+  if (!start_result)
+  {
+    transfer_len = 0;
+    this->cb.clear();
+    return start_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
 void
-Bus::handle_ev_irq()
+BusCore::handle_ev_irq()
 {
   sm.handle_irq();
 
@@ -105,7 +155,7 @@ Bus::handle_ev_irq()
 }
 
 void
-Bus::handle_er_irq()
+BusCore::handle_er_irq()
 {
   sm.handle_error();
 
@@ -116,15 +166,24 @@ Bus::handle_er_irq()
 }
 
 void
-Bus::module_callback(void *context)
+BusCore::module_callback(void *context) noexcept
 {
-  auto *self = static_cast<Bus *>(context);
+  auto *self = static_cast<BusCore *>(context);
 
   if (self->sm.is_complete())
   {
-    int result = self->sm.get_result();
+    const Status result = self->sm.get_result();
     self->sm.reset();
-    self->cb(result);
+    if (self->reading)
+    {
+      if (result)
+        self->read_cb(ReadResult::success(
+            {self->rx_buffer, static_cast<size_t>(self->transfer_len)}));
+      else
+        self->read_cb(ReadResult::failure(result.error()));
+    }
+    else
+      self->cb(result);
   }
 }
 

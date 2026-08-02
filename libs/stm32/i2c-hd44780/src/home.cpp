@@ -6,7 +6,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Home::Home(State *state, Send *send, I2c::Dev::Delay *timeout)
+Home::Home(State &state, Send &send, I2c::Dev::Delay &timeout)
   : state(state), send(send), timeout(timeout)
 {
 }
@@ -22,27 +22,27 @@ void
 Home::send_command()
 {
   stage = SendCommand;
-  send->exec(LCD_RETURN_HOME, LCD_COMMAND, {command_callback, this});
+  send.exec(LCD_RETURN_HOME, LCD_COMMAND, {command_callback, this});
 }
 
 void
 Home::wait()
 {
   stage = Wait;
-  timeout->exec(2000, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{2}, {command_callback, this});
 }
 
 void
 Home::update_state()
 {
   stage = UpdateState;
-  state->cursor_col = 0;
-  state->cursor_row = 0;
+  state.cursor_col = 0;
+  state.cursor_row = 0;
   command_callback(this, 0);
 }
 
 void
-Home::command_callback(void *ctx, int result)
+Home::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Home *>(ctx);
 

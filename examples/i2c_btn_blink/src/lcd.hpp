@@ -29,7 +29,7 @@ public:
   Lcd &
   operator=(Lcd &&) = delete;
 
-  Lcd(Embys::Stm32::Base::Loop *loop, Embys::Stm32::I2c::Bus *i2c_bus)
+  Lcd(Embys::Stm32::Base::LoopCore &loop, Embys::Stm32::I2c::BusCore &i2c_bus)
     : lcd(loop, i2c_bus) {};
 
   inline State
@@ -76,7 +76,7 @@ private:
   dispatch_pending();
 
   static void
-  dispatch(void *ctx, int result);
+  dispatch(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::I2cBtnBlink

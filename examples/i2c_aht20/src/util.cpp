@@ -4,25 +4,19 @@ namespace Embys::Stm32::I2c::Dev::I2cAht20
 {
 
 static uint8_t
-write_float_1dp(char *buf, float v)
+write_centi_1dp(char *buf, int32_t centi)
 {
   uint8_t i = 0;
+  int32_t deci = centi >= 0 ? (centi + 5) / 10 : -((-centi + 5) / 10);
 
-  if (v < 0.0f)
+  if (deci < 0)
   {
     buf[i++] = '-';
-    v = -v;
+    deci = -deci;
   }
 
-  uint32_t integer = static_cast<uint32_t>(v);
-  uint32_t frac =
-      static_cast<uint32_t>((v - static_cast<float>(integer)) * 10.0f + 0.5f);
-
-  if (frac >= 10u)
-  {
-    integer++;
-    frac = 0u;
-  }
+  uint32_t integer = static_cast<uint32_t>(deci) / 10U;
+  uint32_t frac = static_cast<uint32_t>(deci) % 10U;
 
   char digits[10];
   uint8_t dlen = 0;
@@ -59,7 +53,7 @@ pad_to(char *buf, uint8_t start, uint8_t total)
 }
 
 void
-write_temperature(char *buf, float v)
+write_temperature(char *buf, Aht20::Temperature value)
 {
   static const char prefix[] = "Temp: ";
   uint8_t i = 0;
@@ -67,14 +61,14 @@ write_temperature(char *buf, float v)
   for (; prefix[i]; ++i)
     buf[i] = prefix[i];
 
-  i += write_float_1dp(&buf[i], v);
+  i += write_centi_1dp(&buf[i], value.centi_celsius);
   buf[i++] = ' ';
   buf[i++] = 'C';
   pad_to(buf, i, 20);
 }
 
 void
-write_humidity(char *buf, float v)
+write_humidity(char *buf, Aht20::RelativeHumidity value)
 {
   static const char prefix[] = "Hum:  ";
   uint8_t i = 0;
@@ -82,7 +76,7 @@ write_humidity(char *buf, float v)
   for (; prefix[i]; ++i)
     buf[i] = prefix[i];
 
-  i += write_float_1dp(&buf[i], v);
+  i += write_centi_1dp(&buf[i], value.centi_percent);
   buf[i++] = ' ';
   buf[i++] = '%';
   pad_to(buf, i, 20);

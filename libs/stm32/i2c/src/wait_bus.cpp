@@ -6,44 +6,49 @@
 namespace Embys::Stm32::I2c
 {
 
-WaitBus::WaitBus(Bus *bus, Callable<int> cb_)
+WaitBus::WaitBus(BusCore *bus, Callback<Status> cb_)
   : i2c(bus->get_i2c()), checks_count(bus->get_scl_hz() > 100000u ? 20u : 50u),
-    cb(cb_), event(bus->get_base(), 0, {WaitBus::event_callback, this})
+    cb(cb_), event(*bus->get_base(), Base::EventMode::Deferred,
+                   {WaitBus::event_callback, this})
 {
 }
 
-int
+Status
 WaitBus::start()
 {
   count = 0;
 
   if (!is_busy(i2c))
   {
-    cb(0);
-    return 0;
+    cb(Status::success());
+    return Status::success();
   }
 
-  return event.enable(WaitBus::check_us);
+  if (!event.enable(std::chrono::microseconds{WaitBus::check_us}))
+    return Status::failure(Error::Schedule);
+
+  return Status::success();
 }
 
 void
-WaitBus::event_callback(void *context)
+WaitBus::event_callback(void *context) noexcept
 {
   auto *self = static_cast<WaitBus *>(context);
 
   if (!is_busy(self->i2c))
   {
-    self->cb(0);
+    self->cb(Status::success());
     return;
   }
 
   if (++self->count >= self->checks_count)
   {
-    self->cb(BUS_BUSY);
+    self->cb(Status::failure(Error::BusBusy));
     return;
   }
 
-  (void)self->event.enable(WaitBus::check_us);
+  if (!self->event.enable(std::chrono::microseconds{WaitBus::check_us}))
+    self->cb(Status::failure(Error::Schedule));
 }
 
 }; // namespace Embys::Stm32::I2c

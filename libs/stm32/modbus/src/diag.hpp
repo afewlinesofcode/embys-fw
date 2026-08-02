@@ -18,6 +18,8 @@ enum Diag : int
   BASE_ERROR = -5000,
   COIL_OUT_OF_RANGE,
   REGISTER_OUT_OF_RANGE,
+  BUFFER_TOO_SMALL,
+  INVALID_BUFFER_SIZE,
 };
 
 }; // namespace Embys::Stm32::Modbus

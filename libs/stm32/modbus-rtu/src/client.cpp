@@ -8,17 +8,18 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Client::Client(Uart::Bus *transport, Stm32::Base::Loop *loop)
+Client::Client(Uart::BusCore &transport, Stm32::Base::LoopCore &loop)
   : Base(transport), loop(loop),
-    response_timeout_event(loop, 0, {Client::response_timeout_callback, this})
+    response_timeout_event(loop, ::Embys::Stm32::Base::EventMode::Deferred,
+                           {Client::response_timeout_callback, this})
 {
   set_frame_in_callback({Client::response_callback, this});
-  transport->set_tx_callback({Client::request_sent_callback, this});
+  transport.set_tx_callback({Client::request_sent_callback, this});
 }
 
 Client::~Client()
 {
-  transport->clear_tx_callback();
+  transport.clear_tx_callback();
 }
 
 void
@@ -29,12 +30,12 @@ Client::enable()
 
 int
 Client::read_coils(uint8_t device_id, uint16_t starting_address,
-                   uint16_t quantity, ResponseCallable cb)
+                   uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadCoils;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -43,12 +44,12 @@ Client::read_coils(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
-                             uint16_t quantity, ResponseCallable cb)
+                             uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadDiscreteInputs;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -57,12 +58,12 @@ Client::read_discrete_inputs(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_holding_registers(uint8_t device_id, uint16_t starting_address,
-                               uint16_t quantity, ResponseCallable cb)
+                               uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadHoldingRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -71,12 +72,12 @@ Client::read_holding_registers(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::read_input_registers(uint8_t device_id, uint16_t starting_address,
-                             uint16_t quantity, ResponseCallable cb)
+                             uint16_t quantity, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::ReadInputRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = static_cast<uint8_t>(quantity);
@@ -85,12 +86,13 @@ Client::read_input_registers(uint8_t device_id, uint16_t starting_address,
 
 int
 Client::write_single_coil(uint8_t device_id, uint16_t address, bool value,
-                          ResponseCallable cb)
+                          ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleCoil;
-  Modbus::write_u16_be(&buffer_out[2], address);
-  Modbus::write_u16_be(&buffer_out[4], value ? 0xFF00U : 0x0000U);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U),
+                       value ? 0xFF00U : 0x0000U);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = 2U;
@@ -99,12 +101,12 @@ Client::write_single_coil(uint8_t device_id, uint16_t address, bool value,
 
 int
 Client::write_single_register(uint8_t device_id, uint16_t address,
-                              uint16_t value, ResponseCallable cb)
+                              uint16_t value, ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteSingleRegister;
-  Modbus::write_u16_be(&buffer_out[2], address);
-  Modbus::write_u16_be(&buffer_out[4], value);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), value);
   buffer_out_len = Modbus::kFrameHeaderSize + 4U;
   response_cb = cb;
   current_quantity = 2U;
@@ -114,12 +116,12 @@ Client::write_single_register(uint8_t device_id, uint16_t address,
 int
 Client::write_multiple_coils(uint8_t device_id, uint16_t starting_address,
                              uint16_t quantity, const uint8_t *coil_data,
-                             ResponseCallable cb)
+                             ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleCoils;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out[6] = Modbus::calculate_coil_bytes(quantity);
   for (uint8_t i = 0; i < buffer_out[6]; i++)
   {
@@ -136,16 +138,17 @@ int
 Client::write_multiple_registers(uint8_t device_id, uint16_t starting_address,
                                  uint16_t quantity,
                                  const uint16_t *register_data,
-                                 ResponseCallable cb)
+                                 ResponseCallback cb)
 {
   buffer_out[0] = device_id;
   buffer_out[1] = Modbus::FunctionCode::WriteMultipleRegisters;
-  Modbus::write_u16_be(&buffer_out[2], starting_address);
-  Modbus::write_u16_be(&buffer_out[4], quantity);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(2U, 2U), starting_address);
+  Modbus::write_u16_be(std::span{buffer_out}.subspan(4U, 2U), quantity);
   buffer_out[6] = static_cast<uint8_t>(quantity * 2U);
   for (uint16_t i = 0; i < quantity; i++)
   {
-    Modbus::write_u16_be(&buffer_out[7U + (i * 2U)], register_data[i]);
+    Modbus::write_u16_be(std::span{buffer_out}.subspan(7U + (i * 2U), 2U),
+                         register_data[i]);
   }
   buffer_out_len =
       static_cast<uint16_t>(Modbus::kFrameHeaderSize + 5U + buffer_out[6]);
@@ -175,7 +178,8 @@ Client::send_request()
   if (current_device_id != 0U)
   {
     expecting_response = true;
-    response_timeout_event.enable(kRequestTimeoutUs);
+    (void)response_timeout_event.enable(
+        std::chrono::microseconds{kRequestTimeoutUs});
   }
 
   return 0;
@@ -246,7 +250,7 @@ Client::process_response()
 }
 
 void
-Client::response_callback(void *context)
+Client::response_callback(void *context) noexcept
 {
   auto *client = static_cast<Client *>(context);
 
@@ -259,7 +263,7 @@ Client::response_callback(void *context)
 }
 
 void
-Client::response_timeout_callback(void *context)
+Client::response_timeout_callback(void *context) noexcept
 {
   auto *client = static_cast<Client *>(context);
 
@@ -275,7 +279,7 @@ Client::response_timeout_callback(void *context)
 }
 
 void
-Client::request_sent_callback(void *context, int status)
+Client::request_sent_callback(void *context, Uart::Status status) noexcept
 {
   auto *client = static_cast<Client *>(context);
   client->sending_request = false;

@@ -1,27 +1,44 @@
 #include "event.hpp"
 
+#include <limits>
+
 #include "loop.hpp"
 
 namespace Embys::Stm32::Base
 {
 
-Event::Event(Loop *loop, uint8_t flags, Callable<> cb)
-  : loop(loop), flags(flags), cb(cb)
+Event::Event(LoopCore &loop, EventMode mode, Callback<> cb)
+  : loop(loop), mode(mode), cb(cb)
 {
 }
 
-int
-Event::enable(uint32_t us)
+Event::~Event()
 {
-  interval_us = us;
+  if (pending)
+  {
+    loop.remove(this);
+  }
+}
+
+EventResult
+Event::enable(std::chrono::microseconds interval)
+{
+  const auto count = interval.count();
+  if (count < 0 ||
+      static_cast<uint64_t>(count) > std::numeric_limits<uint32_t>::max())
+  {
+    return EventResult::failure(EventError::InvalidDuration);
+  }
+
+  interval_us = static_cast<uint32_t>(count);
   next_time_us = interval_us;
-  return loop->add(this);
+  return loop.add(this);
 }
 
-int
+void
 Event::disable()
 {
-  return loop->remove(this);
+  loop.remove(this);
 }
 
 bool

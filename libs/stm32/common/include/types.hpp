@@ -10,6 +10,10 @@
  */
 #pragma once
 
+#include <type_traits>
+
+#include "result.hpp"
+
 namespace Embys
 {
 
@@ -22,37 +26,61 @@ namespace Embys
  * @tparam Args Argument types of the callable.
  */
 template <typename... Args>
-struct Callable
+class Callback
 {
-  void (*callback)(void *, Args...) = nullptr;
-  void *context = nullptr;
+public:
+  using CallbackFn = void (*)(void *, Args...) noexcept;
 
-  void
-  operator()(Args... args) const
+  constexpr Callback() noexcept = default;
+  constexpr Callback(CallbackFn callback, void *context = nullptr) noexcept
+    : callback_{callback}, context_{context}
   {
-    if (callback)
+  }
+
+  template <auto Method, typename Object>
+  [[nodiscard]] static constexpr Callback
+  bind(Object &object) noexcept
+  {
+    static_assert(
+        std::is_nothrow_invocable_v<decltype(Method), Object &, Args...>);
+    return Callback{[](void *context, Args... args) noexcept
+                    { (static_cast<Object *>(context)->*Method)(args...); },
+                    &object};
+  }
+
+  constexpr void
+  operator()(Args... args) const noexcept
+  {
+    if (callback_)
     {
-      callback(context, args...);
+      callback_(context_, args...);
     }
   }
 
-  bool
-  operator==(const Callable &other) const
+  [[nodiscard]] constexpr explicit
+  operator bool() const noexcept
   {
-    return callback == other.callback && context == other.context;
+    return callback_ != nullptr;
   }
 
-  inline bool
-  empty() const
+  friend constexpr bool
+  operator==(const Callback &, const Callback &) noexcept = default;
+
+  [[nodiscard]] constexpr bool
+  empty() const noexcept
   {
-    return callback == nullptr;
+    return callback_ == nullptr;
   }
 
-  void
-  clear()
+  constexpr void
+  clear() noexcept
   {
-    callback = nullptr;
-    context = nullptr;
+    callback_ = nullptr;
+    context_ = nullptr;
   }
+
+private:
+  CallbackFn callback_ = nullptr;
+  void *context_ = nullptr;
 };
 }; // namespace Embys

@@ -14,28 +14,30 @@
 namespace Embys::Stm32
 {
 
-/**
- * @brief Stores the previous PRIMASK value
- */
-extern uint32_t cs_primask;
+class IrqGuard
+{
+public:
+  /**
+   * @brief Enter a critical section, saving the current PRIMASK and disabling
+   * interrupts
+   */
+  IrqGuard();
 
-/**
- * @brief Stores the current critical section nesting level
- */
-extern uint32_t cs_stack;
+  IrqGuard(const IrqGuard &) = delete;
+  IrqGuard(IrqGuard &&) = delete;
+  IrqGuard &
+  operator=(const IrqGuard &) = delete;
+  IrqGuard &
+  operator=(IrqGuard &&) = delete;
 
-/**
- * @brief Enter a critical section, saving the current PRIMASK and disabling
- * interrupts
- */
-void
-cs_begin();
+  /**
+   * @brief Exit a critical section, restoring the previous PRIMASK if this is
+   * the outermost level
+   */
+  ~IrqGuard();
 
-/**
- * @brief Exit a critical section, restoring the previous PRIMASK if this is
- * the outermost level
- */
-void
-cs_end();
+private:
+  uint32_t primask;
+}; // class IrqGuard
 
 } // namespace Embys::Stm32

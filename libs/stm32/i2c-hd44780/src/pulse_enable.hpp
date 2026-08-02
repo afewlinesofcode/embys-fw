@@ -24,9 +24,9 @@ class Write;
 class PulseEnable
 {
 public:
-  PulseEnable(Write *write, I2c::Dev::Delay *delay);
+  PulseEnable(Write &write, I2c::Dev::Delay &delay);
 
-  inline Write *
+  inline Write &
   get_write()
   {
     return write;
@@ -36,8 +36,8 @@ public:
   exec(uint8_t data, Cb cb);
 
 private:
-  Write *write;
-  I2c::Dev::Delay *delay;
+  Write &write;
+  I2c::Dev::Delay &delay;
   uint8_t high = 0;
   uint8_t low = 0;
   Cb cb;
@@ -61,7 +61,7 @@ private:
   write_en_low();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

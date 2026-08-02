@@ -1,31 +1,35 @@
-CLANG_FORMAT = clang-format
-CLANG_TIDY = clang-tidy
-SRC_DIR = src
+CLANG_FORMAT ?= clang-format
+CLANG_TIDY ?= clang-tidy
+
+FORMAT_SOURCES = $(shell git ls-files -- '*.c' '*.h' '*.cpp' '*.hpp' \
+	':!:future/**' ':!:arch/stm32f767xx/**' ':!:arch/stm32h743xx/**' \
+	':!:tests/include/doctest.hpp')
+TIDY_SOURCES = $(shell git ls-files -- 'libs/stm32/**/*.cpp' ':!:future/**')
 
 # Code formatting targets
-.PHONY: format
-format:
+.PHONY: format-local
+format-local:
 	@echo "Formatting source code..."
-	find $(SRC_DIR) -name "*.cpp" -o -name "*.hpp" | xargs $(CLANG_FORMAT) -i
+	$(CLANG_FORMAT) -i $(FORMAT_SOURCES)
 
-.PHONY: format-check
-format-check:
+.PHONY: format-check-local
+format-check-local:
 	@echo "Checking code formatting..."
-	find $(SRC_DIR) -name "*.cpp" -o -name "*.hpp" | xargs $(CLANG_FORMAT) --dry-run --Werror
+	$(CLANG_FORMAT) --dry-run --Werror $(FORMAT_SOURCES)
 
 # Code linting targets
-.PHONY: lint
-lint:
+.PHONY: lint-local
+lint-local: compile-db-local
 	@echo "Linting source code..."
-	find $(SRC_DIR) -name "*.cpp" | xargs $(CLANG_TIDY) --
+	$(CLANG_TIDY) -p . $(TIDY_SOURCES)
 
-.PHONY: lint-fix
-lint-fix:
+.PHONY: lint-fix-local
+lint-fix-local: compile-db-local
 	@echo "Linting and fixing source code..."
-	find $(SRC_DIR) -name "*.cpp" | xargs $(CLANG_TIDY) --fix --
+	$(CLANG_TIDY) -p . --fix $(TIDY_SOURCES)
 
 # Generate compile commands database for IDEs/tools
-.PHONY: compile-db
-compile-db:
+.PHONY: compile-db-local
+compile-db-local:
 	@echo "Generating compile_commands.json..."
-	bear -- make stm32-mock
+	bear --output compile_commands.json -- $(MAKE) -B TC=sim all-local

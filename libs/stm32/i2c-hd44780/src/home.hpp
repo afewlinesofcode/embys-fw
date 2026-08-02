@@ -25,15 +25,15 @@ class Send;
 class Home
 {
 public:
-  Home(State *state, Send *send, I2c::Dev::Delay *timeout);
+  Home(State &state, Send &send, I2c::Dev::Delay &timeout);
 
   void
   exec(Cb cb);
 
 private:
-  State *state;
-  Send *send;
-  I2c::Dev::Delay *timeout;
+  State &state;
+  Send &send;
+  I2c::Dev::Delay &timeout;
   Cb cb;
 
   enum
@@ -53,7 +53,7 @@ private:
   update_state();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

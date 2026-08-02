@@ -10,8 +10,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-and-test:
-    name: Build and test
+  simulator:
+    name: Simulator
     runs-on: ubuntu-latest
 
     steps:
@@ -42,10 +42,41 @@ jobs:
         run: |
           make examples TC=sim
 
-      - name: Build libraries for ARM STM32F103xB
-        run: |
-          make TC=arm MCU=stm32f103xb
+  arm:
+    name: ARM (${{ matrix.mcu }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mcu:
+          - stm32f103xb
+          - stm32f407xx
+          - stm32f411xe
 
-      - name: Build examples for ARM STM32F103xB
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Configure HTTPS for Git submodules
         run: |
-          make examples TC=arm MCU=stm32f103xb
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - name: Checkout submodules
+        run: |
+          git submodule update --init --recursive
+
+      - name: Build Docker image
+        run: |
+          docker build -t embys-fw-dev:latest .
+
+      - name: Build libraries
+        run: |
+          make TC=arm MCU=${{ matrix.mcu }}
+
+      - name: Build examples
+        run: |
+          make examples TC=arm MCU=${{ matrix.mcu }}
+
+      - name: Check firmware runtime policy
+        run: |
+          make firmware-check TC=arm MCU=${{ matrix.mcu }}

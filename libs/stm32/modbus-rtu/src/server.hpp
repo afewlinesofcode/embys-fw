@@ -20,6 +20,8 @@
  */
 #pragma once
 
+#include <span>
+
 #include <stdint.h>
 
 #include <embys/stm32/modbus/diagnostics.hpp>
@@ -42,7 +44,7 @@ public:
   Server &
   operator=(Server &&) = delete;
 
-  Server(uint8_t device_id, Modbus::Handler *handler, Uart::Bus *transport);
+  Server(uint8_t device_id, Modbus::Handler &handler, Uart::BusCore &transport);
   ~Server();
 
   inline const Modbus::DiagnosticsCounters &
@@ -57,7 +59,7 @@ public:
    * Byte layout: [0]=device_id, [1]=FC, [2:3]=starting address.
    */
   inline void
-  set_on_request_callback(Embys::Callable<const uint8_t *, uint16_t> cb)
+  set_on_request_callback(Embys::Callback<std::span<const uint8_t>> cb)
   {
     on_request_cb = cb;
   }
@@ -67,10 +69,10 @@ public:
 
 private:
   uint8_t device_id;
-  Modbus::Handler *handler;
+  Modbus::Handler &handler;
   bool handling_request = false;
 
-  Embys::Callable<const uint8_t *, uint16_t> on_request_cb;
+  Embys::Callback<std::span<const uint8_t>> on_request_cb;
 
   Modbus::DiagnosticsCounters diag_counters;
 
@@ -84,10 +86,10 @@ private:
   send_exception(uint8_t exception_code);
 
   static void
-  request_callback(void *context);
+  request_callback(void *context) noexcept;
 
   static void
-  response_sent_callback(void *context, int status);
+  response_sent_callback(void *context, int status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

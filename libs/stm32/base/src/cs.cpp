@@ -5,29 +5,14 @@
 namespace Embys::Stm32
 {
 
-uint32_t cs_primask = 0;
-uint32_t cs_stack = 0;
-
-void
-cs_begin()
+IrqGuard::IrqGuard() : primask(__get_PRIMASK())
 {
-  if (cs_stack == 0)
-  {
-    cs_primask = __get_PRIMASK();
-    __disable_irq();
-  }
-  ++cs_stack;
+  __disable_irq();
 }
 
-void
-cs_end()
+IrqGuard::~IrqGuard()
 {
-  if (cs_stack > 0)
-  {
-    --cs_stack;
-    if (cs_stack == 0)
-      __set_PRIMASK(cs_primask);
-  }
+  __set_PRIMASK(primask);
 }
 
 } // namespace Embys::Stm32

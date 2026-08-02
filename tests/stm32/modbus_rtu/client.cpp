@@ -46,7 +46,7 @@ namespace
 
 struct TestablClient : Modbus::Rtu::Client
 {
-  TestablClient(Uart::Bus *uart, Embys::Stm32::Base::Loop *loop)
+  TestablClient(Uart::BusCore &uart, Embys::Stm32::Base::LoopCore &loop)
     : Modbus::Rtu::Client(uart, loop)
   {
   }
@@ -61,7 +61,7 @@ struct TestablClient : Modbus::Rtu::Client
 struct RtuBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Uart::Bus *uart_bus_ptr = nullptr;
+  inline static Uart::BusCore *uart_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -94,25 +94,17 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct ClientFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
-  uint8_t rx_buf[Modbus::kFrameSize];
-
   Base::Timer timer;
-  Base::Loop loop;
-  Uart::Bus uart;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
   TestablClient client;
 
-  ClientFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
-      uart(USART2, &loop, rx_buf, sizeof(rx_buf)), client(&uart, &loop)
+  ClientFixture() : timer(TIM2), loop(timer), uart(loop), client(uart, loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
     client.enable();
   }
 };
@@ -139,7 +131,8 @@ TEST_SUITE("modbus_rtu_client")
 
     client.read_holding_registers(
         1, 0, 2,
-        {[](void *ctx, uint8_t dev, uint8_t fc, uint8_t qty, uint8_t *data)
+        {[](void *ctx, uint8_t dev, uint8_t fc, uint8_t qty,
+            uint8_t *data) noexcept
          {
            response_received = true;
            auto *arr = static_cast<uint8_t *>(ctx);
@@ -151,19 +144,20 @@ TEST_SUITE("modbus_rtu_client")
          },
          resp_data});
 
-    auto response_handler = [](void *ctx)
+    auto response_handler = [](void *ctx) noexcept
     {
       (void)ctx;
       // Response frame: dev=1, FC=03, byte_count=4, [0xAA,0xBB,0xCC,0xDD]
       inject_frame({0x01, 0x03, 0x04, 0xAAU, 0xBBU, 0xCCU, 0xDDU});
     };
 
-    Base::Event response_event(&loop, 0, {response_handler, nullptr});
-    response_event.enable(100);
+    Base::Event response_event(loop, Base::EventMode::Deferred,
+                               {response_handler, nullptr});
+    (void)response_event.enable(std::chrono::microseconds{100});
 
     // Run long enough for both events to execute and for the client to process
     // the response after frame delay
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     REQUIRE(response_received);
@@ -215,7 +209,7 @@ TEST_SUITE("modbus_rtu_client")
 
     client.read_holding_registers(
         1, 0, 2,
-        {[](void *c, uint8_t dev, uint8_t, uint8_t qty, uint8_t *data)
+        {[](void *c, uint8_t dev, uint8_t, uint8_t qty, uint8_t *data) noexcept
          {
            auto *ctx = static_cast<Ctx *>(c);
            ctx->dev = dev;
@@ -225,7 +219,8 @@ TEST_SUITE("modbus_rtu_client")
          &ctx});
 
     // Run long enough for the timeout to fire
-    loop.stop(Modbus::Rtu::Client::kRequestTimeoutUs + 100U);
+    (void)loop.stop(std::chrono::microseconds{
+        Modbus::Rtu::Client::kRequestTimeoutUs + 100U});
     loop.run();
 
     CHECK(timeout_device == 0x01U);

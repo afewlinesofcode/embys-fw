@@ -3,13 +3,14 @@
 namespace Embys::Stm32::Base
 {
 
-Loop::Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
-           size_t events_capacity, Module *module_slots,
-           size_t modules_capacity)
-  : timer(timer), events(event_slots), active_events(active_event_slots),
+LoopCore::LoopCore(Timer &timer, Event **event_slots,
+                   Event **active_event_slots, size_t events_capacity,
+                   Module *module_slots, size_t modules_capacity)
+  : timer(&timer), events(event_slots), active_events(active_event_slots),
     events_capacity(events_capacity), modules(module_slots),
     modules_capacity(modules_capacity),
-    stop_event(this, EV_RT, {loopbreak_callback, this}), active(false)
+    stop_event(*this, EventMode::Realtime, {loopbreak_callback, this}),
+    active(false)
 {
   // Initialize event arrays
   for (size_t i = 0; i < events_capacity; ++i)
@@ -25,10 +26,10 @@ Loop::Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
     modules[i].cb.clear();
   }
 
-  timer->set_callback({timer_callback, this});
+  this->timer->set_callback({timer_callback, this});
 }
 
-Loop::~Loop()
+LoopCore::~LoopCore()
 {
   timer->set_callback({}); // Clear timer callback
 
@@ -40,7 +41,7 @@ Loop::~Loop()
 }
 
 void
-Loop::run()
+LoopCore::run()
 {
   active = true;
 
@@ -61,15 +62,15 @@ Loop::run()
     run_active_events();
     run_modules();
 
-    cs_begin();
-
-    if (interrupted_modules_count == 0)
     {
-      __DSB();
-      __WFI();
-    }
+      IrqGuard guard;
 
-    cs_end();
+      if (interrupted_modules_count == 0)
+      {
+        __DSB();
+        __WFI();
+      }
+    }
   } while (active);
 
   // Process any remaining active events and modules before exiting
@@ -77,45 +78,47 @@ Loop::run()
   run_modules();
 }
 
-int
-Loop::stop(uint32_t us)
+EventResult
+LoopCore::stop(std::chrono::microseconds delay)
 {
   if (stop_scheduled)
   {
     stop_event.disable();
   }
 
-  stop_scheduled = true;
-
   // Schedule loop termination callback
-  return stop_event.enable(us);
+  const EventResult result = stop_event.enable(delay);
+  stop_scheduled = result.has_value();
+  return result;
 }
 
 void
-Loop::terminate(int code, void *error_context)
+LoopCore::terminate(int code, void *error_context)
 {
   this->exit_code = code;
   this->error_context = error_context;
   active = false;
 }
 
-int
-Loop::add(Event *event)
+EventResult
+LoopCore::add(Event *event)
 {
   /*
    * Event may suddenly become not pending after the check below,
-   * if it is not EV_PERSIST,  and become removed from the list, thus critical
+   * if it is not persistent, and become removed from the list, thus critical
    * section
    */
-  cs_begin();
-  if (event->pending)
+
   {
-    // Event already in the loop, reschedule it
-    schedule_event(event, event->interval_us);
-    cs_end();
-    return 0;
+    IrqGuard guard;
+
+    if (event->pending)
+    {
+      // Event already in the loop, reschedule it
+      schedule_event(event, event->interval_us);
+      return EventResult::success();
+    }
   }
-  cs_end();
 
   for (size_t i = 0; i < events_capacity; ++i)
   {
@@ -124,15 +127,15 @@ Loop::add(Event *event)
       events[i] = event;
       event->pending = true;
       schedule_event(event, event->interval_us);
-      return 0;
+      return EventResult::success();
     }
   }
 
-  return -1;
+  return EventResult::failure(EventError::CapacityExceeded);
 }
 
-int
-Loop::remove(Event *event)
+void
+LoopCore::remove(Event *event)
 {
   for (size_t i = 0; i < events_capacity; ++i)
   {
@@ -140,16 +143,15 @@ Loop::remove(Event *event)
     {
       events[i] = nullptr;
       event->pending = false;
-      return 0;
+      return;
     }
   }
 
   // Event not found, don't care
-  return 0;
 }
 
 Module *
-Loop::add_module(Callable<> module_cb)
+LoopCore::add_module(Callback<> module_cb)
 {
   for (size_t i = 0; i < modules_capacity; ++i)
   {
@@ -164,13 +166,13 @@ Loop::add_module(Callable<> module_cb)
 }
 
 void
-Loop::remove_module(Module *module)
+LoopCore::remove_module(Module *module)
 {
   module->cb.clear();
 }
 
 void
-Loop::tick()
+LoopCore::tick()
 {
   // Reset active events processing
   if (active_event_idx == active_events_count)
@@ -197,13 +199,13 @@ Loop::tick()
       // Event is due - execute callback
 
       // Handle persistence
-      if ((event->flags & EV_PERSIST) == 0)
+      if (!has_mode(event->mode, EventMode::Persistent))
       {
         events[i] = nullptr; // Single-shot
         event->pending = false;
       }
 
-      if (event->flags & EV_RT)
+      if (has_mode(event->mode, EventMode::Realtime))
       {
         event->cb();
       }
@@ -226,7 +228,7 @@ Loop::tick()
 }
 
 void
-Loop::schedule_event(Event *event, uint32_t us)
+LoopCore::schedule_event(Event *event, uint32_t us)
 {
   if (!timer->is_enabled())
   {
@@ -248,7 +250,7 @@ Loop::schedule_event(Event *event, uint32_t us)
 }
 
 void
-Loop::run_active_events()
+LoopCore::run_active_events()
 {
   // Process deferred events in main loop context
   while (has_active_events())
@@ -260,33 +262,36 @@ Loop::run_active_events()
 }
 
 void
-Loop::run_modules()
+LoopCore::run_modules()
 {
   // Execute all active module callbacks
   for (size_t i = 0; i < modules_capacity; ++i)
   {
     if (modules[i].interrupted)
     {
-      cs_begin();
-      modules[i].interrupted = false;
-      DEC_V(interrupted_modules_count);
-      cs_end();
+      {
+        IrqGuard guard;
+
+        modules[i].interrupted = false;
+        DEC_V(interrupted_modules_count);
+      }
+
       modules[i].cb();
     }
   }
 }
 
 void
-Loop::timer_callback(void *context)
+LoopCore::timer_callback(void *context) noexcept
 {
-  auto loop = static_cast<Loop *>(context);
+  auto loop = static_cast<LoopCore *>(context);
   loop->tick();
 }
 
 void
-Loop::loopbreak_callback(void *context)
+LoopCore::loopbreak_callback(void *context) noexcept
 {
-  auto loop = static_cast<Loop *>(context);
+  auto loop = static_cast<LoopCore *>(context);
   loop->stop_scheduled = false;
   loop->active = false;
 }

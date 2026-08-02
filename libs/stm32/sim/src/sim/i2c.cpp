@@ -89,7 +89,7 @@ std::vector<std::vector<uint8_t>> tx_buffers;
 /**
  * @brief Callback for handling data transmission in the I2C peripheral.
  */
-Callable<uint8_t, std::vector<uint8_t>> on_tx;
+Callback<uint8_t, std::vector<uint8_t>> on_tx;
 
 /**
  * @brief Whether to block SB flag from being set to simulate a stuck bus or

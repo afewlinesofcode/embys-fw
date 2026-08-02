@@ -28,19 +28,19 @@ class Clear;
 class Init
 {
 public:
-  Init(State *state, Write *write, WriteBits *write_bits, Send *send,
-       Clear *clear, I2c::Dev::Delay *delay);
+  Init(State &state, Write &write, WriteBits &write_bits, Send &send,
+       Clear &clear, I2c::Dev::Delay &delay);
 
   void
   exec(Cb cb);
 
 private:
-  State *state;
-  Write *write;
-  WriteBits *write_bits;
-  Send *send;
-  Clear *clear;
-  I2c::Dev::Delay *delay;
+  State &state;
+  Write &write;
+  WriteBits &write_bits;
+  Send &send;
+  Clear &clear;
+  I2c::Dev::Delay &delay;
   Cb cb;
 
   enum Stage : uint8_t
@@ -80,7 +80,7 @@ private:
   clear_display();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

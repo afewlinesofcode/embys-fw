@@ -149,7 +149,7 @@ TEST_SUITE("sim_i2c")
       bool called = false;
     } cap;
 
-    Sim::I2C::on_tx = {[](void *ctx, uint8_t a, std::vector<uint8_t> d)
+    Sim::I2C::on_tx = {[](void *ctx, uint8_t a, std::vector<uint8_t> d) noexcept
                        {
                          auto *c = static_cast<Cap *>(ctx);
                          c->addr = a;
@@ -294,7 +294,8 @@ TEST_SUITE("sim_i2c")
       SimI2cFixture,
       "BUSY and MSL flags are cleared after the write STOP condition")
   {
-    Sim::I2C::on_tx = {[](void *, uint8_t, std::vector<uint8_t>) {}, nullptr};
+    Sim::I2C::on_tx = {[](void *, uint8_t, std::vector<uint8_t>) noexcept {},
+                       nullptr};
 
     CHECK(start_write(0x27u));
     CHECK(wait_sr1(I2C_SR1_TXE));

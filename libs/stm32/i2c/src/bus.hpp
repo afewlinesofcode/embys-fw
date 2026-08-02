@@ -13,12 +13,18 @@
  */
 #pragma once
 
+#include <array>
+#include <span>
+#include <type_traits>
+
 #include <stdint.h>
 
 #include <embys/stm32/base/loop.hpp>
+#include <embys/stm32/mcu.hpp>
 #include <embys/stm32/types.hpp>
 
 #include "def.hpp"
+#include "instance.hpp"
 #include "sm.hpp"
 #include "stm32xx.hpp"
 
@@ -30,7 +36,7 @@ namespace Embys::Stm32::I2c
  * @brief Interrupt-driven I2C master for STM32F1.
  *
  * Integrates with Base::Loop via a Module (deferred completion callbacks) and
- * an EV_RT Event (transaction timeout).
+ * a realtime Event (transaction timeout).
  *
  * GPIO configuration for SCL and SDA pins must be done by the caller before
  * calling enable() (open-drain AF output, appropriate speed).
@@ -44,31 +50,33 @@ namespace Embys::Stm32::I2c
  *
  * Example:
  * ```
- * I2c::Bus bus(I2C1, &loop);
+ * I2c::Bus<I2c::Instance::I2c1, 16, 16> bus(loop);
  * bus.enable(400000);
  *
  * void I2C1_EV_IRQHandler() { bus.handle_ev_irq(); }
  * void I2C1_ER_IRQHandler() { bus.handle_er_irq(); }
  * ```
  */
-class Bus
+class BusCore
 {
 public:
-  Bus() = delete;
-  Bus(const Bus &) = delete;
-  Bus(Bus &&) = delete;
-  Bus &
-  operator=(const Bus &) = delete;
-  Bus &
-  operator=(Bus &&) = delete;
+  using ReadCallback = Callback<ReadResult>;
+  using WriteCallback = Callback<Status>;
+
+  BusCore() = delete;
+  BusCore(const BusCore &) = delete;
+  BusCore(BusCore &&) = delete;
+  BusCore &
+  operator=(const BusCore &) = delete;
+  BusCore &
+  operator=(BusCore &&) = delete;
 
   /**
    * @brief Construct an I2C Bus.
-   * @param i2c  Peripheral instance (I2C1 or I2C2).
-   * @param base Main loop for module and event registration.
+   * @param i2c Peripheral selected by the owning Bus template.
+   * @param base Main loop used for module and event registration.
    */
-  Bus(I2C_TypeDef *i2c, Base::Loop *base);
-  ~Bus();
+  ~BusCore();
 
   inline I2C_TypeDef *
   get_i2c() const
@@ -76,7 +84,7 @@ public:
     return i2c;
   }
 
-  inline Base::Loop *
+  inline Base::LoopCore *
   get_base() const
   {
     return base;
@@ -98,40 +106,42 @@ public:
    * @brief Enable the I2C peripheral and register with the loop.
    * If the bus is found busy on entry, a recovery attempt is made.
    * @param scl_hz SCL frequency in Hz (default 100 kHz).
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the peripheral/module-registration failure.
    */
-  int
+  [[nodiscard]] Status
   enable(uint32_t scl_hz = 100000u);
 
   /**
    * @brief Disable the I2C peripheral and unregister from the loop.
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the hardware disable failure.
    */
-  int
+  [[nodiscard]] Status
   disable();
 
   /**
    * @brief Asynchronous read of len bytes from I2C address addr7.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the read result after a successful
+   * start.
    */
-  int
-  read(uint8_t addr7, uint8_t *buf, uint16_t len, Callable<int> cb);
+  [[nodiscard]] Status
+  read(uint8_t addr7, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous register-addressed read.
    * Writes reg in the first frame, issues a repeated START, then reads.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the read result after a successful
+   * start.
    */
-  int
-  read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len,
-       Callable<int> cb);
+  [[nodiscard]] Status
+  read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous write of len bytes to I2C address addr7.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the write result after a successful
+   * start.
    */
-  int
-  write(uint8_t addr7, const uint8_t *buf, uint16_t len, Callable<int> cb);
+  [[nodiscard]] Status
+  write(uint8_t addr7, std::span<const uint8_t> data, WriteCallback cb);
 
   /**
    * @brief I2C event IRQ handler — call from I2Cx_EV_IRQHandler.
@@ -151,17 +161,61 @@ public:
     base->set_module_pending(module);
   }
 
+protected:
+  BusCore(I2C_TypeDef *i2c, Base::LoopCore &base, uint8_t *rx_buffer,
+          size_t rx_capacity, uint8_t *tx_buffer, size_t tx_capacity);
+
 private:
   I2C_TypeDef *i2c;
-  Base::Loop *base;
+  Base::LoopCore *base;
   Sm sm;
   Base::Module *module = nullptr;
   uint32_t scl_hz = 0u;
   bool enabled = false;
-  Callable<int> cb;
+  WriteCallback cb;
+  ReadCallback read_cb;
+  uint8_t *rx_buffer;
+  size_t rx_capacity;
+  uint8_t *tx_buffer;
+  size_t tx_capacity;
+  uint16_t transfer_len = 0;
+  bool reading = false;
 
   static void
-  module_callback(void *context);
+  module_callback(void *context) noexcept;
+};
+
+namespace Detail
+{
+
+template <size_t RxCapacity, size_t TxCapacity>
+struct BusStorage
+{
+  std::array<uint8_t, RxCapacity> rx{};
+  std::array<uint8_t, TxCapacity> tx{};
+};
+
+} // namespace Detail
+
+template <Instance Peripheral, size_t RxCapacity, size_t TxCapacity>
+class Bus final : private Detail::BusStorage<RxCapacity, TxCapacity>,
+                  public BusCore
+{
+  static_assert(RxCapacity > 0, "An I2C bus needs RX storage");
+  static_assert(TxCapacity > 0, "An I2C bus needs TX storage");
+  static_assert(RxCapacity <= UINT16_MAX, "I2C RX capacity exceeds its API");
+  static_assert(TxCapacity <= UINT16_MAX, "I2C TX capacity exceeds its API");
+  using Storage = Detail::BusStorage<RxCapacity, TxCapacity>;
+
+public:
+  explicit Bus(Base::LoopCore &base)
+    : Storage(),
+      BusCore(peripheral_address<Peripheral>(), base, Storage::rx.data(),
+              RxCapacity, Storage::tx.data(), TxCapacity)
+  {
+    static_assert(instance_available<Stm32::TargetDevice, Peripheral>,
+                  "Selected I2C instance is not available on this device");
+  }
 };
 
 }; // namespace Embys::Stm32::I2c

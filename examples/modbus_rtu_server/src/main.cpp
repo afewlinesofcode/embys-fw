@@ -17,25 +17,13 @@
  * LCD line 1 : "R CO 0x1000"     (last processed operation)
  */
 
-#ifndef STM32_SIM
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-#endif
+#include <span>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c/bus.hpp>
@@ -49,10 +37,6 @@
 #include "lcd.hpp"
 #include "sim.hpp"
 
-#ifndef STM32_SIM
-#include "memory.hpp"
-#endif
-
 namespace Gpio = Embys::Stm32::Gpio;
 namespace Base = Embys::Stm32::Base;
 namespace Uart = Embys::Stm32::Uart;
@@ -60,8 +44,8 @@ namespace Modbus = Embys::Stm32::Modbus;
 namespace I2c = Embys::Stm32::I2c;
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
-static I2c::Bus *i2c_bus_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
+static I2c::BusCore *i2c_bus_ptr = nullptr;
 
 extern "C"
 {
@@ -103,31 +87,31 @@ extern "C"
 static void
 blink(AppContext *ctx)
 {
-  ctx->led->write(0); // active-low: 0 = on
-  ctx->blink_off_event->enable(LED_BLINK_US);
+  (void)ctx->led->write(0); // active-low: 0 = on
+  (void)ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 }
 
 static void
-on_blink_off(void *ctx)
+on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
-  context->led->write(1); // active-low: 1 = off
+  (void)context->led->write(1); // active-low: 1 = off
 }
 
 // Modbus
 
 static void
-on_request(void *ctx, const uint8_t *buf, uint16_t len)
+on_request(void *ctx, std::span<const uint8_t> request) noexcept
 {
-  if (len < 4U) // need at least: device_id + FC + 2-byte address
+  if (request.size() < 4U) // device ID + function + 2-byte address
     return;
 
   auto *context = static_cast<AppContext *>(ctx);
   blink(context);
 
-  uint8_t fc = buf[1];
-  uint16_t addr =
-      (static_cast<uint16_t>(buf[2]) << 8) | static_cast<uint16_t>(buf[3]);
+  uint8_t fc = request[1];
+  uint16_t addr = (static_cast<uint16_t>(request[2]) << 8) |
+                  static_cast<uint16_t>(request[3]);
 
   char op = '?';
   const char *type = "??";
@@ -173,7 +157,7 @@ on_request(void *ctx, const uint8_t *buf, uint16_t len)
 // Startup
 
 static void
-on_start(void *ctx)
+on_start(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
   context->lcd->init();
@@ -197,76 +181,66 @@ main()
   //   6. LED blink-off (one-shot)
   //   7. startup (one-shot)
   constexpr size_t events_capacity = 8;
-  static Base::Event *event_slots[events_capacity];
-  static Base::Event *active_event_slots[events_capacity];
-
   // Modules: GPIO bus, UART bus, I2C bus
   constexpr size_t modules_capacity = 3;
-  static Base::Module module_slots[modules_capacity];
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
-
-  Base::Event blink_off_event(&loop, 0, {on_blink_off, &context});
-  Base::Event startup_event(&loop, 0, {on_start, &context});
+  Base::Event blink_off_event(loop, Base::EventMode::Deferred,
+                              {on_blink_off, &context});
+  Base::Event startup_event(loop, Base::EventMode::Deferred,
+                            {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 6;
-  static Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // PC13: LED (output push-pull, 2 MHz, active-low)
-  Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                    Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::C, 13, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1); // off at start
 
   // PA8: RE/DE (output push-pull, 50 MHz) — MAX485 direction control
-  Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8,
-                      Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::A, 8, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      uart_rede(gpio_bus);
   uart_rede.set_init_value(0); // start in receive mode
 
   // PA9: TX (AF push-pull, 50 MHz)
-  Gpio::Pin uart_tx(&gpio_bus, GPIOA, 9,
-                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 9, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> uart_tx(
+      gpio_bus);
 
   // PA10: RX (AF7 on F4/F7/H7; no-op on F1)
-  Gpio::Pin uart_rx(&gpio_bus, GPIOA, 10,
-                    Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 10, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> uart_rx(
+      gpio_bus);
 
-  static uint8_t uart_rx_buf[Modbus::kFrameSize];
-  Uart::Bus uart_bus(USART1, &loop, uart_rx_buf, sizeof(uart_rx_buf));
+  Uart::Bus<Uart::Instance::Usart1, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart_bus(loop);
   uart_bus.set_rede_pin(&uart_rede);
 
-  // Coils / discrete inputs: ceil(10 / 8) = 2 bytes each
-  static uint8_t coils_buf[2] = {};
-  static uint8_t di_buf[2] = {};
-  static uint16_t hr_buf[MODBUS_TABLE_SIZE] = {};
-  static uint16_t ir_buf[MODBUS_TABLE_SIZE] = {};
+  Modbus::Store<MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE, MODBUS_TABLE_SIZE,
+                MODBUS_TABLE_SIZE>
+      modbus_store;
 
-  Modbus::Store modbus_store(coils_buf, MODBUS_TABLE_SIZE, di_buf,
-                             MODBUS_TABLE_SIZE, hr_buf, MODBUS_TABLE_SIZE,
-                             ir_buf, MODBUS_TABLE_SIZE);
-
-  Modbus::Handler modbus_handler(&modbus_store);
-  modbus_handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
+  Modbus::Handler modbus_handler(modbus_store);
+  static constexpr uint8_t server_id[] = {'E', 'M', 'B', 'Y', 'S'};
+  modbus_handler.set_server_id(server_id);
   modbus_handler.set_coils_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_discrete_inputs_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_holding_registers_offset(MODBUS_BASE_ADDR);
   modbus_handler.set_input_registers_offset(MODBUS_BASE_ADDR);
 
-  Modbus::Rtu::Server modbus_server(MODBUS_SLAVE_ADDR, &modbus_handler,
-                                    &uart_bus);
+  Modbus::Rtu::Server modbus_server(MODBUS_SLAVE_ADDR, modbus_handler,
+                                    uart_bus);
   modbus_server.set_on_request_callback({on_request, &context});
 
   // PB6: SCL (open-drain AF, 50 MHz)
-  Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                    Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::B, 6, Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH> i2c_scl(
+      gpio_bus);
 
   // PB7: SDA (open-drain AF, 50 MHz)
-  Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                    Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::B, 7, Gpio::PinCfg::I2C | Gpio::PinCfg::HIGH> i2c_sda(
+      gpio_bus);
 
-  I2c::Bus i2c_bus(I2C1, &loop);
-  ModbusRtuServer::Lcd lcd(&loop, &i2c_bus);
+  I2c::Bus<I2c::Instance::I2c1, 16, 16> i2c_bus(loop);
+  ModbusRtuServer::Lcd lcd(loop, i2c_bus);
 
   // Global pointers for IRQ handlers
   timer_ptr = &timer;
@@ -278,18 +252,17 @@ main()
   context.blink_off_event = &blink_off_event;
   context.lcd = &lcd;
 
-  Base::system_init();
+  Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
-  TRY(gpio_bus.enable());
-  TRY(led_pin.enable());
-  TRY(uart_rede.enable());
-  TRY(uart_tx.enable());
-  TRY(uart_rx.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
-  TRY(uart_bus.enable(UART_BAUD));
-  TRY(i2c_bus.enable(100000));
+  if (!gpio_bus.enable() || !led_pin.enable() || !uart_rede.enable() ||
+      !uart_tx.enable() || !uart_rx.enable() || !i2c_scl.enable() ||
+      !i2c_sda.enable())
+    return 1;
+  if (!uart_bus.enable(UART_BAUD))
+    return 1;
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   modbus_server.enable();
 #ifdef STM32_SIM
@@ -306,7 +279,7 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  startup_event.enable(1000000);
+  (void)startup_event.enable(std::chrono::seconds{1});
 
   loop.run();
 

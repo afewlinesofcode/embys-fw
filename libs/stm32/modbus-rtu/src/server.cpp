@@ -5,11 +5,11 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Server::Server(uint8_t device_id, Modbus::Handler *handler,
-               Uart::Bus *transport)
+Server::Server(uint8_t device_id, Modbus::Handler &handler,
+               Uart::BusCore &transport)
   : Base(transport), device_id(device_id), handler(handler)
 {
-  handler->set_diagnostics_counters(&diag_counters);
+  handler.set_diagnostics_counters(&diag_counters);
 }
 
 Server::~Server()
@@ -55,11 +55,11 @@ Server::process_request()
 
   ++diag_counters.slave_message_count;
 
-  on_request_cb(buffer_in, buffer_in_len);
+  on_request_cb(std::span{buffer_in}.first(buffer_in_len));
 
   handling_request = true;
-  uint8_t exception =
-      handler->handle(buffer_in, buffer_in_len, buffer_out, &buffer_out_len);
+  uint8_t exception = handler.handle(std::span{buffer_in}.first(buffer_in_len),
+                                     buffer_out, buffer_out_len);
 
   if (buffer_in[0] == 0U)
   {
@@ -96,14 +96,14 @@ Server::send_exception(uint8_t exception_code)
 }
 
 void
-Server::request_callback(void *context)
+Server::request_callback(void *context) noexcept
 {
   auto *srv = static_cast<Server *>(context);
   srv->process_request();
 }
 
 void
-Server::response_sent_callback(void *context, int status)
+Server::response_sent_callback(void *context, int status) noexcept
 {
   auto *srv = static_cast<Server *>(context);
   srv->handling_request = false;

@@ -97,7 +97,7 @@ struct LcdI2cParser
 static LcdI2cParser lcd_parser;
 
 void
-on_tx(void *context, uint8_t addr, std::vector<uint8_t> data)
+on_tx(void *context, uint8_t addr, std::vector<uint8_t> data) noexcept
 {
   (void)context;
 

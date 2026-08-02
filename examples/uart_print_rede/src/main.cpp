@@ -13,36 +13,16 @@
  * Open a terminal at 9600 8N1 to see the output.
  */
 
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/uart/bus.hpp>
 
 #include "def.hpp"
 #include "sim.hpp"
-
-#define TRY_ASYNC(ctx, op)                                                     \
-  do                                                                           \
-  {                                                                            \
-    int res = (op);                                                            \
-    if (res < 0)                                                               \
-      static_cast<AppContext *>(ctx)->loop->terminate(res, ctx);               \
-  } while (0)
 
 namespace Gpio = Embys::Stm32::Gpio;
 namespace Uart = Embys::Stm32::Uart;
@@ -51,7 +31,7 @@ namespace Base = Embys::Stm32::Base;
 // ── IRQ handler globals ───────────────────────────────────────────────────
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 
 extern "C"
 {
@@ -82,36 +62,41 @@ static const char message[] = "Hello from STM32!\r\n";
 struct AppContext
 {
   bool tx_busy = false;
-  Base::Loop *loop = nullptr;
-  Uart::Bus *uart = nullptr;
-  Gpio::Pin *led_pin = nullptr;
+  Base::LoopCore *loop = nullptr;
+  Uart::BusCore *uart = nullptr;
+  Gpio::PinCore *led_pin = nullptr;
   Base::Event *blink_off_event = nullptr;
 };
 
 static void
 blink(AppContext *ctx)
 {
-  ctx->led_pin->write(0); // active-low: 0 = on
-  ctx->blink_off_event->enable(LED_BLINK_US);
+  (void)ctx->led_pin->write(0); // active-low: 0 = on
+  (void)ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 }
 
 static void
-on_blink_off(void *ctx)
+on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
-  context->led_pin->write(1); // active-low: 1 = off
+  (void)context->led_pin->write(1); // active-low: 1 = off
 }
 
 static void
-on_tx_done(void *context, int result)
+on_tx_done(void *context, Uart::Status result) noexcept
 {
-  TRY_ASYNC(context, result);
   auto *ctx = static_cast<AppContext *>(context);
+  if (!result)
+  {
+    ctx->loop->terminate(1, ctx);
+    return;
+  }
+
   ctx->tx_busy = false;
 }
 
 static void
-send_message(void *context)
+send_message(void *context) noexcept
 {
   // panic(2);
   auto *ctx = static_cast<AppContext *>(context);
@@ -119,9 +104,13 @@ send_message(void *context)
   if (ctx->tx_busy)
     return; // Previous transmission still in progress — skip this tick.
 
+  if (!ctx->uart->write(message))
+  {
+    ctx->loop->terminate(1, ctx);
+    return;
+  }
+
   ctx->tx_busy = true;
-  TRY_ASYNC(ctx,
-            ctx->uart->write((const uint8_t *)message, sizeof(message) - 1));
   blink(ctx);
   SIM_LOG(message);
 }
@@ -138,43 +127,37 @@ main()
   // events:
   // print event, internal UART timeout event, loop stop event, blink-off event
   constexpr size_t events_capacity = 5;
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-
   // modules: GPIO bus module + UART module
   constexpr size_t modules_capacity = 2;
-  Base::Module module_slots[modules_capacity];
-
   Base::Timer timer(TIM2);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Base::Event print_event(&loop, Base::EV_PERSIST, {send_message, &app_ctx});
-  Base::Event blink_off_event(&loop, 0, {on_blink_off, &app_ctx});
+  Base::Event print_event(loop, Base::EventMode::Persistent,
+                          {send_message, &app_ctx});
+  Base::Event blink_off_event(loop, Base::EventMode::Deferred,
+                              {on_blink_off, &app_ctx});
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
-  Gpio::Pin *gpio_pin_slots[4];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 4);
+  Gpio::Bus<4> gpio_bus(loop);
   // PC13: LED (output push-pull, 2 MHz, active-low)
-  Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                    Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::C, 13, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1); // start with LED off
   // PA8: RE/DE (output push-pull, 50 MHz) — MAX485 direction control
-  Gpio::Pin uart_rede(&gpio_bus, GPIOA, 8,
-                      Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM);
+  Gpio::Pin<Gpio::Port::A, 8, Gpio::PinCfg::OUT | Gpio::PinCfg::MEDIUM>
+      uart_rede(gpio_bus);
   uart_rede.set_init_value(0); // start in receive mode
   // USART1: PA9/PA10 use AF7 via PinCfg::UART on F4/F7/H7; it is a no-op on
   // F1, where USART1 stays on the default pin mapping.
-  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
-  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Pin<Gpio::Port::A, 9, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_tx(
+      gpio_bus);
+  Gpio::Pin<Gpio::Port::A, 10, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_rx(
+      gpio_bus);
 
 
-  uint8_t rx_buf[64]; // RX buffer (unused in this example, but Bus requires it)
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);
   uart.set_rede_pin(&uart_rede);
   uart.set_tx_callback({on_tx_done, &app_ctx});
 
@@ -190,13 +173,12 @@ main()
   app_ctx.led_pin = &led_pin;
 
   // Enable peripherals
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
-  uart_rede.enable();
-  led_pin.enable();
-  uart.enable(UART_BAUD);
-  print_event.enable(PRINT_INTERVAL_US);
+  if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable() ||
+      !uart_rede.enable() || !led_pin.enable())
+    return 1;
+  if (!uart.enable(UART_BAUD))
+    return 1;
+  (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 
   // Enable IRQs
   __NVIC_EnableIRQ(TIM2_IRQn);

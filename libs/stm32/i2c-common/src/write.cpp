@@ -3,24 +3,24 @@
 namespace Embys::Stm32::I2c::Dev
 {
 
-Write::Write(I2c::Bus *bus) : bus(bus)
+Write::Write(I2c::BusCore &bus) : bus(bus)
 {
 }
 
 void
-Write::exec(uint8_t addr, const uint8_t *buf, uint16_t len, Cb cb)
+Write::exec(uint8_t addr, std::span<const uint8_t> data, Cb cb)
 {
   this->cb = cb;
-  int rc = bus->write(addr, buf, len, {i2c_callback, this});
+  const I2c::Status result = bus.write(addr, data, {i2c_callback, this});
 
-  if (rc != 0)
-    cb(rc);
+  if (!result)
+    cb(-1);
 }
 
 void
-Write::i2c_callback(void *ctx, int result)
+Write::i2c_callback(void *ctx, I2c::Status result) noexcept
 {
-  static_cast<Write *>(ctx)->cb(result);
+  static_cast<Write *>(ctx)->cb(result ? 0 : -1);
 }
 
 }; // namespace Embys::Stm32::I2c::Dev

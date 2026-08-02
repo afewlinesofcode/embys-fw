@@ -45,9 +45,9 @@ inject_frame(std::vector<uint8_t> frame)
 }
 
 static std::vector<uint8_t>
-run_and_capture(Base::Loop &loop, uint32_t timeout_us = 500U)
+run_and_capture(Base::LoopCore &loop, uint32_t timeout_us = 500U)
 {
-  loop.stop(timeout_us);
+  (void)loop.stop(std::chrono::microseconds{timeout_us});
   loop.run();
   if (Sim::Uart::tx_buffers.empty())
     return {};
@@ -70,7 +70,7 @@ namespace
 struct RtuBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Uart::Bus *uart_bus_ptr = nullptr;
+  inline static Uart::BusCore *uart_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -105,41 +105,29 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct RtuLoopFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
-  uint8_t rx_buf[Modbus::kFrameSize];
-
   Base::Timer timer;
-  Base::Loop loop;
-  Uart::Bus uart;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
 
-  RtuLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
-      uart(USART2, &loop, rx_buf, sizeof(rx_buf))
+  RtuLoopFixture() : timer(TIM2), loop(timer), uart(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
   }
 };
 
 struct StoreFixture
 {
   static constexpr uint16_t NC = 16, NDI = 8, NHR = 8, NIR = 4;
-  uint8_t coils_buf[(NC + 7U) / 8U] = {};
-  uint8_t di_buf[(NDI + 7U) / 8U] = {};
-  uint16_t hr_buf[NHR] = {};
-  uint16_t ir_buf[NIR] = {};
-  Modbus::Store store{coils_buf, NC, di_buf, NDI, hr_buf, NHR, ir_buf, NIR};
-  Modbus::Handler handler{&store};
+  Modbus::Store<NC, NDI, NHR, NIR> store;
+  Modbus::Handler handler{store};
 };
 
 struct ServerFixture : RtuLoopFixture, StoreFixture
 {
-  Modbus::Rtu::Server server{1, &handler, &uart};
+  Modbus::Rtu::Server server{1, handler, uart};
 
   ServerFixture()
   {
@@ -162,7 +150,7 @@ TEST_SUITE("modbus_rtu_server")
     store.set_holding_register(1, 0x5678U);
 
     std::vector<uint8_t> sent;
-    uart.set_tx_callback({[](void *ctx, int)
+    uart.set_tx_callback({[](void *ctx, Uart::Status) noexcept
                           {
                             auto *v = static_cast<std::vector<uint8_t> *>(ctx);
                             if (!Embys::Stm32::Sim::Uart::tx_buffers.empty())
@@ -172,7 +160,7 @@ TEST_SUITE("modbus_rtu_server")
 
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x02});
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Response: device=01 FC=03 byte_count=04 [0x12 0x34 0x56 0x78] + CRC
@@ -192,7 +180,7 @@ TEST_SUITE("modbus_rtu_server")
                                   0x00, 0x01, 0xFF, 0xFF}; // wrong CRC
     Embys::Stm32::Sim::Uart::simulate_rx(frame);
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
@@ -204,7 +192,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device=2, not 1
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -216,7 +204,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // write coil 0 ON
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -229,7 +217,7 @@ TEST_SUITE("modbus_rtu_server")
   TEST_CASE_FIXTURE(ServerFixture, "Server: unknown FC gets exception response")
   {
     std::vector<uint8_t> sent;
-    uart.set_tx_callback({[](void *ctx, int)
+    uart.set_tx_callback({[](void *ctx, Uart::Status) noexcept
                           {
                             auto *v = static_cast<std::vector<uint8_t> *>(ctx);
                             if (!Embys::Stm32::Sim::Uart::tx_buffers.empty())
@@ -239,7 +227,7 @@ TEST_SUITE("modbus_rtu_server")
 
     inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     REQUIRE(sent.size() >= 3U);
@@ -253,7 +241,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
@@ -429,7 +417,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "bus_message_count increments for every addressed frame")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
@@ -439,7 +427,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "bus_message_count increments even for non-addressed frame")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2, not 1
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
@@ -452,7 +440,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
     std::vector<uint8_t> frame = {0x01, 0x03, 0x00, 0x00,
                                   0x00, 0x01, 0xFF, 0xFF};
     Sim::Uart::simulate_rx(frame);
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
@@ -462,7 +450,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "slave_message_count increments for valid addressed frame")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
@@ -473,7 +461,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "frame")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 0U);
@@ -483,7 +471,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "slave_no_response_count increments on broadcast")
   {
     inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // broadcast write coil
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_no_response_count == 1U);
@@ -495,7 +483,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "sent")
   {
     inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01}); // unsupported FC
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_exception_error_count == 1U);
@@ -522,10 +510,10 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
   {
     // First, generate two slave messages
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Now query slave message count via FC 0x08
@@ -547,14 +535,14 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
   {
     // Generate some traffic
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count >= 1U);
 
     // Clear
     inject_frame({0x01, 0x08, 0x00, 0x0A, 0x00, 0x00});
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Counters should be reset (ClearCounters itself increments them by 1
@@ -591,7 +579,7 @@ TEST_SUITE("modbus_rtu_server_report_server_id")
                     "FC 0x11 custom server id: response reflects set_server_id")
   {
     const uint8_t id[] = {0xAB, 0xCD};
-    handler.set_server_id(id, sizeof(id));
+    handler.set_server_id(id);
 
     inject_frame({0x01, 0x11});
     auto sent = run_and_capture(loop);

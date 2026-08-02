@@ -94,7 +94,7 @@ struct LcdI2cParser
 static LcdI2cParser lcd_parser;
 
 static void
-on_i2c_tx(void *, uint8_t addr, std::vector<uint8_t> data)
+on_i2c_tx(void *, uint8_t addr, std::vector<uint8_t> data) noexcept
 {
   if (addr == 0x27U)
   {
@@ -106,7 +106,7 @@ on_i2c_tx(void *, uint8_t addr, std::vector<uint8_t> data)
 // ── UART TX callback ──────────────────────────────────────────────────────
 
 static void
-on_uart_tx(void *, std::vector<uint8_t> data)
+on_uart_tx(void *, std::vector<uint8_t> data) noexcept
 {
   std::cout << "[UART TX] (" << std::dec << data.size() << " bytes):";
   for (uint8_t b : data)

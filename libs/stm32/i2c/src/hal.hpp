@@ -1,12 +1,7 @@
 /**
  * @file hal.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
- * @brief I2C HAL version selector and peripheral function declarations.
- *
- * Includes the appropriate version-specific helper header (hal/v1/hal.hpp for
- * V1 targets, hal/v2/hal.hpp for V2 targets) and declares the
- * family-independent peripheral functions implemented in hal/f1/, hal/f4/,
- * hal/f7/, hal/h7/.
+ * @brief I2C family backend selector and peripheral declarations.
  *
  * @version 0.1
  * @date 2026-04-29
@@ -22,10 +17,12 @@
 #include "def.hpp"
 #include "stm32xx.hpp"
 
-#ifdef I2C_HAL_V1
-#include "hal/v1/hal.hpp"
-#elif defined(I2C_HAL_V2)
-#include "hal/v2/hal.hpp"
+#if defined(STM32F1xx)
+#include "hal/f1/backend.hpp"
+#elif defined(STM32F4xx)
+#include "hal/f4/backend.hpp"
+#else
+#error "Unsupported I2C backend"
 #endif
 
 namespace Embys::Stm32::I2c
@@ -41,14 +38,14 @@ namespace Embys::Stm32::I2c
  *               ≤400000 for fast mode).
  * @return 0 on success, negative error code on failure.
  */
-int
+[[nodiscard]] Status
 enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz);
 
 /**
  * @brief Disable all I2C interrupts and turn off the peripheral APB clock.
  * @return 0 on success, negative error code on failure.
  */
-int
+[[nodiscard]] Status
 disable_i2c(I2C_TypeDef *i2c);
 
 /**
@@ -57,7 +54,7 @@ disable_i2c(I2C_TypeDef *i2c);
  * sequence, stopping as soon as the bus is idle and error-free.
  * @return 0 if recovered, BUS_STUCK if all recovery attempts fail.
  */
-int
+[[nodiscard]] Status
 reset_i2c(I2C_TypeDef *i2c);
 
 }; // namespace Embys::Stm32::I2c

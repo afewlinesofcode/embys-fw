@@ -1,10 +1,10 @@
 #include <stddef.h>
-#include <stm32f1xx.h>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c-aht20/device.hpp>
@@ -22,7 +22,7 @@ Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 /**
  * @brief Global pointer to I2C bus for interrupt handler access
  */
-Embys::Stm32::I2c::Bus *i2c_bus_ptr = nullptr;
+Embys::Stm32::I2c::BusCore *i2c_bus_ptr = nullptr;
 
 extern "C"
 {
@@ -56,10 +56,10 @@ extern "C"
  * @brief Turn LED off (called by the led_off_event)
  */
 static void
-led_off(void *context)
+led_off(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
-  ctx->led->write(1); // active-low: write 1 = LED off
+  (void)ctx->led->write(1); // active-low: write 1 = LED off
 }
 
 /**
@@ -67,13 +67,13 @@ led_off(void *context)
  */
 static void
 on_query(void *context, int rc,
-         Embys::Stm32::I2c::Dev::Aht20::Device::Values *values)
+         Embys::Stm32::I2c::Dev::Aht20::Device::Values values) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
   // Blink LED: turn on, schedule a short off event
-  ctx->led->write(0); // active-low: write 0 = LED on
-  ctx->led_off_event->enable(LED_BLINK_US);
+  (void)ctx->led->write(0); // active-low: write 0 = LED on
+  (void)ctx->led_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 
   if (rc != 0)
   {
@@ -82,9 +82,10 @@ on_query(void *context, int rc,
   }
   else
   {
-    SIM_LOG("AHT20: temp=" << values->temperature
-                           << " hum=" << values->humidity);
-    ctx->lcd->set_values(values->temperature, values->humidity);
+    SIM_LOG("AHT20: temp_centi_c=" << values.temperature.centi_celsius
+                                   << " humidity_centi_percent="
+                                   << values.humidity.centi_percent);
+    ctx->lcd->set_values(values.temperature, values.humidity);
   }
 }
 
@@ -92,7 +93,7 @@ on_query(void *context, int rc,
  * @brief Periodic query event callback — triggers an AHT20 measurement
  */
 static void
-do_query(void *context)
+do_query(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->aht20->query({on_query, context});
@@ -102,7 +103,7 @@ do_query(void *context)
  * @brief AHT20 enable callback
  */
 static void
-on_aht20_enabled(void *context, int rc)
+on_aht20_enabled(void *context, int rc) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -114,14 +115,14 @@ on_aht20_enabled(void *context, int rc)
   }
 
   SIM_LOG("AHT20 ready, starting periodic query");
-  ctx->query_event->enable(QUERY_INTERVAL_US);
+  (void)ctx->query_event->enable(std::chrono::microseconds{QUERY_INTERVAL_US});
 }
 
 /**
  * @brief Startup callback — initialise LCD, then enable AHT20
  */
 static void
-on_start(void *context)
+on_start(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->lcd->init();
@@ -134,7 +135,7 @@ on_start(void *context)
  * class can notify main when it reaches the Ready state.
  */
 static void
-on_lcd_ready(void *context, int rc)
+on_lcd_ready(void *context, int rc) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -167,48 +168,45 @@ main()
   //   - I2C bus timeout event
   //   - AHT20 delay event
   constexpr size_t events_capacity = 7;
-  static Embys::Stm32::Base::Event *event_slots[events_capacity];
-  static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
-
   // Modules:
   //   - GPIO bus
   //   - I2C bus
   constexpr size_t modules_capacity = 2;
-  static Embys::Stm32::Base::Module module_slots[modules_capacity];
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
+  Embys::Stm32::Base::Event startup_event(
+      loop, Embys::Stm32::Base::EventMode::Deferred, {on_start, &context});
 
-  Embys::Stm32::Base::Event startup_event(&loop, 0, {on_start, &context});
+  Embys::Stm32::Base::Event query_event(
+      loop, Embys::Stm32::Base::EventMode::Persistent, {do_query, &context});
 
-  Embys::Stm32::Base::Event query_event(&loop, Embys::Stm32::Base::EV_PERSIST,
-                                        {do_query, &context});
-
-  Embys::Stm32::Base::Event led_off_event(&loop, 0, {led_off, &context});
+  Embys::Stm32::Base::Event led_off_event(
+      loop, Embys::Stm32::Base::EventMode::Deferred, {led_off, &context});
 
   constexpr size_t gpio_pins_capacity = 3;
-  static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-  Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // LED on PC13 (output push-pull, 2 MHz, active-low)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                                  PinCfg::OUT | PinCfg::MEDIUM);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13,
+                          PinCfg::OUT | PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1);
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 6,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_scl(gpio_bus);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 7,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_sda(gpio_bus);
 
-  Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
+      loop);
 
-  Embys::Stm32::I2c::Dev::Aht20::Device aht20(&loop, &i2c_bus);
-  Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(&loop, &i2c_bus);
+  Embys::Stm32::I2c::Dev::Aht20::Device aht20(loop, i2c_bus);
+  Embys::Stm32::I2c::Dev::I2cAht20::Lcd lcd(loop, i2c_bus);
 
   // Set global pointers for interrupt handlers
   timer_ptr = &timer;
@@ -224,13 +222,13 @@ main()
   // Register LCD ready callback so main knows when to enable AHT20
   lcd.set_ready_cb({on_lcd_ready, &context});
 
-  Embys::Stm32::Base::system_init();
+  Embys::Stm32::Base::reset<Embys::Stm32::Family>();
 
-  TRY(gpio_bus.enable());
-  TRY(led_pin.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
-  TRY(i2c_bus.enable(100000));
+  if (!gpio_bus.enable() || !led_pin.enable() || !i2c_scl.enable() ||
+      !i2c_sda.enable())
+    return 1;
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0x00);
@@ -239,7 +237,7 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  startup_event.enable(0);
+  (void)startup_event.enable(std::chrono::microseconds::zero());
 
   loop.run();
 

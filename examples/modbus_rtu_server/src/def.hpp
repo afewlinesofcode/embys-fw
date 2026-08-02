@@ -22,7 +22,7 @@ constexpr uint16_t MODBUS_TABLE_SIZE = 10;
 // Forward declarations
 namespace Embys::Stm32::Gpio
 {
-class Pin;
+class PinCore;
 };
 
 namespace Embys::Stm32::Base
@@ -37,7 +37,7 @@ class Lcd;
 
 struct AppContext
 {
-  Embys::Stm32::Gpio::Pin *led = nullptr;
+  Embys::Stm32::Gpio::PinCore *led = nullptr;
   Embys::Stm32::Base::Event *blink_off_event = nullptr;
   ModbusRtuServer::Lcd *lcd = nullptr;
 };

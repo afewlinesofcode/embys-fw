@@ -10,29 +10,37 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
+
+#include <embys/stm32/result.hpp>
 
 namespace Embys::Stm32::I2c
 {
 
-enum Diag : int
+enum class Error : uint8_t
 {
-  BASE_ERROR = -3000,
-  INVALID_I2C,
-  BUS_NOT_ENABLED,
-  BUSY,
-  INVALID_STATE,
-  INVALID_BUFFER,
-  INVALID_PCLK,
-  INVALID_CCR,
-  NACK,
-  BUS_ERROR,
-  ARBITRATION_LOST,
-  OVERRUN,
-  TIMEOUT,
-  BUS_BUSY,
-  BUS_STUCK,
-  STOP_STUCK,
+  InvalidInstance,
+  InvalidClock,
+  InvalidTiming,
+  NotEnabled,
+  Busy,
+  InvalidState,
+  InvalidBuffer,
+  Nack,
+  BusError,
+  ArbitrationLost,
+  Overrun,
+  Timeout,
+  BusBusy,
+  BusStuck,
+  StopStuck,
+  BufferTooSmall,
+  ModuleCapacity,
+  Schedule,
 };
+
+using Status = Embys::Result<void, Error>;
+using ReadResult = Embys::Result<std::span<const uint8_t>, Error>;
 
 }; // namespace Embys::Stm32::I2c

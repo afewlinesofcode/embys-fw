@@ -8,18 +8,19 @@
 namespace Embys::Stm32::Modbus::Rtu
 {
 
-Base::Base(Uart::Bus *transport)
+Base::Base(Uart::BusCore &transport)
   : transport(transport),
-    frame_timeout_event(transport->get_base(), 0,
+    frame_timeout_event(*transport.get_base(),
+                        ::Embys::Stm32::Base::EventMode::Deferred,
                         {Base::frame_timeout_callback, this})
 {
-  transport->set_rx_callback({Base::recv_callback, this});
-  transport->set_tx_callback({Base::sent_callback, this});
+  transport.set_rx_callback({Base::recv_callback, this});
+  transport.set_tx_callback({Base::sent_callback, this});
 }
 
 Base::~Base()
 {
-  transport->clear_rx_callback();
+  transport.clear_rx_callback();
 }
 
 void
@@ -32,7 +33,8 @@ int
 Base::send_frame()
 {
   append_crc(buffer_out, &buffer_out_len);
-  TRY(transport->write(buffer_out, buffer_out_len));
+  if (!transport.write(std::span{buffer_out}.first(buffer_out_len)))
+    return -1;
   return 0;
 }
 
@@ -85,7 +87,7 @@ Base::validate_crc(const uint8_t *buffer, uint16_t len) const
 void
 Base::calculate_timing()
 {
-  uint32_t baud_rate = transport->get_baud_rate();
+  uint32_t baud_rate = transport.get_baud_rate();
 
   if (baud_rate == 0U)
   {
@@ -101,16 +103,27 @@ Base::calculate_timing()
   }
   else
   {
-    uint32_t frame_bits = transport->get_frame_bits();
+    uint32_t frame_bits = transport.get_frame_bits();
     uint32_t char_time_us = (frame_bits * 1000000U) / baud_rate;
     frame_delay_us = (char_time_us * 7U) >> 1U; // 3.5 character times
   }
 }
 
 void
-Base::recv_callback(void *context, uint8_t byte)
+Base::recv_callback(void *context, Uart::ReceiveResult result) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
+
+  if (!result)
+  {
+    rtu->buffer_in_len = 0;
+    rtu->buffer_in_overflow = false;
+    rtu->frame_in_receiving = false;
+    rtu->frame_timeout_event.disable();
+    return;
+  }
+
+  const uint8_t byte = result.value();
 
   if (!rtu->frame_in_receiving)
   {
@@ -128,11 +141,12 @@ Base::recv_callback(void *context, uint8_t byte)
     rtu->buffer_in_overflow = true;
   }
 
-  rtu->frame_timeout_event.enable(rtu->frame_delay_us);
+  (void)rtu->frame_timeout_event.enable(
+      std::chrono::microseconds{rtu->frame_delay_us});
 }
 
 void
-Base::frame_timeout_callback(void *context)
+Base::frame_timeout_callback(void *context) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
 
@@ -154,10 +168,10 @@ Base::frame_timeout_callback(void *context)
 }
 
 void
-Base::sent_callback(void *context, int status)
+Base::sent_callback(void *context, Uart::Status status) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
-  rtu->frame_out_cb(status);
+  rtu->frame_out_cb(status.has_value() ? 0 : -1);
 }
 
 }; // namespace Embys::Stm32::Modbus::Rtu

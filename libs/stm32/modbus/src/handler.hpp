@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include <span>
+
 #include <stdint.h>
 
 #include "def.hpp"
@@ -30,8 +32,8 @@ namespace Embys::Stm32::Modbus
 class Handler
 {
 public:
-  using BufferIn = const uint8_t *;
-  using BufferOut = uint8_t *;
+  using BufferIn = std::span<const uint8_t>;
+  using BufferOut = std::span<uint8_t>;
 
   Handler() = delete;
   Handler(const Handler &) = delete;
@@ -41,9 +43,9 @@ public:
   Handler &
   operator=(Handler &&) = delete;
 
-  explicit Handler(Store *store);
+  explicit Handler(StoreCore &store);
 
-  inline Store *
+  inline StoreCore &
   get_store() const
   {
     return store;
@@ -52,15 +54,13 @@ public:
   /**
    * @brief Process a Modbus request and build a response.
    *
-   * @param request  Pointer to the request PDU (device ID + FC + data).
-   * @param req_len  Length of the request PDU.
-   * @param response Pointer to the response buffer.
-   * @param res_len  Written with the length of the response PDU on success.
+   * @param request  Request PDU (device ID + FC + data).
+   * @param response Bounded response storage.
+   * @param res_len  Written with the response PDU length on success.
    * @return 0 on success, or a Modbus ExceptionCode on failure.
    */
   uint8_t
-  handle(BufferIn request, uint16_t req_len, BufferOut response,
-         uint16_t *res_len);
+  handle(BufferIn request, BufferOut response, uint16_t &res_len);
 
   inline void
   set_coils_offset(uint16_t offset)
@@ -93,17 +93,15 @@ public:
   }
 
   inline void
-  set_server_id(const uint8_t *buf, uint8_t len)
+  set_server_id(std::span<const uint8_t> id)
   {
-    server_id_buf = buf;
-    server_id_len = len;
+    server_id = id;
   }
 
 private:
-  Store *store;
+  StoreCore &store;
   DiagnosticsCounters *diag_counters = nullptr;
-  const uint8_t *server_id_buf = nullptr;
-  uint8_t server_id_len = 0;
+  std::span<const uint8_t> server_id;
   uint16_t starting_address = 0;
   uint16_t quantity = 0;
   uint16_t write_value = 0;
@@ -113,44 +111,42 @@ private:
   uint16_t input_registers_offset = 0;
 
   uint8_t
-  handle_read_coils(BufferIn request, uint16_t req_len, BufferOut response,
-                    uint16_t *res_len);
+  handle_read_coils(BufferIn request, BufferOut response, uint16_t &res_len);
 
   uint8_t
-  handle_read_discrete_inputs(BufferIn request, uint16_t req_len,
-                              BufferOut response, uint16_t *res_len);
+  handle_read_discrete_inputs(BufferIn request, BufferOut response,
+                              uint16_t &res_len);
 
   uint8_t
-  handle_read_holding_registers(BufferIn request, uint16_t req_len,
-                                BufferOut response, uint16_t *res_len);
+  handle_read_holding_registers(BufferIn request, BufferOut response,
+                                uint16_t &res_len);
 
   uint8_t
-  handle_read_input_registers(BufferIn request, uint16_t req_len,
-                              BufferOut response, uint16_t *res_len);
+  handle_read_input_registers(BufferIn request, BufferOut response,
+                              uint16_t &res_len);
 
   uint8_t
-  handle_write_single_coil(BufferIn request, uint16_t req_len,
-                           BufferOut response, uint16_t *res_len);
+  handle_write_single_coil(BufferIn request, BufferOut response,
+                           uint16_t &res_len);
 
   uint8_t
-  handle_write_single_register(BufferIn request, uint16_t req_len,
-                               BufferOut response, uint16_t *res_len);
+  handle_write_single_register(BufferIn request, BufferOut response,
+                               uint16_t &res_len);
 
   uint8_t
-  handle_diagnostics(BufferIn request, uint16_t req_len, BufferOut response,
-                     uint16_t *res_len);
+  handle_diagnostics(BufferIn request, BufferOut response, uint16_t &res_len);
 
   uint8_t
-  handle_report_server_id(BufferIn request, uint16_t req_len,
-                          BufferOut response, uint16_t *res_len);
+  handle_report_server_id(BufferIn request, BufferOut response,
+                          uint16_t &res_len);
 
   uint8_t
-  handle_write_multiple_coils(BufferIn request, uint16_t req_len,
-                              BufferOut response, uint16_t *res_len);
+  handle_write_multiple_coils(BufferIn request, BufferOut response,
+                              uint16_t &res_len);
 
   uint8_t
-  handle_write_multiple_registers(BufferIn request, uint16_t req_len,
-                                  BufferOut response, uint16_t *res_len);
+  handle_write_multiple_registers(BufferIn request, BufferOut response,
+                                  uint16_t &res_len);
 };
 
 }; // namespace Embys::Stm32::Modbus

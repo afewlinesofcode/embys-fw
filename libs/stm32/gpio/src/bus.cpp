@@ -2,14 +2,15 @@
 
 #include <embys/stm32/def.hpp>
 
-#include "diag.hpp"
+#include "def.hpp"
 #include "hal.hpp"
 
 namespace Embys::Stm32::Gpio
 {
 
-Bus::Bus(Base::Loop *base, Pin **pin_slots, size_t pins_capacity)
-  : base(base), pins(pin_slots), pins_capacity(pins_capacity)
+BusCore::BusCore(Base::LoopCore &base, PinCore **pin_slots,
+                 size_t pins_capacity)
+  : base(&base), pins(pin_slots), pins_capacity(pins_capacity)
 {
   // Initialize pin registry
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -18,46 +19,46 @@ Bus::Bus(Base::Loop *base, Pin **pin_slots, size_t pins_capacity)
   }
 }
 
-Bus::~Bus()
+BusCore::~BusCore()
 {
 }
 
-int
-Bus::enable()
+Status
+BusCore::enable()
 {
   if (enabled)
   {
     // Already enabled
-    return 0;
+    return Status::success();
   }
 
-  TRY(enable_exti_source_clock());
-  module = base->add_module({Bus::module_callback, this});
+  module = base->add_module({BusCore::module_callback, this});
+  if (module == nullptr)
+    return Status::failure(Error::ModuleCapacity);
 
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
-Bus::disable()
+Status
+BusCore::disable()
 {
   if (!enabled)
   {
     // Already disabled
-    return 0;
+    return Status::success();
   }
 
-  TRY(disable_exti_source_clock());
   base->remove_module(module);
   module = nullptr;
 
   enabled = false;
-  return 0;
+  return Status::success();
 }
 
 void
-Bus::handle_irq(uint8_t start, uint8_t end)
+BusCore::handle_irq(uint8_t start, uint8_t end)
 {
   for (uint8_t pin_index = start; pin_index <= end; ++pin_index)
   {
@@ -68,10 +69,12 @@ Bus::handle_irq(uint8_t start, uint8_t end)
   set_module_pending();
 }
 
-int
-Bus::add(Pin *pin)
+Status
+BusCore::add(PinCore *pin)
 {
-  TRY(check_enabled());
+  const Status enabled_result = check_enabled();
+  if (!enabled_result)
+    return enabled_result;
 
   // Find available slot in registry
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -79,18 +82,20 @@ Bus::add(Pin *pin)
     if (!pins[i])
     {
       pins[i] = pin;
-      return 0;
+      return Status::success();
     }
   }
 
   // No available slots
-  return BUS_FULL;
+  return Status::failure(Error::BusFull);
 }
 
-int
-Bus::remove(Pin *pin)
+Status
+BusCore::remove(PinCore *pin)
 {
-  TRY(check_enabled());
+  const Status enabled_result = check_enabled();
+  if (!enabled_result)
+    return enabled_result;
 
   auto port = pin->get_port();
   bool port_in_use = false;
@@ -105,19 +110,23 @@ Bus::remove(Pin *pin)
   }
 
   if (!port_in_use)
-    TRY(disable_gpio(port));
+  {
+    const Status disable_result = disable_gpio(port);
+    if (!disable_result)
+      return disable_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
 void
-Bus::activate_pin(uint32_t pin_bit)
+BusCore::activate_pin(uint32_t pin_bit)
 {
   SET_BIT_V(activated_exti_lines, pin_bit);
 }
 
-int
-Bus::trigger_activated_pins()
+Status
+BusCore::trigger_activated_pins()
 {
   // Process all pins with pending interrupts
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -132,25 +141,26 @@ Bus::trigger_activated_pins()
     if ((activated_exti_lines & pin_bit) &&
         has_cfg(pin_ptr->get_cfg(), PinCfg::LISTEN))
     {
-      cs_begin();
-      CLEAR_BIT_V(activated_exti_lines, pin_bit);
-      cs_end();
+      {
+        IrqGuard guard;
+        CLEAR_BIT_V(activated_exti_lines, pin_bit);
+      }
 
       // Trigger callback for the pin
       pin_ptr->trigger();
     }
   }
 
-  return 0;
+  return Status::success();
 }
 
-int
-Bus::check_enabled()
+Status
+BusCore::check_enabled()
 {
   if (!enabled)
-    return BUS_NOT_ENABLED; // GPIO bus is not enabled
+    return Status::failure(Error::BusNotEnabled);
 
-  return 0;
+  return Status::success();
 }
 
 }; // namespace Embys::Stm32::Gpio

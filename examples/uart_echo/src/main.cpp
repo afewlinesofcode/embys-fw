@@ -20,13 +20,10 @@
  *     must be at least 2 (timeout event + loop stop event).
  */
 
-#ifndef STM32_SIM
-#include <stm32f1xx.h>
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/uart/bus.hpp>
@@ -41,7 +38,7 @@ namespace Base = Embys::Stm32::Base;
 // ── IRQ handler globals ───────────────────────────────────────────────────
 
 static Base::Timer *timer_ptr = nullptr;
-static Uart::Bus *uart_ptr = nullptr;
+static Uart::BusCore *uart_ptr = nullptr;
 
 extern "C"
 {
@@ -66,7 +63,7 @@ extern "C"
 
 struct AppContext
 {
-  Uart::Bus *uart;
+  Uart::BusCore *uart;
 
   // Accumulation buffer for the current incoming line
   uint8_t line_buf[LINE_BUF_LEN];
@@ -85,9 +82,16 @@ static void
 flush_line(AppContext *ctx);
 
 static void
-on_rx_byte(void *context, uint8_t byte)
+on_rx_byte(void *context, Uart::ReceiveResult result) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
+  if (!result)
+  {
+    ctx->line_len = 0;
+    return;
+  }
+
+  const uint8_t byte = result.value();
 
   bool end_of_line = (byte == '\r' || byte == '\n');
 
@@ -103,7 +107,7 @@ on_rx_byte(void *context, uint8_t byte)
 }
 
 static void
-on_tx_done(void *context, int /* result */)
+on_tx_done(void *context, Uart::Status /* result */) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->tx_busy = false;
@@ -124,8 +128,8 @@ flush_line(AppContext *ctx)
   ctx->tx_len = ctx->line_len + 2;
   ctx->line_len = 0;
 
-  ctx->tx_busy = true;
-  ctx->uart->write(ctx->tx_buf, ctx->tx_len);
+  if (ctx->uart->write(std::span{ctx->tx_buf}.first(ctx->tx_len)))
+    ctx->tx_busy = true;
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
@@ -139,29 +143,21 @@ main()
 
   // events: UART timeout event + loop stop event
   constexpr size_t events_capacity = 2;
-  Base::Event *event_slots[events_capacity];
-  Base::Event *active_event_slots[events_capacity];
-
   // modules: GPIO bus module + UART module
   constexpr size_t modules_capacity = 2;
-  Base::Module module_slots[modules_capacity];
-
   Base::Timer timer(TIM2);
 
-  Base::Loop loop(&timer, event_slots, active_event_slots, events_capacity,
-                  module_slots, modules_capacity);
+  Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   // PA9  = TX: alternate-function push-pull, 10 MHz
   // PA10 = RX: input floating
-  Gpio::Pin *gpio_pin_slots[2];
-  Gpio::Bus gpio_bus(&loop, gpio_pin_slots, 2);
-  Gpio::Pin pin_tx(&gpio_bus, GPIOA, 9,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
-  Gpio::Pin pin_rx(&gpio_bus, GPIOA, 10,
-                   Gpio::PinCfg::UART | Gpio::PinCfg::HIGH);
+  Gpio::Bus<2> gpio_bus(loop);
+  Gpio::Pin<Gpio::Port::A, 9, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_tx(
+      gpio_bus);
+  Gpio::Pin<Gpio::Port::A, 10, Gpio::PinCfg::UART | Gpio::PinCfg::HIGH> pin_rx(
+      gpio_bus);
 
-  uint8_t rx_buf[64];
-  Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+  Uart::Bus<Uart::Instance::Usart1, 64, 64> uart(loop);
   uart.set_rx_callback({on_rx_byte, &ctx});
   uart.set_tx_callback({on_tx_done, &ctx});
 
@@ -172,10 +168,10 @@ main()
   ctx.line_len = 0;
   ctx.tx_busy = false;
 
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
-  uart.enable(UART_BAUD);
+  if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable())
+    return 1;
+  if (!uart.enable(UART_BAUD))
+    return 1;
 
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0);

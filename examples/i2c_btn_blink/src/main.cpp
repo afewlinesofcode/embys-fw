@@ -1,22 +1,10 @@
 #include <stddef.h>
 
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c/bus.hpp>
@@ -33,12 +21,12 @@ Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 /**
  * @brief Global pointer to GPIO bus for interrupt handler access
  */
-Embys::Stm32::Gpio::Bus *gpio_ptr = nullptr;
+Embys::Stm32::Gpio::BusCore *gpio_ptr = nullptr;
 
 /**
  * @brief Global pointer to I2C bus for interrupt handler access
  */
-Embys::Stm32::I2c::Bus *i2c_bus_ptr = nullptr;
+Embys::Stm32::I2c::BusCore *i2c_bus_ptr = nullptr;
 
 // Interrupt handlers for each peripheral used in the example
 extern "C"
@@ -87,7 +75,7 @@ extern "C"
  * @param context
  */
 static void
-on_start(void *context)
+on_start(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   (void)ctx;
@@ -100,11 +88,11 @@ on_start(void *context)
  * @param context
  */
 static void
-toggle_led(void *context)
+toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->led_on = !ctx->led_on;
-  ctx->led->write(ctx->led_on ? 0 : 1);
+  (void)ctx->led->write(ctx->led_on ? 0 : 1);
 
   if (ctx->led_on)
   {
@@ -125,7 +113,7 @@ toggle_led(void *context)
  * @param value
  */
 static void
-toggle_btn(void *context, uint8_t value)
+toggle_btn(void *context, uint8_t value) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   SIM_LOG("Button: " << (value ? "RELEASED" : "PRESSED"));
@@ -137,14 +125,15 @@ toggle_btn(void *context, uint8_t value)
 
     if (ctx->blink_on)
     {
-      ctx->blink_event->enable(LED_BLINK_INTERVAL_US);
+      (void)ctx->blink_event->enable(
+          std::chrono::microseconds{LED_BLINK_INTERVAL_US});
       SIM_LOG("Blinking ON");
     }
     else
     {
       ctx->blink_event->disable();
       ctx->led_on = false;
-      ctx->led->write(1);
+      (void)ctx->led->write(1);
       ctx->blink_count = 0;
       SIM_LOG("Blinking OFF");
     }
@@ -170,51 +159,48 @@ main()
   //   - I2C bus timeout event
   //   - I2C device delay event
   constexpr size_t events_capacity = 5;
-  static Embys::Stm32::Base::Event *event_slots[events_capacity];
-  static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
-
   // Modules:
   //   - GPIO bus
   //   - I2C bus
   constexpr size_t modules_capacity = 2;
-  static Embys::Stm32::Base::Module module_slots[modules_capacity];
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
-
-  Embys::Stm32::Base::Event blink_event(&loop, Embys::Stm32::Base::EV_PERSIST,
-                                        {toggle_led, &context});
+  Embys::Stm32::Base::Event blink_event(
+      loop, Embys::Stm32::Base::EventMode::Persistent, {toggle_led, &context});
 
   // One-shot startup event: fires on the first loop iteration (us=0)
-  Embys::Stm32::Base::Event startup_event(&loop, 0, {on_start, &context});
+  Embys::Stm32::Base::Event startup_event(
+      loop, Embys::Stm32::Base::EventMode::Deferred, {on_start, &context});
 
   constexpr size_t gpio_pins_capacity = 4;
-  static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-  Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // Button on PA0 (input floating, EXTI)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
-                                     PinCfg::IN | PinCfg::LISTEN);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::A, 0,
+                          PinCfg::IN | PinCfg::LISTEN>
+      button_pin(gpio_bus);
   button_pin.set_callback({toggle_btn, &context});
 
   // LED on PC13 (output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13,
-                                  PinCfg::OUT | PinCfg::MEDIUM);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13,
+                          PinCfg::OUT | PinCfg::MEDIUM>
+      led_pin(gpio_bus);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // I2C1 SCL on PB6 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_scl(&gpio_bus, GPIOB, 6,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 6,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_scl(gpio_bus);
 
   // I2C1 SDA on PB7 (output open-drain AF, 50 MHz)
-  Embys::Stm32::Gpio::Pin i2c_sda(&gpio_bus, GPIOB, 7,
-                                  PinCfg::I2C | PinCfg::HIGH);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::B, 7,
+                          PinCfg::I2C | PinCfg::HIGH>
+      i2c_sda(gpio_bus);
 
-  Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+  Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16> i2c_bus(
+      loop);
 
-  Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(&loop, &i2c_bus);
+  Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd lcd(loop, i2c_bus);
 
   // Set global pointers for interrupt handlers
   timer_ptr = &timer;
@@ -228,15 +214,14 @@ main()
 
   // Initialize system (performs DWT setup, needs to be moved to a more
   // central place in the future)
-  Embys::Stm32::Base::system_init();
+  Embys::Stm32::Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
-  TRY(gpio_bus.enable());
-  TRY(button_pin.enable());
-  TRY(led_pin.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
-  TRY(i2c_bus.enable(100000));
+  if (!gpio_bus.enable() || !button_pin.enable() || !led_pin.enable() ||
+      !i2c_scl.enable() || !i2c_sda.enable())
+    return 1;
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);
@@ -248,7 +233,7 @@ main()
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
   // Schedule startup event
-  startup_event.enable(1000000);
+  (void)startup_event.enable(std::chrono::seconds{1});
 
   // Run main loop
   loop.run();

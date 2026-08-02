@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <chrono>
 
 #include <embys/stm32/base/event.hpp>
 #include <embys/stm32/base/loop.hpp>
@@ -23,17 +23,17 @@ namespace Embys::Stm32::I2c::Dev
 class Delay
 {
 public:
-  explicit Delay(Base::Loop *loop);
+  explicit Delay(Base::LoopCore &loop);
 
   void
-  exec(uint32_t us, Cb cb);
+  exec(std::chrono::microseconds delay, Cb cb);
 
 private:
   Base::Event ev;
   Cb cb;
 
   static void
-  fired(void *ctx);
+  fired(void *ctx) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev

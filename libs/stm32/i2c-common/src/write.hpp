@@ -10,7 +10,8 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
 
 #include <embys/stm32/i2c/bus.hpp>
 
@@ -22,17 +23,17 @@ namespace Embys::Stm32::I2c::Dev
 class Write
 {
 public:
-  explicit Write(I2c::Bus *bus);
+  explicit Write(I2c::BusCore &bus);
 
   void
-  exec(uint8_t addr, const uint8_t *buf, uint16_t len, Cb cb);
+  exec(uint8_t addr, std::span<const uint8_t> data, Cb cb);
 
 private:
-  I2c::Bus *bus;
+  I2c::BusCore &bus;
   Cb cb;
 
   static void
-  i2c_callback(void *ctx, int result);
+  i2c_callback(void *ctx, I2c::Status result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev

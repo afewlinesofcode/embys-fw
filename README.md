@@ -6,7 +6,8 @@ Embys FW is a modular C++ firmware foundation for STM32-based systems, built aro
 
 Several configured architectures can be found in `arch` directory.
 
-Tested architectures: STM32F103xB, STM32F411xE
+Supported and CI-tested targets: STM32F103xB, STM32F407xx, and STM32F411xE.
+STM32F7 and STM32H7 support is intentionally deferred.
 
 The simulation is designed to run in a Linux container and provides a way to test application logic without needing physical hardware.
 
@@ -38,7 +39,8 @@ To run an example in the simulator, you can use `make TC=sim run` in the example
 
 There are also global targets defined in the root `Makefile`:
 
-- `make`, `make TC=arm` - build all libraries for ARM architecture
+- `make`, `make TC=arm` - build all libraries for the default STM32F103xB
+- `make TC=arm MCU=stm32f407xx` - build for an explicit supported device
 - `make TC=sim` - build all libraries for simulation
 - `make test` - run all tests in the simulator
 - `make clean-tests` - clean all test build artifacts
@@ -46,6 +48,9 @@ There are also global targets defined in the root `Makefile`:
 - `make examples TC=sim` - build all examples for simulation
 - `make clean`, `make TC=arm clean` - clean all build artifacts for ARM architecture
 - `make TC=sim clean` - clean all build artifacts for simulation
+- `make firmware-check TC=arm MCU=stm32f411xe` - reject heap, exception,
+  RTTI, and other forbidden runtime symbols in every firmware image
+- `make format` / `make format-check` - apply or verify formatting on the host
 
 ### Simulation
 
@@ -158,42 +163,40 @@ The `Timer` is used internally by `Loop` — you normally do not call `schedule_
 
 `Embys::Stm32::Base::Loop` is the application main loop. It sleeps with WFI and wakes on timer or module interrupts to run scheduled events and deferred module callbacks.
 
-The Loop owns no dynamic memory — you provide the slot arrays:
+The Loop owns fixed-capacity storage and performs no dynamic allocation:
 
 ```cpp
 Embys::Stm32::Base::Timer timer(TIM2);
 
 constexpr size_t events_capacity = 10;
-static Embys::Stm32::Base::Event *event_slots[events_capacity];
-static Embys::Stm32::Base::Event *active_event_slots[events_capacity];
-
 constexpr size_t modules_capacity = 4;
-static Embys::Stm32::Base::Module module_slots[modules_capacity];
-
-Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                              events_capacity, module_slots, modules_capacity);
+Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 loop.run();
 ```
 
-**Events** are scheduled in microseconds. An event with `EV_PERSIST` is re-scheduled automatically after each execution.
+**Events** use `std::chrono` durations at microsecond precision. `EventMode` is
+a bitmask, so persistence and IRQ-context execution compose without introducing
+special combined modes.
 
-| Flag         | Meaning                                                             |
-| ------------ | ------------------------------------------------------------------- |
-| _(none)_     | One-shot: fires once then is removed                                |
-| `EV_PERSIST` | Periodic: re-scheduled after each execution                         |
-| `EV_RT`      | Real-time: executed in IRQ context — must be short and non-blocking |
+| Mode                    | Meaning                                                             |
+| ----------------------- | ------------------------------------------------------------------- |
+| `EventMode::Deferred`   | One-shot, deferred to application context                           |
+| `EventMode::Persistent` | Re-scheduled after each execution                                   |
+| `EventMode::Realtime`   | Executed in IRQ context; must be short and non-blocking             |
 
 ```cpp
 void on_event(void *context) { /* ... */ }
 
 // One-shot: fires after 100 ms
-Embys::Stm32::Base::Event event1(&loop, 0, {on_event, &ctx});
-event1.enable(100000);
+Embys::Stm32::Base::Event event1(
+    loop, Embys::Stm32::Base::EventMode::Deferred, {on_event, &ctx});
+const auto scheduled = event1.enable(std::chrono::milliseconds{100});
 
 // Periodic: fires every 500 ms
-Embys::Stm32::Base::Event blink(&loop, Embys::Stm32::Base::EV_PERSIST,
-                                {on_event, &ctx});
-blink.enable(500000);
+const auto periodic_realtime = Embys::Stm32::Base::EventMode::Persistent |
+                               Embys::Stm32::Base::EventMode::Realtime;
+Embys::Stm32::Base::Event blink(loop, periodic_realtime, {on_event, &ctx});
+(void)blink.enable(std::chrono::milliseconds{500});
 
 // Stop blinking
 blink.disable();
@@ -201,14 +204,16 @@ blink.disable();
 
 #### Modules
 
-A `Module` connects a peripheral IRQ to the loop. The IRQ handler calls `loop.interrupted(module)` to set a flag; the loop executes the module callback in application context after waking from WFI. Every peripheral driver (`Gpio::Bus`, `I2c::Bus`, etc.) uses this pattern.
+A `Module` connects a peripheral IRQ to the loop. A driver calls
+`loop.set_module_pending(module)` from its IRQ path; the loop executes the
+registered callback in application context after waking from WFI.
 
 ```cpp
 // In the IRQ handler:
 extern "C" void EXTI0_IRQHandler()
 {
   // signal the loop; actual processing happens in app context
-  loop.interrupted(my_module);
+  loop.set_module_pending(my_module);
 }
 ```
 
@@ -216,22 +221,28 @@ Modules are registered automatically when a peripheral's `enable()` is called.
 
 #### Critical Sections
 
-`cs_begin()` / `cs_end()` implement a nestable critical section by saving and restoring `PRIMASK`. Include `<embys/stm32/base/cs.hpp>`.
+`IrqGuard` provides a nestable RAII critical section by saving and restoring
+`PRIMASK`. Include `<embys/stm32/base/cs.hpp>`.
 
 ```cpp
-Embys::Stm32::cs_begin(); // disable interrupts, save PRIMASK
-// ... access shared state ...
-Embys::Stm32::cs_end();   // restore PRIMASK (nesting-aware)
+{
+  Embys::Stm32::IrqGuard guard;
+  // ... access shared state ...
+}
 ```
 
 ### GPIO
 
 Base path: `libs/stm32/gpio/`
 
-Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1. Two classes make up the public API:
+Provides GPIO pin configuration and interrupt-driven input callbacks for F1
+and F4 targets. Two types make up the public API:
 
-- `Embys::Stm32::Gpio::Bus` — a `Module` registered with `Base::Loop`. Owns a slot array of `Pin*`, configures MODE/CNF/EXTI for each enabled pin, and dispatches pin-level callbacks in loop context from EXTI IRQ handlers.
-- `Embys::Stm32::Gpio::Pin` — represents a single GPIO pin. Supports output (push-pull, open-drain, AF) and input (floating, pull-up/pull-down, with optional EXTI interrupt).
+- `Embys::Stm32::Gpio::Bus<N>` — a `Module` with an owned, fixed-capacity pin registry. It configures GPIO/EXTI and dispatches callbacks in loop context.
+- `Embys::Stm32::Gpio::Pin<Port, Index, Config>` — declares a pin at compile
+  time. Invalid ports, indices, and conflicting configuration flags fail the
+  build. `InputPin`, `OutputPin`, `UartPin`, and `I2cPin` are convenience
+  aliases.
 
 **Caller responsibilities:**
 
@@ -241,36 +252,23 @@ Provides GPIO pin configuration and interrupt-driven input callbacks for STM32F1
 
 **Link**: add `libstm32-gpio.a` to `LDLIBS` and include `<embys/stm32/gpio/bus.hpp>` / `<embys/stm32/gpio/pin.hpp>`.
 
-Key enums (from `api.hpp`):
-
-| Enum     | Values                                                                  |
-| -------- | ----------------------------------------------------------------------- |
-| `Mode`   | `IN`, `OUT_2`, `OUT_10`, `OUT_50`                                       |
-| `Cnf`    | `IN_AN`, `IN_FL`, `IN_PU`, `OUT_PP`, `OUT_OD`, `OUT_PP_AF`, `OUT_OD_AF` |
-| `PinCfg` | `NONE`, `PULL_UP`, `PULL_DOWN`, `IRQ`                                   |
+`PinCfg` combines direction, electrical, speed, interrupt, and peripheral-role
+flags such as `IN`, `OUT`, `OD`, `PU`, `LISTEN`, `HIGH`, `UART`, and `I2C`.
 
 #### Example
 
 ```cpp
-using GpioMode = Embys::Stm32::Gpio::Mode;
-using GpioCnf  = Embys::Stm32::Gpio::Cnf;
-using PinCfg   = Embys::Stm32::Gpio::PinCfg;
+namespace Gpio = Embys::Stm32::Gpio;
 
-// The Bus doesn't allocate pin memory — provide slot storage.
-// Only simultaneously-enabled pins need a slot; slots are reused on disable.
 constexpr size_t gpio_pins_capacity = 2;
-static Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
+Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
-Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
-
-// LED on PC13: output 2 MHz, push-pull, no extra config
-Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, GpioMode::OUT_2,
-                                GpioCnf::OUT_PP, PinCfg::NONE);
+// LED on PC13: output with medium speed
+Gpio::OutputPin<Gpio::Port::C, 13, Gpio::PinCfg::MEDIUM> led_pin(gpio_bus);
 led_pin.set_init_value(1); // start with LED off (active-low)
 
 // Button on PA0: input floating, EXTI on both edges
-Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0, GpioMode::IN,
-                                   GpioCnf::IN_FL, PinCfg::IRQ);
+Gpio::InputPin<Gpio::Port::A, 0, Gpio::PinCfg::LISTEN> button_pin(gpio_bus);
 button_pin.set_callback({toggle_btn, &context});
 
 // Wire the IRQ handler (in your IRQ handler .cpp)
@@ -286,16 +284,21 @@ button_pin.enable();
 
 Base path: `libs/stm32/uart/`
 
-Provides an interrupt-driven UART transceiver for STM32F1. The central class is `Embys::Stm32::Uart::Bus`, which integrates with `Base::Loop` as a `Module` (RX/TX callbacks are dispatched in loop context) and registers an internal TX timeout event.
+Provides an interrupt-driven UART transceiver with explicit STM32F1 and
+STM32F4 backends. The central `Uart::Bus<Instance, RxCapacity, TxCapacity>` owns
+its bounded buffers, integrates with `Base::Loop`, and registers an internal TX
+timeout event.
 
-TX is fully asynchronous — `write()` returns immediately and signals completion (or timeout) via the TX callback. RX bytes are accumulated into a caller-provided buffer and the RX callback is invoked per received byte in loop context.
+TX is fully asynchronous — `write()` copies into owned bounded storage and
+returns `Uart::Status`. A successful start signals completion (or timeout) via
+the TX callback. RX data is dispatched in loop context as
+`Uart::ReceiveResult`, so overflow cannot be confused with a byte value.
 
 **Caller responsibilities:**
 
 - Configure TX pin as alternate-function push-pull output and RX pin as floating input before calling `enable()`
 - Enable `USARTx_IRQn` in NVIC
 - Route `USARTx_IRQHandler → bus.handle_irq()`
-- Provide a receive buffer at construction time
 - Reserve one extra event slot in the Loop (used for the TX timeout)
 
 **Link**: add `libstm32-uart.a` to `LDLIBS` and include `<embys/stm32/uart/bus.hpp>`.
@@ -308,11 +311,12 @@ Configuration enums (from `def.hpp`):
 | `StopBits`   | `One`, `Two`          |
 | `WordLength` | `W8`, `W9`            |
 
-Error codes are defined in `Embys::Stm32::Uart::Diag` (e.g. `TX_BUSY`, `TX_TIMEOUT`, `RX_OVERFLOW`).
+Errors use `Embys::Stm32::Uart::Error` (for example,
+`TransmitBusy`, `TransmitTimeout`, and `ReceiveOverflow`).
 
 ```cpp
-static uint8_t rx_buf[64];
-Embys::Stm32::Uart::Bus uart(USART1, &loop, rx_buf, sizeof(rx_buf));
+Embys::Stm32::Uart::Bus<Embys::Stm32::Uart::Instance::Usart1, 64, 64>
+    uart(loop);
 
 uart.set_rx_callback({on_rx, &context});
 uart.set_tx_callback({on_tx_done, &context});
@@ -321,20 +325,24 @@ uart.set_tx_callback({on_tx_done, &context});
 extern "C" void USART1_IRQHandler() { uart.handle_irq(); }
 
 // Enable at 115200 8N1 (defaults)
-uart.enable(115200);
+if (!uart.enable(115200))
+  return;
 
 // Asynchronous transmit
 const uint8_t msg[] = "hello\r\n";
-uart.write(msg, sizeof(msg) - 1);
+if (!uart.write(std::span{msg}.first(sizeof(msg) - 1)))
+  return;
 ```
 
 ### I2C
 
 Base path: `libs/stm32/i2c/`
 
-Provides an interrupt-driven I2C master for STM32F1. The central class is `Embys::Stm32::I2c::Bus`, which integrates with `Base::Loop` as a `Module` (completions are dispatched in loop context) and registers a timeout event.
+Provides an interrupt-driven I2C master with explicit STM32F1 and STM32F4
+backends. `I2c::Bus<Instance, TxCapacity, RxCapacity>` owns bounded transfer
+storage, integrates with `Base::Loop`, and registers a timeout event.
 
-All transfers are fully asynchronous — `read()` and `write()` return immediately; your callback is invoked from the main loop once the transfer completes or fails.
+All transfers are fully asynchronous and use owned bounded storage. Writes are copied before returning; reads deliver a `std::span<const uint8_t>` valid during the loop-context callback.
 
 **Caller responsibilities:**
 
@@ -347,7 +355,8 @@ All transfers are fully asynchronous — `read()` and `write()` return immediate
 
 ```cpp
 // Construct and enable at 100 kHz (default)
-Embys::Stm32::I2c::Bus i2c_bus(I2C1, &loop);
+Embys::Stm32::I2c::Bus<Embys::Stm32::I2c::Instance::I2c1, 16, 16>
+    i2c_bus(loop);
 i2c_bus.enable();          // or enable(400000) for 400 kHz
 
 // Wire up IRQ handlers (in the same .cpp as your I2Cx_*_IRQHandler definitions)
@@ -355,13 +364,17 @@ void I2C1_EV_IRQHandler() { i2c_bus.handle_ev_irq(); }
 void I2C1_ER_IRQHandler() { i2c_bus.handle_er_irq(); }
 
 // Asynchronous write — callback fires in loop context
-i2c_bus.write(0x27, buf, sizeof(buf), {on_done, &context});
+i2c_bus.write(0x27, std::span{buf}, {on_done, &context});
 
 // Asynchronous register-addressed read (write reg, repeated START, read)
-i2c_bus.read(0x38, 0xAC, rx_buf, 6, {on_done, &context});
+i2c_bus.read(0x38, 0xAC, 6, {on_read, &context});
 ```
 
 Error codes are defined in `Embys::Stm32::I2c::Diag` (e.g. `NACK`, `TIMEOUT`, `BUS_BUSY`).
+
+I2C device helpers accept references for required loop/bus dependencies and
+use spans for byte buffers. The HD44780 text API accepts `std::string_view`;
+the referenced text must remain valid until its asynchronous callback runs.
 
 ### Modbus RTU
 
@@ -374,15 +387,10 @@ Provides a Modbus RTU server (slave) and client (master) over the interrupt-driv
 
 #### Store
 
-`Embys::Stm32::Modbus::Store` holds the four Modbus data models — coils, discrete inputs, holding registers, and input registers. All backing memory is provided by the caller; no heap allocation occurs.
+`Embys::Stm32::Modbus::Store` holds the four Modbus data models — coils, discrete inputs, holding registers, and input registers. Its template capacities determine statically owned storage; no heap allocation occurs.
 
 ```cpp
-static uint8_t  coils_buf[2];     // ceil(10 / 8) bytes → 16 coils
-static uint8_t  di_buf[2];        // 16 discrete inputs
-static uint16_t hr_buf[16];       // 16 holding registers
-static uint16_t ir_buf[8];        // 8 input registers
-
-Modbus::Store store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
+Modbus::Store<16, 16, 16, 8> store;
 ```
 
 #### Handler
@@ -407,12 +415,13 @@ Supported function codes:
 Optional address offsets let a single store be shared by multiple servers with different on-wire base addresses:
 
 ```cpp
-Modbus::Handler handler(&store);
+Modbus::Handler handler(store);
 handler.set_coils_offset(0x1000);
 handler.set_holding_registers_offset(0x1000);
 
 // Optional: custom server ID reported by FC 0x11
-handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
+constexpr std::array<uint8_t, 5> server_id{'E', 'M', 'B', 'Y', 'S'};
+handler.set_server_id(server_id);
 ```
 
 #### Server
@@ -428,10 +437,10 @@ handler.set_server_id(reinterpret_cast<const uint8_t *>("EMBYS"), 5);
 - Call `server.enable()` after all peripherals are enabled
 
 ```cpp
-Modbus::Store  store(coils_buf, 16, di_buf, 16, hr_buf, 16, ir_buf, 8);
-Modbus::Handler handler(&store);
+Modbus::Store<16, 16, 16, 8> store;
+Modbus::Handler handler(store);
 
-Modbus::Rtu::Server server(1 /*device_id*/, &handler, &uart_bus);
+Modbus::Rtu::Server server(1 /*device_id*/, handler, uart_bus);
 server.set_on_request_callback({on_request, &context});
 server.enable();
 ```
@@ -453,7 +462,7 @@ const auto &diag = server.get_diagnostics_counters();
 **Link**: add `libstm32-modbus-rtu.a` and `libstm32-modbus.a` to `LDLIBS`, include `<embys/stm32/modbus-rtu/client.hpp>`.
 
 ```cpp
-Modbus::Rtu::Client client(&uart_bus, &loop);
+Modbus::Rtu::Client client(uart_bus, loop);
 client.enable();
 
 // Response callback: (device_id, fc, quantity, data_ptr)

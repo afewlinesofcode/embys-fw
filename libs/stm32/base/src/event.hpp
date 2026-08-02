@@ -7,8 +7,8 @@
  *
  * Example:
  * ```
- * Event blink_event(&loop, EV_PERSIST, []() { toggle_led(); });
- * blink_event.enable(500000); // Schedule to run every half second
+ * Event blink_event(loop, EventMode::Persistent, {toggle_led, nullptr});
+ * blink_event.enable(std::chrono::milliseconds{500});
  * ```
  *
  * @version 0.1
@@ -18,40 +18,61 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <chrono>
+#include <cstdint>
 
+#include <embys/stm32/result.hpp>
 #include <embys/stm32/types.hpp>
 
 namespace Embys::Stm32::Base
 {
 
-class Loop;
+class LoopCore;
 
-// Event flags
+enum class EventMode : uint8_t
+{
+  Deferred = 0,
+  Persistent = 1U << 0,
+  Realtime = 1U << 1,
+};
 
-// Event should persist after execution (rescheduled automatically)
-constexpr uint8_t EV_PERSIST = 1 << 0;
+enum class EventError : uint8_t
+{
+  InvalidDuration,
+  CapacityExceeded,
+};
 
-// Event is real-time (executed in IRQ context, should be short and
-// non-blocking)
-constexpr uint8_t EV_RT = 1 << 1;
+using EventResult = Result<void, EventError>;
+
+[[nodiscard]] constexpr EventMode
+operator|(EventMode lhs, EventMode rhs) noexcept
+{
+  return static_cast<EventMode>(static_cast<uint8_t>(lhs) |
+                                static_cast<uint8_t>(rhs));
+}
+
+[[nodiscard]] constexpr bool
+has_mode(EventMode value, EventMode flag) noexcept
+{
+  return (static_cast<uint8_t>(value) & static_cast<uint8_t>(flag)) != 0U;
+}
 
 struct Event
 {
   /**
-   * @brief Pointer to the Base system loop managing this event
+   * @brief Base system loop managing this event; it must outlive the event.
    */
-  Loop *loop;
+  LoopCore &loop;
 
   /**
-   * @brief Event flags (EV_PERSIST, EV_RT, etc.)
+   * @brief Scheduling and callback execution mode.
    */
-  uint8_t flags;
+  EventMode mode;
 
   /**
    * @brief Event callback function to be executed when the event is triggered
    */
-  Callable<> cb;
+  Callback<> cb;
 
   /**
    * @brief Event timing interval in microseconds
@@ -80,25 +101,30 @@ struct Event
 
   /**
    * @brief Initialize a new Event object
-   * @param loop Pointer to the Base system loop managing this event
-   * @param flags Event flags (EV_PERSIST, EV_RT, etc.)
+   * @param loop Base system loop managing this event; it must outlive the
+   * event.
+   * @param mode Scheduling and callback execution mode.
    * @param cb Event callback function
    */
-  Event(Loop *loop, uint8_t flags, Callable<> cb);
+  Event(LoopCore &loop, EventMode mode, Callback<> cb);
 
   /**
-   * @brief Enable the event with a specified interval in microseconds
-   * @param us Interval in microseconds
-   * @return 0 on success, negative error code on failure
+   * @brief Unregister the event if it is still scheduled.
    */
-  int
-  enable(uint32_t us);
+  ~Event();
+
+  /**
+   * @brief Enable the event with a specified interval.
+   * @param interval Interval represented at microsecond precision.
+   * @return Success, InvalidDuration, or CapacityExceeded.
+   */
+  [[nodiscard]] EventResult
+  enable(std::chrono::microseconds interval);
 
   /**
    * @brief Disable the event, removing it from the scheduler
-   * @return 0 on success, negative error code on failure
    */
-  int
+  void
   disable();
 
   /**

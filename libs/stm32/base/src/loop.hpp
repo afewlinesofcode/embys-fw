@@ -9,11 +9,8 @@
  * Example:
  * ```
  * Timer timer(TIM2);
- * Event *event_slots[10];
- * Event *active_event_slots[10];
- * Module module_slots[5];
- * Loop loop(&timer, event_slots, active_event_slots, 10, module_slots, 5);
- * Event startup_event(&loop, 0, []() { check_sensors(); });
+ * Loop<10, 5> loop(timer);
+ * Event startup_event(loop, EventMode::Deferred, {check_sensors, nullptr});
  * loop.run();
  * ```
  *
@@ -24,7 +21,9 @@
  */
 #pragma once
 
-#include <stddef.h>
+#include <array>
+#include <chrono>
+#include <cstddef>
 
 #include <embys/stm32/def.hpp>
 #include <embys/stm32/types.hpp>
@@ -39,24 +38,23 @@ namespace Embys::Stm32::Base
 
 struct Module
 {
-  Callable<> cb;
+  Callback<> cb;
   volatile bool interrupted = false;
 };
 
-class Loop
+class LoopCore
 {
 public:
-  Loop() = delete;
-  Loop(const Loop &) = delete;
-  Loop(Loop &&) = delete;
-  Loop &
-  operator=(const Loop &) = delete;
-  Loop &
-  operator=(Loop &&) = delete;
+  LoopCore() = delete;
+  LoopCore(const LoopCore &) = delete;
+  LoopCore(LoopCore &&) = delete;
+  LoopCore &
+  operator=(const LoopCore &) = delete;
+  LoopCore &
+  operator=(LoopCore &&) = delete;
 
   /**
-   * @brief Initialize a new Loop object with specified timer, event slots, and
-   * module slots.
+   * @brief Initialize the type-erased loop core over owned template storage.
    *
    * @param timer Pointer to the Timer object for hardware timing
    * @param event_slots Array to hold pointers to scheduled events
@@ -66,15 +64,16 @@ public:
    * @param module_slots Array to hold registered modules
    * @param modules_capacity Capacity of the module slots array
    */
-  Loop(Timer *timer, Event **event_slots, Event **active_event_slots,
-       size_t events_capacity, Module *module_slots, size_t modules_capacity);
+  LoopCore(Timer &timer, Event **event_slots, Event **active_event_slots,
+           size_t events_capacity, Module *module_slots,
+           size_t modules_capacity);
 
   /**
    * @brief Clean up Base system resources.
    * This includes clearing the timer callback and removing any scheduled stop
    * event.
    */
-  ~Loop();
+  ~LoopCore();
 
   /**
    * @brief Start main loop execution.
@@ -83,14 +82,14 @@ public:
   run();
 
   /**
-   *@brief Stop main loop execution after specified microseconds.
+   *@brief Stop main loop execution after the specified delay.
    *
-   * @param us Time in microseconds to wait before stopping the loop. If 0, the
-   * loop will stop immediately after the current iteration.
-   * @return int
+   * @param delay Time to wait before stopping the loop. A zero duration stops
+   * after the current iteration.
+   * @return Scheduling result for the internal stop event.
    */
-  int
-  stop(uint32_t us = 0);
+  [[nodiscard]] EventResult
+  stop(std::chrono::microseconds delay = std::chrono::microseconds::zero());
 
   /**
    * @brief Terminate the loop with a specified exit code and optional error
@@ -108,18 +107,17 @@ public:
    * @brief Add event to scheduler and initialize it.
    *
    * @param event Pointer to the event to be added.
-   * @return int Status code indicating success or failure.
+   * @return Success or CapacityExceeded.
    */
-  int
+  [[nodiscard]] EventResult
   add(Event *event);
 
   /**
    * @brief Remove event from scheduler.
    *
    * @param event Pointer to the event to be removed.
-   * @return int Status code indicating success or failure.
    */
-  int
+  void
   remove(Event *event);
 
   /**
@@ -161,7 +159,7 @@ public:
    * registration fails (e.g., no available slots).
    */
   Module *
-  add_module(Callable<> module_cb);
+  add_module(Callback<> module_cb);
 
   /**
    * @brief Unregister a module callback.
@@ -181,15 +179,13 @@ public:
   inline void
   set_module_pending(Module *module)
   {
-    cs_begin();
+    IrqGuard guard;
 
     if (!module->interrupted)
     {
       module->interrupted = true;
       INC_V(interrupted_modules_count);
     }
-
-    cs_end();
   }
 
 private:
@@ -307,14 +303,33 @@ private:
    * @param context Pointer to the loop instance
    */
   static void
-  timer_callback(void *context);
+  timer_callback(void *context) noexcept;
 
   /**
    * @brief Static callback for loop termination
    * @param context Pointer to the loop instance
    */
   static void
-  loopbreak_callback(void *context);
+  loopbreak_callback(void *context) noexcept;
+};
+
+template <size_t EventsCapacity, size_t ModulesCapacity>
+class Loop final : public LoopCore
+{
+  static_assert(EventsCapacity > 0, "A loop needs at least one event slot");
+  static_assert(ModulesCapacity > 0, "A loop needs at least one module slot");
+
+public:
+  explicit Loop(Timer &timer)
+    : LoopCore(timer, events.data(), active_events.data(), EventsCapacity,
+               modules.data(), ModulesCapacity)
+  {
+  }
+
+private:
+  std::array<Event *, EventsCapacity> events{};
+  std::array<Event *, EventsCapacity> active_events{};
+  std::array<Module, ModulesCapacity> modules{};
 };
 
 }; // namespace Embys::Stm32::Base

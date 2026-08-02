@@ -1,10 +1,10 @@
 /**
- * @file hal/v1/sm.hpp
+ * @file hal/common/state_machine.hpp
  * @author Stanislav Yaranov (stanislav.yaranov@gmail.com)
- * @brief I2C V1 interrupt-driven state machine (STM32F1 / STM32F4 / sim).
+ * @brief Shared interrupt-driven I2C state machine (STM32F1 / STM32F4 / sim).
  *
  * Implements the I2C protocol state machine driven by EV and ER interrupt
- * handlers for the V1 peripheral (SR1/SR2/DR layout).  Supports single-byte,
+ * handlers for the classic SR1/SR2/DR layout. Supports single-byte,
  * two-byte, and N-byte read sequences with register address and repeated-start,
  * plus write operations.
  *
@@ -17,7 +17,7 @@
 
 #include "../../stm32xx.hpp"
 
-#ifdef I2C_HAL_V1
+#ifdef EMBYS_I2C_CLASSIC_REGISTERS
 
 #include <stdint.h>
 
@@ -29,10 +29,10 @@
 namespace Embys::Stm32::I2c
 {
 
-class Bus;
+class BusCore;
 
 /**
- * @brief Interrupt-driven I2C V1 state machine.
+ * @brief Interrupt-driven state machine for the shared classic I2C layout.
  *
  * Manages a single I2C transaction (read, register-addressed read, or write)
  * driven entirely by EV and ER interrupts. No blocking waits.
@@ -48,26 +48,26 @@ public:
   Sm &
   operator=(Sm &&) = delete;
 
-  Sm(Bus *bus);
+  Sm(BusCore *bus);
 
   /**
    * @brief Start an asynchronous read of len bytes from addr7.
    * Issues a START condition; completion delivered via cb.
    */
-  int
+  [[nodiscard]] Status
   start_read(uint8_t addr7, uint8_t *buf, uint16_t len);
 
   /**
    * @brief Start an asynchronous register-addressed read.
    * Writes reg in a first frame, issues a repeated START, then reads len bytes.
    */
-  int
+  [[nodiscard]] Status
   start_read(uint8_t addr7, uint8_t reg, uint8_t *buf, uint16_t len);
 
   /**
    * @brief Start an asynchronous write of len bytes to addr7.
    */
-  int
+  [[nodiscard]] Status
   start_write(uint8_t addr7, const uint8_t *buf, uint16_t len);
 
   /** @brief Process an I2C event interrupt. */
@@ -85,10 +85,10 @@ public:
     return state == State::Stop || state == State::Error;
   }
 
-  inline int
+  inline Status
   get_result() const
   {
-    return result;
+    return succeeded ? Status::success() : Status::failure(error_code);
   }
 
   /**
@@ -119,7 +119,7 @@ private:
   };
 
   volatile State state = State::Idle;
-  Bus *bus;
+  BusCore *bus;
   I2C_TypeDef *i2c;
   WaitBus wait_bus;
   Base::Event timeout_event;
@@ -135,7 +135,8 @@ private:
   volatile uint16_t buf_len = 0;
   volatile uint16_t buf_pos = 0;
 
-  volatile int result = 0;
+  volatile bool succeeded = false;
+  volatile Error error_code = Error::InvalidState;
 
   void
   handle_start();
@@ -168,18 +169,18 @@ private:
   done();
 
   void
-  error(int result_code);
+  error(Error error);
 
   void
   start();
 
   static void
-  timeout_handler(void *context);
+  timeout_handler(void *context) noexcept;
 
   static void
-  wait_bus_callback(void *context, int result);
+  wait_bus_callback(void *context, Status result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c
 
-#endif // I2C_HAL_V1
+#endif // EMBYS_I2C_CLASSIC_REGISTERS

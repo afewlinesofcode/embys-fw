@@ -5,7 +5,7 @@ namespace Embys::Stm32::I2c::Dev::Aht20
 
 static constexpr uint8_t AHT20_ADDR = 0x38u;
 
-Device::Device(Base::Loop *loop, I2c::Bus *bus)
+Device::Device(Base::LoopCore &loop, I2c::BusCore &bus)
   : timeout(loop), write(bus), read(bus)
 {
 }
@@ -36,9 +36,9 @@ Device::power_up()
 {
   stage = PowerUp;
 #ifndef STM32_SIM
-  timeout.exec(40000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{40}, {command_callback, this});
 #else
-  timeout.exec(400u, {command_callback, this});
+  timeout.exec(std::chrono::microseconds{400}, {command_callback, this});
 #endif
 }
 
@@ -46,7 +46,8 @@ void
 Device::read_calibration_status()
 {
   stage = ReadCalibration;
-  read.exec(AHT20_ADDR, 0x71u, buffer, 1, {command_callback, this});
+  read.exec(AHT20_ADDR, 0x71u, std::span{buffer}.first<1>(),
+            {command_callback, this});
 }
 
 void
@@ -67,14 +68,14 @@ Device::send_initialization()
 {
   stage = SendInitialization;
   static const uint8_t INIT_CMD[] = {0xE1u, 0x08u, 0x00u};
-  write.exec(AHT20_ADDR, INIT_CMD, sizeof(INIT_CMD), {command_callback, this});
+  write.exec(AHT20_ADDR, INIT_CMD, {command_callback, this});
 }
 
 void
 Device::wait_initialization()
 {
   stage = WaitInitialization;
-  timeout.exec(10000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{10}, {command_callback, this});
 }
 
 void
@@ -89,8 +90,7 @@ Device::request_query()
 {
   stage = RequestQuery;
   static const uint8_t QUERY_CMD[] = {0xACu, 0x33u, 0x00u};
-  write.exec(AHT20_ADDR, QUERY_CMD, sizeof(QUERY_CMD),
-             {command_callback, this});
+  write.exec(AHT20_ADDR, QUERY_CMD, {command_callback, this});
 }
 
 void
@@ -98,9 +98,9 @@ Device::wait_request_query()
 {
   stage = WaitQuery;
 #ifndef STM32_SIM
-  timeout.exec(80000u, {command_callback, this});
+  timeout.exec(std::chrono::milliseconds{80}, {command_callback, this});
 #else
-  timeout.exec(800u, {command_callback, this});
+  timeout.exec(std::chrono::microseconds{800}, {command_callback, this});
 #endif
 }
 
@@ -108,7 +108,7 @@ void
 Device::read_query()
 {
   stage = ReadQuery;
-  read.exec(AHT20_ADDR, buffer, 7u, {command_callback, this});
+  read.exec(AHT20_ADDR, std::span{buffer}.first<7>(), {command_callback, this});
 }
 
 void
@@ -120,7 +120,7 @@ Device::parse_query()
     return;
   }
 
-  if (!check_crc(buffer))
+  if (!check_crc(std::span{buffer}.first<7>()))
   {
     response(CRC_ERROR);
     return;
@@ -133,9 +133,8 @@ Device::parse_query()
                              (static_cast<uint32_t>(buffer[4]) << 8) |
                              buffer[5];
 
-  values.humidity = static_cast<float>(raw_humidity) * 100.0f / 1048576.0f;
-  values.temperature =
-      static_cast<float>(raw_temperature) * 200.0f / 1048576.0f - 50.0f;
+  values.humidity = humidity_from_raw(raw_humidity);
+  values.temperature = temperature_from_raw(raw_temperature);
 
   response(0);
 }
@@ -143,20 +142,20 @@ Device::parse_query()
 void
 Device::response(int rc)
 {
-  cb(rc, &values);
+  cb(rc, values);
   cb.clear();
 }
 
 bool
-Device::check_crc(const uint8_t *buf)
+Device::check_crc(std::span<const uint8_t, 7> data)
 {
-  uint8_t expected_crc = buf[6];
+  uint8_t expected_crc = data[6];
   uint8_t crc = 0xFFu;
   static constexpr uint8_t POLY = 0x31u;
 
   for (uint8_t i = 0; i < 6; i++)
   {
-    crc ^= buf[i];
+    crc ^= data[i];
     for (int b = 0; b < 8; b++)
     {
       if (crc & 0x80u)
@@ -170,7 +169,7 @@ Device::check_crc(const uint8_t *buf)
 }
 
 void
-Device::command_callback(void *ctx, int result)
+Device::command_callback(void *ctx, int result) noexcept
 {
   auto aht20 = static_cast<Device *>(ctx);
 

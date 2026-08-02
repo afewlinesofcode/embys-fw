@@ -10,7 +10,9 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <array>
+#include <cstdint>
+#include <span>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/i2c-common/delay.hpp>
@@ -24,16 +26,40 @@
 namespace Embys::Stm32::I2c::Dev::Aht20
 {
 
+struct Temperature
+{
+  int16_t centi_celsius = 0;
+};
+
+struct RelativeHumidity
+{
+  uint16_t centi_percent = 0;
+};
+
+[[nodiscard]] inline constexpr Temperature
+temperature_from_raw(uint32_t raw) noexcept
+{
+  const uint64_t scaled = static_cast<uint64_t>(raw & 0xFFFFFU) * 20000U;
+  return {static_cast<int16_t>(((scaled + (1U << 19U)) >> 20U) - 5000)};
+}
+
+[[nodiscard]] inline constexpr RelativeHumidity
+humidity_from_raw(uint32_t raw) noexcept
+{
+  const uint64_t scaled = static_cast<uint64_t>(raw & 0xFFFFFU) * 10000U;
+  return {static_cast<uint16_t>((scaled + (1U << 19U)) >> 20U)};
+}
+
 class Device
 {
 public:
   struct Values
   {
-    float humidity = 0.0f;
-    float temperature = 0.0f;
+    RelativeHumidity humidity;
+    Temperature temperature;
   };
 
-  using QueryCb = Embys::Callable<int, Values *>;
+  using QueryCb = Embys::Callback<int, Values>;
 
   Device() = delete;
   Device(const Device &) = delete;
@@ -43,7 +69,7 @@ public:
   Device &
   operator=(Device &&) = delete;
 
-  Device(Base::Loop *loop, I2c::Bus *bus);
+  Device(Base::LoopCore &loop, I2c::BusCore &bus);
 
   inline bool
   is_initialized() const
@@ -63,7 +89,7 @@ private:
   I2c::Dev::Read read;
 
   bool initialized = false;
-  uint8_t buffer[8] = {};
+  std::array<uint8_t, 8> buffer{};
   Values values;
   Cb enable_cb;
   QueryCb cb;
@@ -113,10 +139,10 @@ private:
   response(int rc);
 
   bool
-  check_crc(const uint8_t *buf);
+  check_crc(std::span<const uint8_t, 7> data);
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Aht20

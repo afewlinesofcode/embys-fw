@@ -10,7 +10,7 @@ Lcd::init()
 }
 
 void
-Lcd::set_ready_cb(Embys::Callable<int> cb)
+Lcd::set_ready_cb(Embys::Callback<int> cb)
 {
   ready_cb = cb;
 }
@@ -25,7 +25,7 @@ Lcd::set_unavailable()
 }
 
 void
-Lcd::set_values(float temp, float hum)
+Lcd::set_values(Aht20::Temperature temp, Aht20::RelativeHumidity hum)
 {
   temperature = temp;
   humidity = hum;
@@ -71,14 +71,14 @@ Lcd::dispatch_pending()
   }
   else if (!ready_cb.empty())
   {
-    Embys::Callable<int> cb = ready_cb;
+    Embys::Callback<int> cb = ready_cb;
     ready_cb.clear();
     cb(0);
   }
 }
 
 void
-Lcd::dispatch(void *ctx, int result)
+Lcd::dispatch(void *ctx, int result) noexcept
 {
   auto *self = static_cast<Lcd *>(ctx);
   self->busy = false;

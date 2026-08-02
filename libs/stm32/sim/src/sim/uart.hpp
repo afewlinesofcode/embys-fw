@@ -58,7 +58,7 @@ extern std::vector<std::vector<uint8_t>> tx_buffers;
  * @brief Callback invoked when a UART transmission completes (TC flag set).
  * Receives the bytes that were transmitted.
  */
-extern Callable<std::vector<uint8_t>> on_tx;
+extern Callback<std::vector<uint8_t>> on_tx;
 
 /**
  * @brief Simulate receiving data on the UART.

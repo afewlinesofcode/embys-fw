@@ -1,19 +1,7 @@
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 
@@ -28,7 +16,7 @@ Embys::Stm32::Base::Timer *timer_ptr = nullptr;
 /**
  * @brief Global pointer to GPIO bus for interrupt handler access
  */
-Embys::Stm32::Gpio::Bus *gpio_ptr = nullptr;
+Embys::Stm32::Gpio::BusCore *gpio_ptr = nullptr;
 
 extern "C"
 {
@@ -78,7 +66,7 @@ struct AppContext
   /**
    * @brief Pointer to LED pin
    */
-  Embys::Stm32::Gpio::Pin *led = nullptr;
+  Embys::Stm32::Gpio::PinCore *led = nullptr;
 
   /**
    * @brief Pointer to blink event
@@ -92,7 +80,7 @@ struct AppContext
  * @param context
  */
 void
-toggle_led(void *context)
+toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -101,12 +89,12 @@ toggle_led(void *context)
   if (ctx->led_on)
   {
     // Reset pin to turn on LED (active low)
-    ctx->led->write(0);
+    (void)ctx->led->write(0);
     SIM_LOG("LED ON");
   }
   else
   {
-    ctx->led->write(1);
+    (void)ctx->led->write(1);
     SIM_LOG("LED OFF");
   }
 }
@@ -118,7 +106,7 @@ toggle_led(void *context)
  * @param value
  */
 void
-toggle_btn(void *context, uint8_t value)
+toggle_btn(void *context, uint8_t value) noexcept
 {
   SIM_LOG("Button state changed: " << (value ? "RELEASED" : "PRESSED"));
   auto *ctx = static_cast<AppContext *>(context);
@@ -130,15 +118,18 @@ toggle_btn(void *context, uint8_t value)
 
     if (ctx->blink_on)
     {
-      ctx->led->write(0); // Ensure LED is on immediately when blinking starts
+      // Ensure LED is on immediately when blinking starts
+      (void)ctx->led->write(0);
       ctx->led_on = true;
-      ctx->blink_event->enable(LED_BLINK_INTERVAL_US);
+      (void)ctx->blink_event->enable(
+          std::chrono::microseconds{LED_BLINK_INTERVAL_US});
       SIM_LOG("Blinking ON");
     }
     else
     {
       ctx->blink_event->disable();
-      ctx->led->write(1); // Ensure LED is off when blinking stops
+      // Ensure LED is off when blinking stops
+      (void)ctx->led->write(1);
       SIM_LOG("Blinking OFF");
     }
   }
@@ -163,38 +154,30 @@ main()
   // - Blink event
   // - Stop event (built into the loop instance)
   constexpr size_t events_capacity = 2;
-  Embys::Stm32::Base::Event *event_slots[events_capacity];
-  Embys::Stm32::Base::Event *active_event_slots[events_capacity];
   // Allocate memory for modules:
   // - GPIO module
   constexpr size_t modules_capacity = 1;
-  Embys::Stm32::Base::Module module_slots[modules_capacity];
-
-  // Initialize the main loop instance
-  Embys::Stm32::Base::Loop loop(&timer, event_slots, active_event_slots,
-                                events_capacity, module_slots,
-                                modules_capacity);
+  Embys::Stm32::Base::Loop<events_capacity, modules_capacity> loop(timer);
 
   // Initialize blink event with a callback to toggle LED state
-  Embys::Stm32::Base::Event blink_event(&loop, Embys::Stm32::Base::EV_PERSIST,
-                                        {toggle_led, &context});
+  Embys::Stm32::Base::Event blink_event(
+      loop, Embys::Stm32::Base::EventMode::Persistent, {toggle_led, &context});
 
   // Allocate memory for GPIO pins:
   // - One pin for button input
   // - One pin for LED output
   constexpr size_t gpio_pins_capacity = 2;
-  Embys::Stm32::Gpio::Pin *gpio_pin_slots[gpio_pins_capacity];
-
-  // Initialize GPIO bus instance
-  Embys::Stm32::Gpio::Bus gpio_bus(&loop, gpio_pin_slots, gpio_pins_capacity);
+  Embys::Stm32::Gpio::Bus<gpio_pins_capacity> gpio_bus(loop);
 
   // Initialize button pin at PA0 (Input floating with IRQ)
-  Embys::Stm32::Gpio::Pin button_pin(&gpio_bus, GPIOA, 0,
-                                     PinCfg::IN | PinCfg::LISTEN);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::A, 0,
+                          PinCfg::IN | PinCfg::LISTEN>
+      button_pin(gpio_bus);
   button_pin.set_callback({toggle_btn, &context});
 
   // Initialize LED pin at PC13 (Output push-pull, 2 MHz)
-  Embys::Stm32::Gpio::Pin led_pin(&gpio_bus, GPIOC, 13, PinCfg::OUT);
+  Embys::Stm32::Gpio::Pin<Embys::Stm32::Gpio::Port::C, 13, PinCfg::OUT> led_pin(
+      gpio_bus);
   led_pin.set_init_value(1); // Set initial value to turn off LED (active low)
 
   // Set global pointers for interrupt handlers
@@ -205,12 +188,12 @@ main()
   context.blink_event = &blink_event;
   context.led = &led_pin;
   context.blink_on = true;
-  context.blink_event->enable(LED_BLINK_INTERVAL_US);
+  (void)context.blink_event->enable(
+      std::chrono::microseconds{LED_BLINK_INTERVAL_US});
 
   // Enable peripherals before starting main loop
-  TRY(gpio_bus.enable());
-  TRY(button_pin.enable());
-  TRY(led_pin.enable());
+  if (!gpio_bus.enable() || !button_pin.enable() || !led_pin.enable())
+    return 1;
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

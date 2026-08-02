@@ -21,13 +21,13 @@
 
 namespace Embys::Stm32::Base
 {
-class Loop;
+class LoopCore;
 }
 
 namespace Embys::Stm32::I2c
 {
 
-class Bus;
+class BusCore;
 
 class WaitBus
 {
@@ -45,18 +45,17 @@ public:
    * @param bus  I2C Bus to monitor; i2c peripheral, loop, and check count are
    *             derived from it (20 checks at >100 kHz, 50 checks otherwise,
    *             with a 1 ms polling interval).
-   * @param cb   Callback invoked with 0 when the bus is free, or BUS_BUSY
-   *             when the check limit is reached.
+   * @param cb   Callback invoked with the bus-wait result.
    */
-  WaitBus(Bus *bus, Callable<int> cb);
+  WaitBus(BusCore *bus, Callback<Status> cb);
 
   /**
    * @brief Start waiting for the bus to become idle.
-   * Calls cb(0) immediately if the bus is already free. Otherwise schedules
-   * periodic checks, calling cb(BUS_BUSY) if the limit is reached.
-   * @return 0 on success, negative error code on scheduling failure.
+   * Calls cb with success immediately if the bus is already free. Otherwise
+   * schedules periodic checks and reports Error::BusBusy at the check limit.
+   * @return Success or Error::Schedule when the first check cannot be queued.
    */
-  int
+  [[nodiscard]] Status
   start();
 
 private:
@@ -69,11 +68,11 @@ private:
   I2C_TypeDef *i2c;
   uint32_t checks_count;
   uint32_t count = 0;
-  Callable<int> cb;
+  Callback<Status> cb;
   Base::Event event;
 
   static void
-  event_callback(void *context);
+  event_callback(void *context) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c

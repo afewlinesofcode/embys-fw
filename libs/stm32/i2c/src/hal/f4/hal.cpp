@@ -1,12 +1,12 @@
 #ifdef STM32F4xx
 
-#include "../v1/hal.hpp"
-
 #include <embys/stm32/def.hpp>
+
+#include "../common/registers.hpp"
 
 // F4 I2C HAL implementation.
 // I2C1, I2C2, I2C3 are on APB1. PCLK1 is derived from RCC->CFGR PPRE1 field.
-// Uses I2C V1 register layout: SR1/SR2/DR/CCR/TRISE (identical to F1).
+// Uses the classic I2C register layout: SR1/SR2/DR/CCR/TRISE (as on F1).
 
 namespace Embys::Stm32::I2c
 {
@@ -113,9 +113,12 @@ wait_not_busy(I2C_TypeDef *i2c)
 // ── public functions
 // ──────────────────────────────────────────────────────────
 
-int
+Status
 enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
 {
+  if (scl_hz == 0u)
+    return Status::failure(Error::InvalidTiming);
+
   uint32_t en_mask = 0;
   uint32_t rst_mask = 0;
 
@@ -136,7 +139,7 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
   }
   else
   {
-    return INVALID_I2C;
+    return Status::failure(Error::InvalidInstance);
   }
 
   SET_BIT_V(RCC->APB1ENR, en_mask);
@@ -149,7 +152,7 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
   uint32_t pclk_mhz = (pclk_hz / 1'000'000u) & 0x3Fu;
 
   if (pclk_mhz < 2u)
-    return INVALID_PCLK;
+    return Status::failure(Error::InvalidClock);
 
   CLEAR_BIT_V(i2c->CR1, I2C_CR1_PE); // disable before config
 
@@ -157,7 +160,7 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
   i2c->CR2 = (i2c->CR2 & ~0x3Fu) | pclk_mhz | I2C_CR2_ITEVTEN | I2C_CR2_ITERREN;
   CLEAR_BIT_V(i2c->CR2, I2C_CR2_ITBUFEN);
 
-  int error = 0;
+  bool invalid_timing = false;
 
   if (scl_hz <= 100000u)
   {
@@ -166,7 +169,7 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
     if (ccr < 4u)
     {
       ccr = 4u;
-      error = INVALID_CCR;
+      invalid_timing = true;
     }
     i2c->CCR = ccr;
     i2c->TRISE = pclk_mhz + 1u; // max rise time 1000 ns
@@ -178,7 +181,7 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
     if (ccr < 1u)
     {
       ccr = 1u;
-      error = INVALID_CCR;
+      invalid_timing = true;
     }
     i2c->CCR = I2C_CCR_FS | ccr;
     i2c->TRISE = (pclk_mhz * 300u + 999u) / 1000u + 1u; // max rise 300 ns
@@ -188,12 +191,16 @@ enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz)
   ack(i2c);
   pos_disable(i2c);
 
-  return error;
+  return invalid_timing ? Status::failure(Error::InvalidTiming)
+                        : Status::success();
 }
 
-int
+Status
 disable_i2c(I2C_TypeDef *i2c)
 {
+  if (i2c != I2C1 && i2c != I2C2 && i2c != I2C3)
+    return Status::failure(Error::InvalidInstance);
+
   CLEAR_BIT_V(i2c->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN);
 
   if (i2c == I2C1)
@@ -202,17 +209,17 @@ disable_i2c(I2C_TypeDef *i2c)
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_I2C2EN);
   else if (i2c == I2C3)
     CLEAR_BIT_V(RCC->APB1ENR, RCC_APB1ENR_I2C3EN);
-  else
-    return INVALID_I2C;
-
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 reset_i2c(I2C_TypeDef *i2c)
 {
+  if (i2c != I2C1 && i2c != I2C2 && i2c != I2C3)
+    return Status::failure(Error::InvalidInstance);
+
   if (!is_busy(i2c) && !has_error(i2c) && !addr_latched(i2c))
-    return 0;
+    return Status::success();
 
   uint16_t cr2_save = static_cast<uint16_t>(i2c->CR2);
   uint16_t ccr_save = static_cast<uint16_t>(i2c->CCR);
@@ -225,23 +232,23 @@ reset_i2c(I2C_TypeDef *i2c)
   clear_errors(i2c);
   wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
-    return 0;
+    return Status::success();
 
   soft_reset(i2c);
   restore_timing(i2c, cr2_save, ccr_save, trise_save);
   clear_errors(i2c);
   wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
-    return 0;
+    return Status::success();
 
   hard_reset(i2c);
   restore_timing(i2c, cr2_save, ccr_save, trise_save);
   clear_errors(i2c);
   wait_not_busy(i2c);
   if (!is_busy(i2c) && !has_error(i2c))
-    return 0;
+    return Status::success();
 
-  return BUS_STUCK;
+  return Status::failure(Error::BusStuck);
 }
 
 }; // namespace Embys::Stm32::I2c

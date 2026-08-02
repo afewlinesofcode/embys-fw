@@ -41,6 +41,10 @@ in-docker: $(PROJECT_ROOT)/.docker
 
 MCU ?= stm32f103xb
 
+ifeq ($(INSIDE_DOCKER),true)
+%-in-docker:
+	@$(MAKE) TC=$(TC) MCU=$(MCU) $*
+else
 %-in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Running 'make $*' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
@@ -52,11 +56,14 @@ MCU ?= stm32f103xb
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
 		make TC=$(TC) MCU=$(MCU) $*
+endif
 
 docker-shell:
 	@echo "Starting interactive shell in Docker container"
 	cd $(PROJECT_ROOT) && \
 	docker run --name $(DOCKER_NAME) --rm -it \
+		--cap-add=SYS_PTRACE \
+  	--security-opt seccomp=unconfined \
 		--user $(DOCKER_USER) \
 		-e CCACHE_DIR=/work/.ccache \
 		-v $(PROJECT_ROOT):/work \

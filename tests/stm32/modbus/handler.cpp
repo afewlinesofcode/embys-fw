@@ -30,17 +30,12 @@ struct StoreFixture
   static constexpr uint16_t NHR = 8;
   static constexpr uint16_t NIR = 4;
 
-  uint8_t coils_buf[(NC + 7U) / 8U] = {};
-  uint8_t di_buf[(NDI + 7U) / 8U] = {};
-  uint16_t hr_buf[NHR] = {};
-  uint16_t ir_buf[NIR] = {};
-
-  Store store{coils_buf, NC, di_buf, NDI, hr_buf, NHR, ir_buf, NIR};
+  Store<NC, NDI, NHR, NIR> store;
 };
 
 struct HandlerFixture : StoreFixture
 {
-  Handler handler{&store};
+  Handler handler{store};
 
   uint8_t req[kFrameSize] = {};
   uint8_t rsp[kFrameSize] = {};
@@ -72,13 +67,22 @@ struct HandlerFixture : StoreFixture
 TEST_SUITE("modbus_handler")
 {
 
+  TEST_CASE_FIXTURE(HandlerFixture, "undersized response view is rejected")
+  {
+    build_read(FunctionCode::ReadCoils, 0, 1);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                         std::span{rsp}.first(kFrameHeaderSize),
+                         rsp_len) == ExceptionCode::IllegalDataValue);
+  }
+
   TEST_CASE_FIXTURE(HandlerFixture, "ReadCoils: returns packed bits")
   {
     store.set_coil(0, true);
     store.set_coil(2, true);
 
     build_read(FunctionCode::ReadCoils, 0, 4);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(rsp_len == kFrameHeaderSize + 1U + 1U);
@@ -91,7 +95,8 @@ TEST_SUITE("modbus_handler")
     store.set_discrete_input(1, true);
 
     build_read(FunctionCode::ReadDiscreteInputs, 0, 4);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK((rsp[3] & 0x02U) != 0U);
@@ -104,7 +109,8 @@ TEST_SUITE("modbus_handler")
     store.set_holding_register(1, 0x3344U);
 
     build_read(FunctionCode::ReadHoldingRegisters, 0, 2);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(rsp_len == kFrameHeaderSize + 1U + 4U);
@@ -119,7 +125,8 @@ TEST_SUITE("modbus_handler")
     store.set_input_register(0, 0xBEEFU);
 
     build_read(FunctionCode::ReadInputRegisters, 0, 1);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(read_be(&rsp[3]) == 0xBEEFU);
@@ -128,7 +135,8 @@ TEST_SUITE("modbus_handler")
   TEST_CASE_FIXTURE(HandlerFixture, "WriteSingleCoil: 0xFF00 sets coil")
   {
     build_write_single(FunctionCode::WriteSingleCoil, 0, 0xFF00U);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     uint8_t out[1] = {};
@@ -140,7 +148,7 @@ TEST_SUITE("modbus_handler")
   {
     store.set_coil(0, true);
     build_write_single(FunctionCode::WriteSingleCoil, 0, 0x0000U);
-    handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    handler.handle(std::span{req}.first(kFrameHeaderSize + 4U), rsp, rsp_len);
 
     uint8_t out[1] = {};
     store.get_coils(0, out, 1);
@@ -151,18 +159,19 @@ TEST_SUITE("modbus_handler")
                     "WriteSingleCoil: invalid value returns IllegalDataValue")
   {
     build_write_single(FunctionCode::WriteSingleCoil, 0, 0x1234U);
-    CHECK(handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len) ==
-          ExceptionCode::IllegalDataValue);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 4U), rsp,
+                         rsp_len) == ExceptionCode::IllegalDataValue);
   }
 
   TEST_CASE_FIXTURE(HandlerFixture, "WriteSingleRegister: stores value")
   {
     build_write_single(FunctionCode::WriteSingleRegister, 3, 0xCAFEU);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     uint16_t v = 0;
-    store.get_holding_register(3, &v);
+    store.get_holding_register(3, v);
     CHECK(v == 0xCAFEU);
   }
 
@@ -176,7 +185,8 @@ TEST_SUITE("modbus_handler")
     req[6] = 1;     // byte count
     req[7] = 0xAAU; // 0b10101010
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 5U + 1U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(
+        std::span{req}.first(kFrameHeaderSize + 5U + 1U), rsp, rsp_len);
 
     CHECK(rc == 0U);
     uint8_t out[1] = {};
@@ -195,12 +205,13 @@ TEST_SUITE("modbus_handler")
     write_be(&req[7], 0x1111U);
     write_be(&req[9], 0x2222U);
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 5U + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(
+        std::span{req}.first(kFrameHeaderSize + 5U + 4U), rsp, rsp_len);
 
     CHECK(rc == 0U);
     uint16_t v0 = 0, v1 = 0;
-    store.get_holding_register(0, &v0);
-    store.get_holding_register(1, &v1);
+    store.get_holding_register(0, v0);
+    store.get_holding_register(1, v1);
     CHECK(v0 == 0x1111U);
     CHECK(v1 == 0x2222U);
   }
@@ -210,7 +221,7 @@ TEST_SUITE("modbus_handler")
   {
     req[0] = 1;
     req[1] = 0x42U; // unsupported FC
-    CHECK(handler.handle(req, 2U, rsp, &rsp_len) ==
+    CHECK(handler.handle(std::span{req}.first(2U), rsp, rsp_len) ==
           ExceptionCode::IllegalFunction);
   }
 
@@ -219,8 +230,8 @@ TEST_SUITE("modbus_handler")
       "ReadHoldingRegisters: zero quantity returns IllegalDataValue")
   {
     build_read(FunctionCode::ReadHoldingRegisters, 0, 0);
-    CHECK(handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len) ==
-          ExceptionCode::IllegalDataValue);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 4U), rsp,
+                         rsp_len) == ExceptionCode::IllegalDataValue);
   }
 
   TEST_CASE_FIXTURE(HandlerFixture,
@@ -231,7 +242,8 @@ TEST_SUITE("modbus_handler")
 
     // On-wire address 10 → store index 0
     build_read(FunctionCode::ReadHoldingRegisters, 10, 1);
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(read_be(&rsp[3]) == 0xABCDU);
@@ -249,8 +261,8 @@ TEST_SUITE("modbus_handler_diagnostics")
   {
     req[0] = 1;
     req[1] = FunctionCode::Diagnostics;
-    CHECK(handler.handle(req, kFrameHeaderSize + 2U, rsp, &rsp_len) ==
-          ExceptionCode::IllegalDataValue);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 2U), rsp,
+                         rsp_len) == ExceptionCode::IllegalDataValue);
   }
 
   TEST_CASE_FIXTURE(HandlerFixture,
@@ -261,7 +273,8 @@ TEST_SUITE("modbus_handler_diagnostics")
     write_be(&req[2], DiagnosticsSubCode::ReturnQueryData);
     write_be(&req[4], 0xAB12U);
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(rsp_len == kFrameHeaderSize + 4U);
@@ -278,7 +291,8 @@ TEST_SUITE("modbus_handler_diagnostics")
     write_be(&req[2], DiagnosticsSubCode::ReturnQueryData);
     write_be(&req[4], 0x1234U);
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(read_be(&rsp[4]) == 0x1234U);
@@ -303,7 +317,8 @@ TEST_SUITE("modbus_handler_diagnostics")
       write_be(&req[2], sub_fn);
       write_be(&req[4], 0x0000U);
 
-      uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+      uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                  rsp, rsp_len);
 
       CHECK(rc == 0U);
       CHECK(read_be(&rsp[4]) == 0U);
@@ -328,7 +343,8 @@ TEST_SUITE("modbus_handler_diagnostics")
       req[1] = FunctionCode::Diagnostics;
       write_be(&req[2], sub_fn);
       write_be(&req[4], 0x0000U);
-      uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+      uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                  rsp, rsp_len);
       CHECK(rc == 0U);
       CHECK(read_be(&rsp[4]) == expected);
     };
@@ -354,7 +370,8 @@ TEST_SUITE("modbus_handler_diagnostics")
     write_be(&req[2], DiagnosticsSubCode::ClearCounters);
     write_be(&req[4], 0x0000U);
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(read_be(&rsp[4]) == 0x0000U);
@@ -370,7 +387,8 @@ TEST_SUITE("modbus_handler_diagnostics")
     write_be(&req[2], DiagnosticsSubCode::ClearCounters);
     write_be(&req[4], 0x0000U);
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len);
+    uint8_t rc = handler.handle(std::span{req}.first(kFrameHeaderSize + 4U),
+                                rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(read_be(&rsp[4]) == 0x0000U);
@@ -384,8 +402,8 @@ TEST_SUITE("modbus_handler_diagnostics")
     write_be(&req[2], 0x00FFU); // unsupported sub-function
     write_be(&req[4], 0x0000U);
 
-    CHECK(handler.handle(req, kFrameHeaderSize + 4U, rsp, &rsp_len) ==
-          ExceptionCode::IllegalFunction);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 4U), rsp,
+                         rsp_len) == ExceptionCode::IllegalFunction);
   }
 
 } // TEST_SUITE("modbus_handler_diagnostics")
@@ -401,8 +419,8 @@ TEST_SUITE("modbus_handler_report_server_id")
     req[0] = 1;
     req[1] = FunctionCode::ReportServerId;
     // Extra byte — FC 0x11 expects exactly kFrameHeaderSize bytes
-    CHECK(handler.handle(req, kFrameHeaderSize + 1U, rsp, &rsp_len) ==
-          ExceptionCode::IllegalDataValue);
+    CHECK(handler.handle(std::span{req}.first(kFrameHeaderSize + 1U), rsp,
+                         rsp_len) == ExceptionCode::IllegalDataValue);
   }
 
   TEST_CASE_FIXTURE(HandlerFixture,
@@ -412,7 +430,8 @@ TEST_SUITE("modbus_handler_report_server_id")
     req[0] = 0x05U; // device id
     req[1] = FunctionCode::ReportServerId;
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize, rsp, &rsp_len);
+    uint8_t rc =
+        handler.handle(std::span{req}.first(kFrameHeaderSize), rsp, rsp_len);
 
     CHECK(rc == 0U);
     CHECK(rsp_len == kFrameHeaderSize + 1U + 2U); // header + byte_count + 2
@@ -428,12 +447,13 @@ TEST_SUITE("modbus_handler_report_server_id")
                     "correct payload and run_indicator")
   {
     const uint8_t id_bytes[] = {0xDE, 0xAD, 0xBE};
-    handler.set_server_id(id_bytes, sizeof(id_bytes));
+    handler.set_server_id(id_bytes);
 
     req[0] = 1;
     req[1] = FunctionCode::ReportServerId;
 
-    uint8_t rc = handler.handle(req, kFrameHeaderSize, rsp, &rsp_len);
+    uint8_t rc =
+        handler.handle(std::span{req}.first(kFrameHeaderSize), rsp, rsp_len);
 
     CHECK(rc == 0U);
     // byte_count = 1 (device_id) + 1 (status) + 3 (id bytes) = 5

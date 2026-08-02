@@ -16,7 +16,7 @@ constexpr uint32_t LED_BLINK_INTERVAL_US = 5000;
 
 namespace Embys::Stm32::Gpio
 {
-class Pin;
+class PinCore;
 };
 
 namespace Embys::Stm32::Base
@@ -38,7 +38,7 @@ struct AppContext
   bool blink_on = false;
   uint32_t blink_count = 0;
 
-  Embys::Stm32::Gpio::Pin *led = nullptr;
+  Embys::Stm32::Gpio::PinCore *led = nullptr;
   Embys::Stm32::Base::Event *blink_event = nullptr;
   Embys::Stm32::I2c::Dev::I2cBtnBlink::Lcd *lcd = nullptr;
 };

@@ -1,16 +1,16 @@
 /**
- * @file hal/v1/hal.hpp
- * @brief UART V1 register-level helpers (STM32F1 / STM32F4 / sim).
+ * @file hal/common/registers.hpp
+ * @brief Shared SR/DR UART register helpers (STM32F1 / STM32F4 / sim).
  *
- * V1 layout: SR (status), DR (read/write data).
- * Included by src/hal.hpp when UART_HAL_V1 is defined and by the family
- * HAL implementation files (hal/f1/hal.cpp, hal/f4/hal.cpp).
+ * Both supported families use the classic SR status and DR data layout.
+ * Family backends include these helpers while retaining family-specific
+ * clock, reset, and peripheral-selection logic.
  */
 #pragma once
 
 #include "../../stm32xx.hpp"
 
-#ifdef UART_HAL_V1
+#ifdef EMBYS_UART_CLASSIC_REGISTERS
 
 #include <stdint.h>
 
@@ -131,4 +131,4 @@ has_error(USART_TypeDef *usart)
 
 }; // namespace Embys::Stm32::Uart
 
-#endif // UART_HAL_V1
+#endif // EMBYS_UART_CLASSIC_REGISTERS

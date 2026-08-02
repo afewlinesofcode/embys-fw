@@ -17,7 +17,7 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-using Cb = Embys::Callable<int>;
+using Cb = Embys::Callback<int>;
 
 // LCD Commands
 static constexpr uint8_t LCD_CLEAR_DISPLAY = 0x01;

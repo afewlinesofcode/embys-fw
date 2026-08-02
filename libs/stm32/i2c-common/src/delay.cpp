@@ -3,22 +3,21 @@
 namespace Embys::Stm32::I2c::Dev
 {
 
-Delay::Delay(Base::Loop *loop) : ev(loop, 0, {fired, this})
+Delay::Delay(Base::LoopCore &loop)
+  : ev(loop, Base::EventMode::Deferred, {fired, this})
 {
 }
 
 void
-Delay::exec(uint32_t us, Cb cb)
+Delay::exec(std::chrono::microseconds delay, Cb cb)
 {
   this->cb = cb;
-  int rc = ev.enable(us);
-
-  if (rc != 0)
-    cb(rc);
+  if (!ev.enable(delay))
+    cb(-1);
 }
 
 void
-Delay::fired(void *ctx)
+Delay::fired(void *ctx) noexcept
 {
   static_cast<Delay *>(ctx)->cb(0);
 }

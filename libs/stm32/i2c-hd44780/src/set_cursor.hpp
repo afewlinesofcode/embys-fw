@@ -23,14 +23,14 @@ class Send;
 class SetCursor
 {
 public:
-  SetCursor(State *state, Send *send);
+  SetCursor(State &state, Send &send);
 
   void
   exec(uint8_t col, uint8_t row, Cb cb);
 
 private:
-  State *state;
-  Send *send;
+  State &state;
+  Send &send;
   uint8_t col = 0;
   uint8_t row = 0;
   Cb cb;
@@ -48,7 +48,7 @@ private:
   update_state();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

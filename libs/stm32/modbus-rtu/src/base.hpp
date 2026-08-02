@@ -40,7 +40,7 @@ public:
   Base &
   operator=(Base &&) = delete;
 
-  explicit Base(Uart::Bus *transport);
+  explicit Base(Uart::BusCore &transport);
   ~Base();
 
   void
@@ -53,7 +53,7 @@ public:
   }
 
 protected:
-  Uart::Bus *transport;
+  Uart::BusCore &transport;
   Stm32::Base::Event frame_timeout_event;
 
   uint32_t frame_delay_us = 0;
@@ -64,20 +64,20 @@ protected:
   uint8_t buffer_out[Modbus::kFrameSize];
   uint16_t buffer_out_len = 0;
 
-  Embys::Callable<> frame_in_cb;
-  Embys::Callable<int> frame_out_cb;
+  Embys::Callback<> frame_in_cb;
+  Embys::Callback<int> frame_out_cb;
 
   bool buffer_in_overflow = false;
   bool frame_in_receiving = false;
 
   inline void
-  set_frame_in_callback(Embys::Callable<> cb)
+  set_frame_in_callback(Embys::Callback<> cb)
   {
     frame_in_cb = cb;
   }
 
   inline void
-  set_frame_out_callback(Embys::Callable<int> cb)
+  set_frame_out_callback(Embys::Callback<int> cb)
   {
     frame_out_cb = cb;
   }
@@ -99,13 +99,13 @@ protected:
 
 private:
   static void
-  recv_callback(void *context, uint8_t byte);
+  recv_callback(void *context, Uart::ReceiveResult result) noexcept;
 
   static void
-  frame_timeout_callback(void *context);
+  frame_timeout_callback(void *context) noexcept;
 
   static void
-  sent_callback(void *context, int status);
+  sent_callback(void *context, Uart::Status status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

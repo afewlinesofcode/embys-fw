@@ -19,7 +19,7 @@ namespace
 
 struct TestablBase : Modbus::Rtu::Base
 {
-  explicit TestablBase(Uart::Bus *uart) : Modbus::Rtu::Base(uart)
+  explicit TestablBase(Uart::BusCore &uart) : Modbus::Rtu::Base(uart)
   {
   }
 
@@ -40,7 +40,7 @@ struct TestablBase : Modbus::Rtu::Base
 struct RtuBaseFixture
 {
   inline static Base::Timer *timer_ptr = nullptr;
-  inline static Uart::Bus *uart_bus_ptr = nullptr;
+  inline static Uart::BusCore *uart_bus_ptr = nullptr;
 
   static void
   TIM2_IRQHandler()
@@ -75,24 +75,16 @@ static constexpr size_t kModulesCapacity = 1;
 
 struct RtuLoopFixture : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
-  uint8_t rx_buf[Modbus::kFrameSize];
-
   Base::Timer timer;
-  Base::Loop loop;
-  Uart::Bus uart;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
 
-  RtuLoopFixture()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
-      uart(USART2, &loop, rx_buf, sizeof(rx_buf))
+  RtuLoopFixture() : timer(TIM2), loop(timer), uart(loop)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(9600);
+    (void)uart.enable(9600);
   }
 };
 
@@ -100,7 +92,7 @@ struct BaseFixture : RtuLoopFixture
 {
   TestablBase base;
 
-  BaseFixture() : base(&uart)
+  BaseFixture() : base(uart)
   {
     base.enable();
   }
@@ -108,25 +100,17 @@ struct BaseFixture : RtuLoopFixture
 
 struct BaseFixture38400 : RtuBaseFixture
 {
-  Base::Event *event_slots[kEventsCapacity];
-  Base::Event *active_event_slots[kEventsCapacity];
-  Base::Module module_slots[kModulesCapacity];
-
-  uint8_t rx_buf[Modbus::kFrameSize];
-
   Base::Timer timer;
-  Base::Loop loop;
-  Uart::Bus uart;
+  Base::Loop<kEventsCapacity, kModulesCapacity> loop;
+  Uart::Bus<Uart::Instance::Usart2, Modbus::kFrameSize, Modbus::kFrameSize>
+      uart;
   TestablBase base;
 
-  BaseFixture38400()
-    : timer(TIM2), loop(&timer, event_slots, active_event_slots,
-                        kEventsCapacity, module_slots, kModulesCapacity),
-      uart(USART2, &loop, rx_buf, sizeof(rx_buf)), base(&uart)
+  BaseFixture38400() : timer(TIM2), loop(timer), uart(loop), base(uart)
   {
     timer_ptr = &timer;
     uart_bus_ptr = &uart;
-    uart.enable(38400);
+    (void)uart.enable(38400);
     base.enable();
   }
 };
@@ -220,13 +204,14 @@ TEST_SUITE("modbus_rtu_base")
     base.override_frame_delay_us(400); // use short delay for faster tests
 
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     // Base does not validate CRC; any 4-byte payload triggers the callback.
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00, 0x04});
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(cb_called);
@@ -240,12 +225,13 @@ TEST_SUITE("modbus_rtu_base")
                     "4 bytes (2 header + 2 CRC minimum)")
   {
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00}); // 3 bytes — below minimum
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK_FALSE(cb_called);
@@ -257,14 +243,15 @@ TEST_SUITE("modbus_rtu_base")
   {
     base.override_frame_delay_us(400); // use short delay for faster tests
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     // kFrameSize + 1 bytes triggers the overflow path in recv_callback.
     std::vector<uint8_t> oversized(Modbus::kFrameSize + 1U, 0xAAU);
     Sim::Uart::simulate_rx(oversized);
 
-    loop.stop(500);
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK_FALSE(cb_called);

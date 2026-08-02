@@ -10,7 +10,8 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
 
 #include "def.hpp"
 
@@ -22,16 +23,16 @@ class Send;
 class CreateChar
 {
 public:
-  explicit CreateChar(Send *send);
+  explicit CreateChar(Send &send);
 
   void
-  exec(uint8_t location, const uint8_t char_map[8], Cb cb);
+  exec(uint8_t location, std::span<const uint8_t, 8> char_map, Cb cb);
 
 private:
-  Send *send;
+  Send &send;
   Cb cb;
   uint8_t location = 0;
-  const uint8_t *char_map = nullptr;
+  std::span<const uint8_t> char_map;
   uint8_t byte_index = 0;
 
   enum
@@ -51,7 +52,7 @@ private:
   set_ddram_address();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

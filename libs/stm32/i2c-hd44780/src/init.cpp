@@ -9,8 +9,8 @@
 namespace Embys::Stm32::I2c::Dev::Hd44780
 {
 
-Init::Init(State *state, Write *write, WriteBits *write_bits, Send *send,
-           Clear *clear, I2c::Dev::Delay *delay)
+Init::Init(State &state, Write &write, WriteBits &write_bits, Send &send,
+           Clear &clear, I2c::Dev::Delay &delay)
   : state(state), write(write), write_bits(write_bits), send(send),
     clear(clear), delay(delay)
 {
@@ -20,7 +20,7 @@ void
 Init::exec(Cb cb)
 {
   this->cb = cb;
-  state->backlight = false;
+  state.backlight = false;
   delay_us(50000, Delay1);
 }
 
@@ -28,39 +28,39 @@ void
 Init::delay_us(uint32_t us, Stage st)
 {
   stage = st;
-  delay->exec(us, {command_callback, this});
+  delay.exec(std::chrono::microseconds{us}, {command_callback, this});
 }
 
 void
 Init::write_cmd(uint8_t data, Stage st)
 {
   stage = st;
-  write->exec(data, {command_callback, this});
+  write.exec(data, {command_callback, this});
 }
 
 void
 Init::write_bits_cmd(uint8_t data, Stage st)
 {
   stage = st;
-  write_bits->exec(data, LCD_COMMAND, {command_callback, this});
+  write_bits.exec(data, LCD_COMMAND, {command_callback, this});
 }
 
 void
 Init::send_cmd(uint8_t command, Stage st)
 {
   stage = st;
-  send->exec(command, LCD_COMMAND, {command_callback, this});
+  send.exec(command, LCD_COMMAND, {command_callback, this});
 }
 
 void
 Init::clear_display()
 {
   stage = ClearDisplay;
-  clear->exec({command_callback, this});
+  clear.exec({command_callback, this});
 }
 
 void
-Init::command_callback(void *ctx, int result)
+Init::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Init *>(ctx);
 
@@ -125,7 +125,7 @@ Init::command_callback(void *ctx, int result)
                     DisplayOn);
       break;
     case DisplayOn:
-      cmd->state->backlight = true;
+      cmd->state.backlight = true;
       cmd->write_cmd(0x00, BacklightOn);
       break;
     case BacklightOn:

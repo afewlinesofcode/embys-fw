@@ -25,15 +25,15 @@ class SetCursor;
 class Clear
 {
 public:
-  Clear(Send *send, SetCursor *set_cursor, I2c::Dev::Delay *timeout);
+  Clear(Send &send, SetCursor &set_cursor, I2c::Dev::Delay &timeout);
 
   void
   exec(Cb cb);
 
 private:
-  Send *send;
-  SetCursor *set_cursor;
-  I2c::Dev::Delay *timeout;
+  Send &send;
+  SetCursor &set_cursor;
+  I2c::Dev::Delay &timeout;
   Cb cb;
 
   enum
@@ -53,7 +53,7 @@ private:
   set_cursor_home();
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

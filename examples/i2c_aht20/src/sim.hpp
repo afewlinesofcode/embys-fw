@@ -27,7 +27,7 @@ extern "C"
 }
 
 void
-on_tx(void *context, uint8_t addr, std::vector<uint8_t> data);
+on_tx(void *context, uint8_t addr, std::vector<uint8_t> data) noexcept;
 
 void
 SIM_RESET(AppContext *context);

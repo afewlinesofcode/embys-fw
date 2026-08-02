@@ -30,7 +30,7 @@ public:
   Lcd &
   operator=(Lcd &&) = delete;
 
-  Lcd(Embys::Stm32::Base::Loop *loop, Embys::Stm32::I2c::Bus *i2c_bus)
+  Lcd(Embys::Stm32::Base::LoopCore &loop, Embys::Stm32::I2c::BusCore &i2c_bus)
     : lcd(loop, i2c_bus) {};
 
   inline State
@@ -49,13 +49,13 @@ public:
   init();
 
   void
-  set_ready_cb(Embys::Callable<int> cb);
+  set_ready_cb(Embys::Callback<int> cb);
 
   void
   set_unavailable();
 
   void
-  set_values(float temperature, float humidity);
+  set_values(Aht20::Temperature temperature, Aht20::RelativeHumidity humidity);
 
 private:
   State state = Idle;
@@ -70,9 +70,9 @@ private:
 
   bool busy = false;
 
-  Embys::Callable<int> ready_cb;
-  float temperature = 0.0f;
-  float humidity = 0.0f;
+  Embys::Callback<int> ready_cb;
+  Aht20::Temperature temperature;
+  Aht20::RelativeHumidity humidity;
 
   Embys::Stm32::I2c::Dev::Hd44780::Device lcd;
   char line_buf[21];
@@ -84,7 +84,7 @@ private:
   dispatch_pending();
 
   static void
-  dispatch(void *ctx, int result);
+  dispatch(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::I2cAht20
