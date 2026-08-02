@@ -303,14 +303,14 @@ private:
    * @param context Pointer to the loop instance
    */
   static void
-  timer_callback(void *context);
+  timer_callback(void *context) noexcept;
 
   /**
    * @brief Static callback for loop termination
    * @param context Pointer to the loop instance
    */
   static void
-  loopbreak_callback(void *context);
+  loopbreak_callback(void *context) noexcept;
 };
 
 namespace Detail

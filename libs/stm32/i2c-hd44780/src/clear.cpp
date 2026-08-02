@@ -40,7 +40,7 @@ Clear::set_cursor_home()
 }
 
 void
-Clear::command_callback(void *ctx, int result)
+Clear::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Clear *>(ctx);
 

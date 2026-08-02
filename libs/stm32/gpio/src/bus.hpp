@@ -187,7 +187,7 @@ private:
    * registration)
    */
   static void
-  module_callback(void *context)
+  module_callback(void *context) noexcept
   {
     BusCore *gpio = static_cast<BusCore *>(context);
     gpio->trigger_activated_pins();

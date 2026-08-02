@@ -136,7 +136,7 @@ BusCore::handle_er_irq()
 }
 
 void
-BusCore::module_callback(void *context)
+BusCore::module_callback(void *context) noexcept
 {
   auto *self = static_cast<BusCore *>(context);
 

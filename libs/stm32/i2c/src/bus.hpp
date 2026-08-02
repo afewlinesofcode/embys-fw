@@ -178,7 +178,7 @@ private:
   bool reading = false;
 
   static void
-  module_callback(void *context);
+  module_callback(void *context) noexcept;
 };
 
 namespace Detail

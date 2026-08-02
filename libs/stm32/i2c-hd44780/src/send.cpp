@@ -34,7 +34,7 @@ Send::write_low()
 }
 
 void
-Send::command_callback(void *ctx, int result)
+Send::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Send *>(ctx);
 

@@ -42,7 +42,7 @@ Home::update_state()
 }
 
 void
-Home::command_callback(void *ctx, int result)
+Home::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Home *>(ctx);
 

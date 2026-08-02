@@ -254,10 +254,10 @@ private:
   }
 
   static void
-  module_callback(void *context);
+  module_callback(void *context) noexcept;
 
   static void
-  timeout_handler(void *context);
+  timeout_handler(void *context) noexcept;
 };
 
 namespace Detail

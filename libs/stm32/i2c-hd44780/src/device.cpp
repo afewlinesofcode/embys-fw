@@ -161,7 +161,7 @@ Device::create_char(uint8_t location, std::span<const uint8_t, 8> char_map,
 }
 
 void
-Device::initialized_callback(void *ctx, int result)
+Device::initialized_callback(void *ctx, int result) noexcept
 {
   auto device = static_cast<Device *>(ctx);
   if (result != 0)

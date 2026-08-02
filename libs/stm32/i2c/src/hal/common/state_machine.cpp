@@ -360,7 +360,7 @@ Sm::error(int result_code)
 }
 
 void
-Sm::timeout_handler(void *context)
+Sm::timeout_handler(void *context) noexcept
 {
   auto *self = static_cast<Sm *>(context);
 
@@ -372,7 +372,7 @@ Sm::timeout_handler(void *context)
 }
 
 void
-Sm::wait_bus_callback(void *context, int res)
+Sm::wait_bus_callback(void *context, int res) noexcept
 {
   auto *self = static_cast<Sm *>(context);
 

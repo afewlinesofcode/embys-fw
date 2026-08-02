@@ -174,10 +174,10 @@ private:
   start();
 
   static void
-  timeout_handler(void *context);
+  timeout_handler(void *context) noexcept;
 
   static void
-  wait_bus_callback(void *context, int result);
+  wait_bus_callback(void *context, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c

@@ -42,7 +42,7 @@ WriteBits::write_pulse()
 }
 
 void
-WriteBits::command_callback(void *ctx, int result)
+WriteBits::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<WriteBits *>(ctx);
 

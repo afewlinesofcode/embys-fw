@@ -142,7 +142,7 @@ private:
   check_crc(std::span<const uint8_t, 7> data);
 
   static void
-  command_callback(void *ctx, int result);
+  command_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Aht20

@@ -56,7 +56,7 @@ extern "C"
  * @brief Turn LED off (called by the led_off_event)
  */
 static void
-led_off(void *context)
+led_off(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->led->write(1); // active-low: write 1 = LED off
@@ -67,7 +67,7 @@ led_off(void *context)
  */
 static void
 on_query(void *context, int rc,
-         Embys::Stm32::I2c::Dev::Aht20::Device::Values values)
+         Embys::Stm32::I2c::Dev::Aht20::Device::Values values) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -93,7 +93,7 @@ on_query(void *context, int rc,
  * @brief Periodic query event callback — triggers an AHT20 measurement
  */
 static void
-do_query(void *context)
+do_query(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->aht20->query({on_query, context});
@@ -103,7 +103,7 @@ do_query(void *context)
  * @brief AHT20 enable callback
  */
 static void
-on_aht20_enabled(void *context, int rc)
+on_aht20_enabled(void *context, int rc) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -122,7 +122,7 @@ on_aht20_enabled(void *context, int rc)
  * @brief Startup callback — initialise LCD, then enable AHT20
  */
 static void
-on_start(void *context)
+on_start(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->lcd->init();
@@ -135,7 +135,7 @@ on_start(void *context)
  * class can notify main when it reaches the Ready state.
  */
 static void
-on_lcd_ready(void *context, int rc)
+on_lcd_ready(void *context, int rc) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 

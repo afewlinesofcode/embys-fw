@@ -250,7 +250,7 @@ Client::process_response()
 }
 
 void
-Client::response_callback(void *context)
+Client::response_callback(void *context) noexcept
 {
   auto *client = static_cast<Client *>(context);
 
@@ -263,7 +263,7 @@ Client::response_callback(void *context)
 }
 
 void
-Client::response_timeout_callback(void *context)
+Client::response_timeout_callback(void *context) noexcept
 {
   auto *client = static_cast<Client *>(context);
 
@@ -279,7 +279,7 @@ Client::response_timeout_callback(void *context)
 }
 
 void
-Client::request_sent_callback(void *context, int status)
+Client::request_sent_callback(void *context, int status) noexcept
 {
   auto *client = static_cast<Client *>(context);
   client->sending_request = false;

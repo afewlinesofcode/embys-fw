@@ -10,6 +10,8 @@
  */
 #pragma once
 
+#include <type_traits>
+
 #include "result.hpp"
 
 namespace Embys
@@ -27,7 +29,7 @@ template <typename... Args>
 class Callback
 {
 public:
-  using CallbackFn = void (*)(void *, Args...);
+  using CallbackFn = void (*)(void *, Args...) noexcept;
 
   constexpr Callback() noexcept = default;
   constexpr Callback(CallbackFn callback, void *context = nullptr) noexcept
@@ -39,7 +41,9 @@ public:
   [[nodiscard]] static constexpr Callback
   bind(Object &object) noexcept
   {
-    return Callback{[](void *context, Args... args)
+    static_assert(
+        std::is_nothrow_invocable_v<decltype(Method), Object &, Args...>);
+    return Callback{[](void *context, Args... args) noexcept
                     { (static_cast<Object *>(context)->*Method)(args...); },
                     &object};
   }

@@ -86,10 +86,10 @@ private:
   send_exception(uint8_t exception_code);
 
   static void
-  request_callback(void *context);
+  request_callback(void *context) noexcept;
 
   static void
-  response_sent_callback(void *context, int status);
+  response_sent_callback(void *context, int status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

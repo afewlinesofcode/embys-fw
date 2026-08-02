@@ -60,7 +60,7 @@ Init::clear_display()
 }
 
 void
-Init::command_callback(void *ctx, int result)
+Init::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Init *>(ctx);
 

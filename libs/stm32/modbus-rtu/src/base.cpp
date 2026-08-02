@@ -109,7 +109,7 @@ Base::calculate_timing()
 }
 
 void
-Base::recv_callback(void *context, uint8_t byte)
+Base::recv_callback(void *context, uint8_t byte) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
 
@@ -134,7 +134,7 @@ Base::recv_callback(void *context, uint8_t byte)
 }
 
 void
-Base::frame_timeout_callback(void *context)
+Base::frame_timeout_callback(void *context) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
 
@@ -156,7 +156,7 @@ Base::frame_timeout_callback(void *context)
 }
 
 void
-Base::sent_callback(void *context, int status)
+Base::sent_callback(void *context, int status) noexcept
 {
   auto *rtu = static_cast<Base *>(context);
   rtu->frame_out_cb(status);

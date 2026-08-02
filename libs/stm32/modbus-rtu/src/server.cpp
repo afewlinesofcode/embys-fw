@@ -96,14 +96,14 @@ Server::send_exception(uint8_t exception_code)
 }
 
 void
-Server::request_callback(void *context)
+Server::request_callback(void *context) noexcept
 {
   auto *srv = static_cast<Server *>(context);
   srv->process_request();
 }
 
 void
-Server::response_sent_callback(void *context, int status)
+Server::response_sent_callback(void *context, int status) noexcept
 {
   auto *srv = static_cast<Server *>(context);
   srv->handling_request = false;

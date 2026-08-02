@@ -37,7 +37,7 @@ private:
   std::span<uint8_t> destination;
 
   static void
-  i2c_callback(void *ctx, int result, std::span<const uint8_t> data);
+  i2c_callback(void *ctx, int result, std::span<const uint8_t> data) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev

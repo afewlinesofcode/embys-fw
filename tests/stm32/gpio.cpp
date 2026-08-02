@@ -1,4 +1,4 @@
-#include <vector>
+#include <array>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/gpio/bus.hpp>
@@ -20,6 +20,19 @@ static_assert(Gpio::port_available<Stm32f411xe, Gpio::Port::H>);
 static_assert(Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU>);
 static_assert(!Gpio::config_valid<Gpio::PinCfg::IN | Gpio::PinCfg::PU |
                                   Gpio::PinCfg::PD>);
+
+struct CallbackValues
+{
+  std::array<uint8_t, 2> values{};
+  size_t size = 0;
+
+  static void
+  record(void *context, uint8_t value) noexcept
+  {
+    auto *calls = static_cast<CallbackValues *>(context);
+    calls->values[calls->size++] = value;
+  }
+};
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -318,10 +331,8 @@ TEST_SUITE("gpio")
         bus);
     CHECK(pin.enable() == 0);
 
-    std::vector<uint8_t> calls;
-    pin.set_callback(
-        {[](void *ctx, uint8_t v)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(v); }, &calls});
+    CallbackValues calls;
+    pin.set_callback({CallbackValues::record, &calls});
 
     // Drive PA0 high → EXTI0 fires → module marked interrupted
     Sim::Gpio::trigger_pin(GPIOA, 0, 1);
@@ -332,8 +343,8 @@ TEST_SUITE("gpio")
     (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
-    REQUIRE(calls.size() == 1);
-    CHECK(calls[0] == 1);
+    REQUIRE(calls.size == 1);
+    CHECK(calls.values[0] == 1);
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
@@ -345,10 +356,8 @@ TEST_SUITE("gpio")
         bus);
     CHECK(pin.enable() == 0);
 
-    std::vector<uint8_t> calls;
-    pin.set_callback(
-        {[](void *ctx, uint8_t v)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(v); }, &calls});
+    CallbackValues calls;
+    pin.set_callback({CallbackValues::record, &calls});
 
     // Start high so the falling edge is a meaningful transition
     SET_BIT_V(GPIOA->IDR, (1u << 0));
@@ -360,8 +369,8 @@ TEST_SUITE("gpio")
     (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
-    REQUIRE(calls.size() == 1);
-    CHECK(calls[0] == 0);
+    REQUIRE(calls.size == 1);
+    CHECK(calls.values[0] == 0);
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
@@ -378,15 +387,11 @@ TEST_SUITE("gpio")
     CHECK(pin0.enable() == 0);
     CHECK(pin1.enable() == 0);
 
-    std::vector<uint8_t> calls0, calls1;
+    CallbackValues calls0;
+    CallbackValues calls1;
 
-    pin0.set_callback(
-        {[](void *ctx, uint8_t v)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(v); }, &calls0});
-
-    pin1.set_callback(
-        {[](void *ctx, uint8_t v)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(v); }, &calls1});
+    pin0.set_callback({CallbackValues::record, &calls0});
+    pin1.set_callback({CallbackValues::record, &calls1});
 
     // Only trigger PA0
     Sim::Gpio::trigger_pin(GPIOA, 0, 1);
@@ -396,8 +401,8 @@ TEST_SUITE("gpio")
     (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
-    REQUIRE(calls0.size() == 1);
-    CHECK(calls1.empty());
+    REQUIRE(calls0.size == 1);
+    CHECK(calls1.size == 0);
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
@@ -410,8 +415,8 @@ TEST_SUITE("gpio")
     CHECK(pin.enable() == 0);
 
     int call_count = 0;
-    pin.set_callback(
-        {[](void *ctx, uint8_t) { ++*static_cast<int *>(ctx); }, &call_count});
+    pin.set_callback({[](void *ctx, uint8_t) noexcept
+                      { ++*static_cast<int *>(ctx); }, &call_count});
 
     // First trigger — pin is still enabled
     Sim::Gpio::trigger_pin(GPIOA, 0, 1);

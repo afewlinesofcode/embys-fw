@@ -75,7 +75,7 @@ extern "C"
  * @param context
  */
 static void
-on_start(void *context)
+on_start(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   (void)ctx;
@@ -88,7 +88,7 @@ on_start(void *context)
  * @param context
  */
 static void
-toggle_led(void *context)
+toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->led_on = !ctx->led_on;
@@ -113,7 +113,7 @@ toggle_led(void *context)
  * @param value
  */
 static void
-toggle_btn(void *context, uint8_t value)
+toggle_btn(void *context, uint8_t value) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   SIM_LOG("Button: " << (value ? "RELEASED" : "PRESSED"));

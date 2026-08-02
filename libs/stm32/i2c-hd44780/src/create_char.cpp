@@ -50,7 +50,7 @@ CreateChar::set_ddram_address()
 }
 
 void
-CreateChar::command_callback(void *ctx, int result)
+CreateChar::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<CreateChar *>(ctx);
 

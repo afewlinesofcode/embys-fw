@@ -44,7 +44,8 @@ Read::exec(uint8_t addr, uint8_t reg, std::span<uint8_t> destination, Cb cb)
 }
 
 void
-Read::i2c_callback(void *ctx, int result, std::span<const uint8_t> data)
+Read::i2c_callback(void *ctx, int result,
+                   std::span<const uint8_t> data) noexcept
 {
   auto *self = static_cast<Read *>(ctx);
   if (result == 0 && data.size() == self->destination.size())

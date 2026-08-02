@@ -146,7 +146,7 @@ private:
   bool initialized = false;
 
   static void
-  initialized_callback(void *ctx, int result);
+  initialized_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev::Hd44780

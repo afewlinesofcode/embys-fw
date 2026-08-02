@@ -33,7 +33,7 @@ private:
   Cb cb;
 
   static void
-  fired(void *ctx);
+  fired(void *ctx) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev

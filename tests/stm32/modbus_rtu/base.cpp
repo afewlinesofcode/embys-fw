@@ -204,8 +204,9 @@ TEST_SUITE("modbus_rtu_base")
     base.override_frame_delay_us(400); // use short delay for faster tests
 
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     // Base does not validate CRC; any 4-byte payload triggers the callback.
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00, 0x04});
@@ -224,8 +225,9 @@ TEST_SUITE("modbus_rtu_base")
                     "4 bytes (2 header + 2 CRC minimum)")
   {
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     Sim::Uart::simulate_rx({0x01, 0x03, 0x00}); // 3 bytes — below minimum
 
@@ -241,8 +243,9 @@ TEST_SUITE("modbus_rtu_base")
   {
     base.override_frame_delay_us(400); // use short delay for faster tests
     bool cb_called = false;
-    base.set_frame_in_callback(
-        {[](void *ctx) { *static_cast<bool *>(ctx) = true; }, &cb_called});
+    base.set_frame_in_callback({[](void *ctx) noexcept
+                                { *static_cast<bool *>(ctx) = true; },
+                                &cb_called});
 
     // kFrameSize + 1 bytes triggers the overflow path in recv_callback.
     std::vector<uint8_t> oversized(Modbus::kFrameSize + 1U, 0xAAU);

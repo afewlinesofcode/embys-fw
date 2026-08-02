@@ -41,7 +41,7 @@ PulseEnable::write_en_low()
 }
 
 void
-PulseEnable::command_callback(void *ctx, int result)
+PulseEnable::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<PulseEnable *>(ctx);
 

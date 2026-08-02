@@ -82,7 +82,7 @@ static void
 flush_line(AppContext *ctx);
 
 static void
-on_rx_byte(void *context, uint8_t byte)
+on_rx_byte(void *context, uint8_t byte) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -100,7 +100,7 @@ on_rx_byte(void *context, uint8_t byte)
 }
 
 static void
-on_tx_done(void *context, int /* result */)
+on_tx_done(void *context, int /* result */) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->tx_busy = false;

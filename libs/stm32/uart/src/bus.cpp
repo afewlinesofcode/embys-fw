@@ -206,7 +206,7 @@ BusCore::tx_complete(int result)
 }
 
 void
-BusCore::module_callback(void *context)
+BusCore::module_callback(void *context) noexcept
 {
   auto *self = static_cast<BusCore *>(context);
 
@@ -248,7 +248,7 @@ BusCore::module_callback(void *context)
 }
 
 void
-BusCore::timeout_handler(void *context)
+BusCore::timeout_handler(void *context) noexcept
 {
   auto *self = static_cast<BusCore *>(context);
 

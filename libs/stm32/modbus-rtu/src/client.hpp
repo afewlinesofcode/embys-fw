@@ -134,13 +134,13 @@ private:
   process_response();
 
   static void
-  response_callback(void *context);
+  response_callback(void *context) noexcept;
 
   static void
-  response_timeout_callback(void *context);
+  response_timeout_callback(void *context) noexcept;
 
   static void
-  request_sent_callback(void *context, int status);
+  request_sent_callback(void *context, int status) noexcept;
 };
 
 }; // namespace Embys::Stm32::Modbus::Rtu

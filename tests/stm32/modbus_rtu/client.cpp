@@ -131,7 +131,8 @@ TEST_SUITE("modbus_rtu_client")
 
     client.read_holding_registers(
         1, 0, 2,
-        {[](void *ctx, uint8_t dev, uint8_t fc, uint8_t qty, uint8_t *data)
+        {[](void *ctx, uint8_t dev, uint8_t fc, uint8_t qty,
+            uint8_t *data) noexcept
          {
            response_received = true;
            auto *arr = static_cast<uint8_t *>(ctx);
@@ -143,7 +144,7 @@ TEST_SUITE("modbus_rtu_client")
          },
          resp_data});
 
-    auto response_handler = [](void *ctx)
+    auto response_handler = [](void *ctx) noexcept
     {
       (void)ctx;
       // Response frame: dev=1, FC=03, byte_count=4, [0xAA,0xBB,0xCC,0xDD]
@@ -208,7 +209,7 @@ TEST_SUITE("modbus_rtu_client")
 
     client.read_holding_registers(
         1, 0, 2,
-        {[](void *c, uint8_t dev, uint8_t, uint8_t qty, uint8_t *data)
+        {[](void *c, uint8_t dev, uint8_t, uint8_t qty, uint8_t *data) noexcept
          {
            auto *ctx = static_cast<Ctx *>(c);
            ctx->dev = dev;

@@ -18,7 +18,7 @@ Write::exec(uint8_t addr, std::span<const uint8_t> data, Cb cb)
 }
 
 void
-Write::i2c_callback(void *ctx, int result)
+Write::i2c_callback(void *ctx, int result) noexcept
 {
   static_cast<Write *>(ctx)->cb(result);
 }

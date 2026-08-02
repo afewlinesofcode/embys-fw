@@ -59,7 +59,7 @@ private:
   dispatch_pending();
 
   static void
-  dispatch(void *ctx, int result);
+  dispatch(void *ctx, int result) noexcept;
 };
 
 }; // namespace ModbusRtuServer

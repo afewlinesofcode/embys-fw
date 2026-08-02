@@ -92,7 +92,7 @@ blink(AppContext *ctx)
 }
 
 static void
-on_blink_off(void *ctx)
+on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
   context->led->write(1); // active-low: 1 = off
@@ -101,7 +101,7 @@ on_blink_off(void *ctx)
 // Modbus
 
 static void
-on_request(void *ctx, std::span<const uint8_t> request)
+on_request(void *ctx, std::span<const uint8_t> request) noexcept
 {
   if (request.size() < 4U) // device ID + function + 2-byte address
     return;
@@ -157,7 +157,7 @@ on_request(void *ctx, std::span<const uint8_t> request)
 // Startup
 
 static void
-on_start(void *ctx)
+on_start(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
   context->lcd->init();

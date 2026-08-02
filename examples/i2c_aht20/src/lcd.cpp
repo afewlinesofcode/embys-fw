@@ -78,7 +78,7 @@ Lcd::dispatch_pending()
 }
 
 void
-Lcd::dispatch(void *ctx, int result)
+Lcd::dispatch(void *ctx, int result) noexcept
 {
   auto *self = static_cast<Lcd *>(ctx);
   self->busy = false;

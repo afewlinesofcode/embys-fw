@@ -80,7 +80,7 @@ struct AppContext
  * @param context
  */
 void
-toggle_led(void *context)
+toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 
@@ -106,7 +106,7 @@ toggle_led(void *context)
  * @param value
  */
 void
-toggle_btn(void *context, uint8_t value)
+toggle_btn(void *context, uint8_t value) noexcept
 {
   SIM_LOG("Button state changed: " << (value ? "RELEASED" : "PRESSED"));
   auto *ctx = static_cast<AppContext *>(context);

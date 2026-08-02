@@ -167,7 +167,7 @@ Print::advance_position()
 }
 
 void
-Print::command_callback(void *ctx, int result)
+Print::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<Print *>(ctx);
 

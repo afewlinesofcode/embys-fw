@@ -33,7 +33,7 @@ private:
   Cb cb;
 
   static void
-  i2c_callback(void *ctx, int result);
+  i2c_callback(void *ctx, int result) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c::Dev

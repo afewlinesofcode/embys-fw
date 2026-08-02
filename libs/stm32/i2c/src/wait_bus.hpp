@@ -73,7 +73,7 @@ private:
   Base::Event event;
 
   static void
-  event_callback(void *context);
+  event_callback(void *context) noexcept;
 };
 
 }; // namespace Embys::Stm32::I2c

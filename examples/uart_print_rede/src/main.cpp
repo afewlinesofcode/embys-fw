@@ -84,14 +84,14 @@ blink(AppContext *ctx)
 }
 
 static void
-on_blink_off(void *ctx)
+on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
   context->led_pin->write(1); // active-low: 1 = off
 }
 
 static void
-on_tx_done(void *context, int result)
+on_tx_done(void *context, int result) noexcept
 {
   TRY_ASYNC(context, result);
   auto *ctx = static_cast<AppContext *>(context);
@@ -99,7 +99,7 @@ on_tx_done(void *context, int result)
 }
 
 static void
-send_message(void *context)
+send_message(void *context) noexcept
 {
   // panic(2);
   auto *ctx = static_cast<AppContext *>(context);

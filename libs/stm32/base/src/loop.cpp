@@ -282,14 +282,14 @@ LoopCore::run_modules()
 }
 
 void
-LoopCore::timer_callback(void *context)
+LoopCore::timer_callback(void *context) noexcept
 {
   auto loop = static_cast<LoopCore *>(context);
   loop->tick();
 }
 
 void
-LoopCore::loopbreak_callback(void *context)
+LoopCore::loopbreak_callback(void *context) noexcept
 {
   auto loop = static_cast<LoopCore *>(context);
   loop->stop_scheduled = false;

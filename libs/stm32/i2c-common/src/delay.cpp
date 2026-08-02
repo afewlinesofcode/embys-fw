@@ -17,7 +17,7 @@ Delay::exec(std::chrono::microseconds delay, Cb cb)
 }
 
 void
-Delay::fired(void *ctx)
+Delay::fired(void *ctx) noexcept
 {
   static_cast<Delay *>(ctx)->cb(0);
 }

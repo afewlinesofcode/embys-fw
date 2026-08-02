@@ -169,7 +169,7 @@ Device::check_crc(std::span<const uint8_t, 7> data)
 }
 
 void
-Device::command_callback(void *ctx, int result)
+Device::command_callback(void *ctx, int result) noexcept
 {
   auto aht20 = static_cast<Device *>(ctx);
 

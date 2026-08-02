@@ -67,7 +67,7 @@ configure_led()
  * @param context Pointer to a boolean representing the LED state.
  */
 void
-toggle_led(void *context)
+toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
 

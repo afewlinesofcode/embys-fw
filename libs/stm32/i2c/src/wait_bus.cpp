@@ -28,7 +28,7 @@ WaitBus::start()
 }
 
 void
-WaitBus::event_callback(void *context)
+WaitBus::event_callback(void *context) noexcept
 {
   auto *self = static_cast<WaitBus *>(context);
 

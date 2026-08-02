@@ -1,3 +1,4 @@
+#include <array>
 #include <vector>
 
 #include <embys/stm32/base/loop.hpp>
@@ -77,14 +78,17 @@ struct I2cLoopFixture : I2cBaseFixture
 struct ReadCapture
 {
   int result = -1;
-  std::vector<uint8_t> data;
+  std::array<uint8_t, 16> data{};
+  size_t size = 0;
 
   static void
-  callback(void *context, int result, std::span<const uint8_t> data)
+  callback(void *context, int result, std::span<const uint8_t> data) noexcept
   {
     auto *capture = static_cast<ReadCapture *>(context);
     capture->result = result;
-    capture->data.assign(data.begin(), data.end());
+    capture->size = data.size();
+    for (size_t i = 0; i < data.size(); ++i)
+      capture->data[i] = data[i];
   }
 };
 
@@ -187,8 +191,9 @@ TEST_SUITE("i2c")
     const uint8_t data[] = {0x01};
     int result = -1;
     CHECK(bus.write(0x50u, std::span{data}.first<1>(),
-                    {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; },
-                     &result}) == I2c::BUS_NOT_ENABLED);
+                    {[](void *ctx, int r) noexcept
+                     { *static_cast<int *>(ctx) = r; }, &result}) ==
+          I2c::BUS_NOT_ENABLED);
   }
 
   TEST_CASE_FIXTURE(I2cLoopFixture,
@@ -197,7 +202,7 @@ TEST_SUITE("i2c")
     bus.enable(100000u);
 
     int result = -1;
-    auto cb = Callback<int>{[](void *ctx, int r)
+    auto cb = Callback<int>{[](void *ctx, int r) noexcept
                             { *static_cast<int *>(ctx) = r; }, &result};
 
     const uint8_t data[] = {0xDE, 0xAD};
@@ -216,9 +221,9 @@ TEST_SUITE("i2c")
     bus.enable(100000u);
 
     int r1 = -1, r2 = -1;
-    auto cb1 = Callback<int>{[](void *ctx, int r)
+    auto cb1 = Callback<int>{[](void *ctx, int r) noexcept
                              { *static_cast<int *>(ctx) = r; }, &r1};
-    auto cb2 = Callback<int>{[](void *ctx, int r)
+    auto cb2 = Callback<int>{[](void *ctx, int r) noexcept
                              { *static_cast<int *>(ctx) = r; }, &r2};
 
     const uint8_t data[] = {0x01};

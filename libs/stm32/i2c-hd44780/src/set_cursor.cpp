@@ -38,7 +38,7 @@ SetCursor::update_state()
 }
 
 void
-SetCursor::command_callback(void *ctx, int result)
+SetCursor::command_callback(void *ctx, int result) noexcept
 {
   auto cmd = static_cast<SetCursor *>(ctx);
 

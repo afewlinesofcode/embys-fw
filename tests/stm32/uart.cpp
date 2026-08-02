@@ -1,3 +1,4 @@
+#include <array>
 #include <vector>
 
 #include <embys/stm32/base/loop.hpp>
@@ -18,6 +19,19 @@ static_assert(!Uart::instance_available<Stm32f103xb, Uart::Instance::Usart6>);
 static_assert(Uart::instance_available<Stm32f407xx, Uart::Instance::Usart3>);
 static_assert(Uart::instance_available<Stm32f411xe, Uart::Instance::Usart6>);
 static_assert(!Uart::instance_available<Stm32f411xe, Uart::Instance::Usart3>);
+
+struct ReceivedBytes
+{
+  std::array<uint8_t, 16> values{};
+  size_t size = 0;
+
+  static void
+  record(void *context, uint8_t byte) noexcept
+  {
+    auto *received = static_cast<ReceivedBytes *>(context);
+    received->values[received->size++] = byte;
+  }
+};
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -274,8 +288,8 @@ TEST_SUITE("uart")
     bus.enable(115200);
 
     int tx_result = -1;
-    bus.set_tx_callback(
-        {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
+    bus.set_tx_callback({[](void *ctx, int r) noexcept
+                         { *static_cast<int *>(ctx) = r; }, &tx_result});
 
     const uint8_t data[] = {0xDE, 0xAD};
     bus.write(data);
@@ -296,19 +310,16 @@ TEST_SUITE("uart")
   {
     bus.enable(115200);
 
-    std::vector<uint8_t> received;
-    bus.set_rx_callback(
-        {[](void *ctx, uint8_t b)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); },
-         &received});
+    ReceivedBytes received;
+    bus.set_rx_callback({ReceivedBytes::record, &received});
 
     Sim::Uart::simulate_rx({'A'});
 
     (void)loop.stop(std::chrono::microseconds{100});
     loop.run();
 
-    REQUIRE(received.size() == 1);
-    CHECK(received[0] == 'A');
+    REQUIRE(received.size == 1);
+    CHECK(received.values[0] == 'A');
   }
 
   TEST_CASE_FIXTURE(UartLoopFixture,
@@ -316,21 +327,18 @@ TEST_SUITE("uart")
   {
     bus.enable(115200);
 
-    std::vector<uint8_t> received;
-    bus.set_rx_callback(
-        {[](void *ctx, uint8_t b)
-         { static_cast<std::vector<uint8_t> *>(ctx)->push_back(b); },
-         &received});
+    ReceivedBytes received;
+    bus.set_rx_callback({ReceivedBytes::record, &received});
 
     Sim::Uart::simulate_rx({0x11, 0x22, 0x33});
 
     (void)loop.stop(std::chrono::microseconds{100});
     loop.run();
 
-    REQUIRE(received.size() == 3);
-    CHECK(received[0] == 0x11);
-    CHECK(received[1] == 0x22);
-    CHECK(received[2] == 0x33);
+    REQUIRE(received.size == 3);
+    CHECK(received.values[0] == 0x11);
+    CHECK(received.values[1] == 0x22);
+    CHECK(received.values[2] == 0x33);
   }
 
   // ── REDE pin ──────────────────────────────────────────────────────────────
@@ -342,8 +350,8 @@ TEST_SUITE("uart")
     bus.set_rede_pin(&rede);
 
     int tx_result = -1;
-    bus.set_tx_callback(
-        {[](void *ctx, int r) { *static_cast<int *>(ctx) = r; }, &tx_result});
+    bus.set_tx_callback({[](void *ctx, int r) noexcept
+                         { *static_cast<int *>(ctx) = r; }, &tx_result});
 
     const uint8_t data[] = {0xCC};
     GPIOA->BSRR = 0;

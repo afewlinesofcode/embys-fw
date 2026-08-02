@@ -56,7 +56,7 @@ static const char message[] = "Hello from Blue Pill!\r\n";
 static bool tx_busy = false;
 
 static void
-on_tx_done(void *, int result)
+on_tx_done(void *, int result) noexcept
 {
   // Result 0 = OK; negative = TX_TIMEOUT or other error.
   // For this example we simply clear the flag regardless — the next
@@ -66,7 +66,7 @@ on_tx_done(void *, int result)
 }
 
 static void
-send_message(void *context)
+send_message(void *context) noexcept
 {
   auto *bus = static_cast<Uart::BusCore *>(context);
 
