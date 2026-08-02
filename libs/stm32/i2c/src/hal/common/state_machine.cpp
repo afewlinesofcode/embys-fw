@@ -18,14 +18,14 @@ Sm::Sm(BusCore *bus_)
 {
 }
 
-int
+Status
 Sm::start_read(uint8_t addr7_, uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
-    return INVALID_STATE;
+    return Status::failure(Error::InvalidState);
 
   if (!buf || !len)
-    return INVALID_BUFFER;
+    return Status::failure(Error::InvalidBuffer);
 
   addr7 = addr7_;
   dir = Direction::Read;
@@ -33,20 +33,23 @@ Sm::start_read(uint8_t addr7_, uint8_t *buf, uint16_t len)
   rx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result = 0;
+  succeeded = false;
   state = State::WaitBus;
 
-  return wait_bus.start();
+  const Status wait_result = wait_bus.start();
+  if (!wait_result)
+    state = State::Idle;
+  return wait_result;
 }
 
-int
+Status
 Sm::start_read(uint8_t addr7_, uint8_t reg_, uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
-    return INVALID_STATE;
+    return Status::failure(Error::InvalidState);
 
   if (!buf || !len)
-    return INVALID_BUFFER;
+    return Status::failure(Error::InvalidBuffer);
 
   addr7 = addr7_;
   dir = Direction::Read;
@@ -55,20 +58,23 @@ Sm::start_read(uint8_t addr7_, uint8_t reg_, uint8_t *buf, uint16_t len)
   rx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result = 0;
+  succeeded = false;
   state = State::WaitBus;
 
-  return wait_bus.start();
+  const Status wait_result = wait_bus.start();
+  if (!wait_result)
+    state = State::Idle;
+  return wait_result;
 }
 
-int
+Status
 Sm::start_write(uint8_t addr7_, const uint8_t *buf, uint16_t len)
 {
   if (state != State::Idle)
-    return INVALID_STATE;
+    return Status::failure(Error::InvalidState);
 
   if (!buf || !len)
-    return INVALID_BUFFER;
+    return Status::failure(Error::InvalidBuffer);
 
   addr7 = addr7_;
   dir = Direction::Write;
@@ -76,10 +82,13 @@ Sm::start_write(uint8_t addr7_, const uint8_t *buf, uint16_t len)
   tx_buf = buf;
   buf_len = len;
   buf_pos = 0;
-  result = 0;
+  succeeded = false;
   state = State::WaitBus;
 
-  return wait_bus.start();
+  const Status wait_result = wait_bus.start();
+  if (!wait_result)
+    state = State::Idle;
+  return wait_result;
 }
 
 void
@@ -101,15 +110,15 @@ Sm::handle_error()
   uint32_t sr1 = i2c->SR1;
 
   if (sr1 & I2C_SR1_AF)
-    error(NACK);
+    error(Error::Nack);
   else if (sr1 & I2C_SR1_BERR)
-    error(BUS_ERROR);
+    error(Error::BusError);
   else if (sr1 & I2C_SR1_ARLO)
-    error(ARBITRATION_LOST);
+    error(Error::ArbitrationLost);
   else if (sr1 & I2C_SR1_OVR)
-    error(OVERRUN);
+    error(Error::Overrun);
   else if (sr1 & I2C_SR1_TIMEOUT)
-    error(TIMEOUT);
+    error(Error::Timeout);
 }
 
 void
@@ -343,19 +352,20 @@ Sm::done()
 {
   __DSB();
   disable_buf_irq(i2c);
-  result = 0;
+  succeeded = true;
   state = State::Stop;
 }
 
 void
-Sm::error(int result_code)
+Sm::error(Error error_code_)
 {
   disable_buf_irq(i2c);
   CLEAR_BIT_V(i2c->SR1, err_mask);
   stop();
-  reset_i2c(i2c);
+  (void)reset_i2c(i2c);
 
-  result = result_code;
+  succeeded = false;
+  error_code = error_code_;
   state = State::Error;
 }
 
@@ -367,25 +377,25 @@ Sm::timeout_handler(void *context) noexcept
   if (self->state == State::Idle || self->is_complete())
     return;
 
-  self->error(TIMEOUT);
+  self->error(Error::Timeout);
   self->bus->set_module_pending();
 }
 
 void
-Sm::wait_bus_callback(void *context, int res) noexcept
+Sm::wait_bus_callback(void *context, Status result) noexcept
 {
   auto *self = static_cast<Sm *>(context);
 
   if (self->state != State::WaitBus)
     return;
 
-  if (res == 0)
+  if (result)
   {
     self->start();
     return;
   }
 
-  self->error(res);
+  self->error(result.error());
   self->bus->set_module_pending();
 }
 

@@ -220,7 +220,8 @@ main()
   if (!gpio_bus.enable() || !button_pin.enable() || !led_pin.enable() ||
       !i2c_scl.enable() || !i2c_sda.enable())
     return 1;
-  TRY(i2c_bus.enable(100000));
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

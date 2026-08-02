@@ -22,97 +22,127 @@ BusCore::~BusCore()
     (void)disable();
 }
 
-int
+Status
 BusCore::enable(uint32_t scl_hz_)
 {
   if (enabled)
-    return 0;
+    return Status::success();
 
-  TRY(enable_i2c(i2c, scl_hz_));
-  TRY(reset_i2c(i2c));
+  const Status enable_result = enable_i2c(i2c, scl_hz_);
+  if (!enable_result)
+    return enable_result;
+
+  const Status reset_result = reset_i2c(i2c);
+  if (!reset_result)
+  {
+    (void)disable_i2c(i2c);
+    return reset_result;
+  }
 
 
   module = base->add_module({BusCore::module_callback, this});
   if (!module)
   {
     (void)disable_i2c(i2c);
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::ModuleCapacity);
   }
 
   scl_hz = scl_hz_;
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::disable()
 {
   if (!enabled)
-    return 0;
+    return Status::success();
 
   sm.reset();
   base->remove_module(module);
   module = nullptr;
 
-  TRY(disable_i2c(i2c));
+  const Status disable_result = disable_i2c(i2c);
+  if (!disable_result)
+    return disable_result;
 
   enabled = false;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::read(uint8_t addr7, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
   if (len > rx_capacity)
-    return BUFFER_TOO_SMALL;
+    return Status::failure(Error::BufferTooSmall);
 
   read_cb = cb;
   reading = true;
   transfer_len = len;
-  TRY(sm.start_read(addr7, rx_buffer, len));
+  const Status start_result = sm.start_read(addr7, rx_buffer, len);
+  if (!start_result)
+  {
+    reading = false;
+    transfer_len = 0;
+    read_cb.clear();
+    return start_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
   if (len > rx_capacity)
-    return BUFFER_TOO_SMALL;
+    return Status::failure(Error::BufferTooSmall);
 
   read_cb = cb;
   reading = true;
   transfer_len = len;
-  TRY(sm.start_read(addr7, reg, rx_buffer, len));
+  const Status start_result = sm.start_read(addr7, reg, rx_buffer, len);
+  if (!start_result)
+  {
+    reading = false;
+    transfer_len = 0;
+    read_cb.clear();
+    return start_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
-int
-BusCore::write(uint8_t addr7, std::span<const uint8_t> data, Callback<int> cb)
+Status
+BusCore::write(uint8_t addr7, std::span<const uint8_t> data, WriteCallback cb)
 {
   if (!enabled)
-    return BUS_NOT_ENABLED;
+    return Status::failure(Error::NotEnabled);
 
   if (data.size() > tx_capacity)
-    return BUFFER_TOO_SMALL;
+    return Status::failure(Error::BufferTooSmall);
 
   if (!data.empty())
     std::memcpy(tx_buffer, data.data(), data.size());
   this->cb = cb;
   reading = false;
   transfer_len = static_cast<uint16_t>(data.size());
-  TRY(sm.start_write(addr7, tx_buffer, transfer_len));
+  const Status start_result = sm.start_write(addr7, tx_buffer, transfer_len);
+  if (!start_result)
+  {
+    transfer_len = 0;
+    this->cb.clear();
+    return start_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
 void
@@ -142,10 +172,16 @@ BusCore::module_callback(void *context) noexcept
 
   if (self->sm.is_complete())
   {
-    int result = self->sm.get_result();
+    const Status result = self->sm.get_result();
     self->sm.reset();
     if (self->reading)
-      self->read_cb(result, {self->rx_buffer, self->transfer_len});
+    {
+      if (result)
+        self->read_cb(ReadResult::success(
+            {self->rx_buffer, static_cast<size_t>(self->transfer_len)}));
+      else
+        self->read_cb(ReadResult::failure(result.error()));
+    }
     else
       self->cb(result);
   }

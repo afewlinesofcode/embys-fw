@@ -38,14 +38,14 @@ namespace Embys::Stm32::I2c
  *               ≤400000 for fast mode).
  * @return 0 on success, negative error code on failure.
  */
-int
+[[nodiscard]] Status
 enable_i2c(I2C_TypeDef *i2c, uint32_t scl_hz);
 
 /**
  * @brief Disable all I2C interrupts and turn off the peripheral APB clock.
  * @return 0 on success, negative error code on failure.
  */
-int
+[[nodiscard]] Status
 disable_i2c(I2C_TypeDef *i2c);
 
 /**
@@ -54,7 +54,7 @@ disable_i2c(I2C_TypeDef *i2c);
  * sequence, stopping as soon as the bus is idle and error-free.
  * @return 0 if recovered, BUS_STUCK if all recovery attempts fail.
  */
-int
+[[nodiscard]] Status
 reset_i2c(I2C_TypeDef *i2c);
 
 }; // namespace Embys::Stm32::I2c

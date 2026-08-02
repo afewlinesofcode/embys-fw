@@ -118,8 +118,8 @@ toggle_btn(void *context, uint8_t value) noexcept
 
     if (ctx->blink_on)
     {
-      (void)ctx->led->write(
-          0); // Ensure LED is on immediately when blinking starts
+      // Ensure LED is on immediately when blinking starts
+      (void)ctx->led->write(0);
       ctx->led_on = true;
       (void)ctx->blink_event->enable(
           std::chrono::microseconds{LED_BLINK_INTERVAL_US});
@@ -128,7 +128,8 @@ toggle_btn(void *context, uint8_t value) noexcept
     else
     {
       ctx->blink_event->disable();
-      (void)ctx->led->write(1); // Ensure LED is off when blinking stops
+      // Ensure LED is off when blinking stops
+      (void)ctx->led->write(1);
       SIM_LOG("Blinking OFF");
     }
   }

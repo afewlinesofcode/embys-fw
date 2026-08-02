@@ -227,7 +227,8 @@ main()
   if (!gpio_bus.enable() || !led_pin.enable() || !i2c_scl.enable() ||
       !i2c_sda.enable())
     return 1;
-  TRY(i2c_bus.enable(100000));
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   __NVIC_EnableIRQ(TIM2_IRQn);
   __NVIC_SetPriority(TIM2_IRQn, 0x00);

@@ -261,7 +261,8 @@ main()
     return 1;
   if (!uart_bus.enable(UART_BAUD))
     return 1;
-  TRY(i2c_bus.enable(100000));
+  if (!i2c_bus.enable(100000))
+    return 1;
 
   modbus_server.enable();
 #ifdef STM32_SIM

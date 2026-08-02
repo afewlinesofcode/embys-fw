@@ -313,35 +313,23 @@ private:
   loopbreak_callback(void *context) noexcept;
 };
 
-namespace Detail
-{
-
 template <size_t EventsCapacity, size_t ModulesCapacity>
-struct LoopStorage
+class Loop final : public LoopCore
 {
   static_assert(EventsCapacity > 0, "A loop needs at least one event slot");
   static_assert(ModulesCapacity > 0, "A loop needs at least one module slot");
 
+public:
+  explicit Loop(Timer &timer)
+    : LoopCore(timer, events.data(), active_events.data(), EventsCapacity,
+               modules.data(), ModulesCapacity)
+  {
+  }
+
+private:
   std::array<Event *, EventsCapacity> events{};
   std::array<Event *, EventsCapacity> active_events{};
   std::array<Module, ModulesCapacity> modules{};
-};
-
-} // namespace Detail
-
-template <size_t EventsCapacity, size_t ModulesCapacity>
-class Loop final : private Detail::LoopStorage<EventsCapacity, ModulesCapacity>,
-                   public LoopCore
-{
-  using Storage = Detail::LoopStorage<EventsCapacity, ModulesCapacity>;
-
-public:
-  explicit Loop(Timer &timer)
-    : Storage(),
-      LoopCore(timer, Storage::events.data(), Storage::active_events.data(),
-               EventsCapacity, Storage::modules.data(), ModulesCapacity)
-  {
-  }
 };
 
 }; // namespace Embys::Stm32::Base

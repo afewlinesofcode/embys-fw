@@ -60,7 +60,8 @@ namespace Embys::Stm32::I2c
 class BusCore
 {
 public:
-  using ReadCallback = Callback<int, std::span<const uint8_t>>;
+  using ReadCallback = Callback<ReadResult>;
+  using WriteCallback = Callback<Status>;
 
   BusCore() = delete;
   BusCore(const BusCore &) = delete;
@@ -105,39 +106,42 @@ public:
    * @brief Enable the I2C peripheral and register with the loop.
    * If the bus is found busy on entry, a recovery attempt is made.
    * @param scl_hz SCL frequency in Hz (default 100 kHz).
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the peripheral/module-registration failure.
    */
-  int
+  [[nodiscard]] Status
   enable(uint32_t scl_hz = 100000u);
 
   /**
    * @brief Disable the I2C peripheral and unregister from the loop.
-   * @return 0 on success, negative error code on failure.
+   * @return Success or the hardware disable failure.
    */
-  int
+  [[nodiscard]] Status
   disable();
 
   /**
    * @brief Asynchronous read of len bytes from I2C address addr7.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the read result after a successful
+   * start.
    */
-  int
+  [[nodiscard]] Status
   read(uint8_t addr7, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous register-addressed read.
    * Writes reg in the first frame, issues a repeated START, then reads.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the read result after a successful
+   * start.
    */
-  int
+  [[nodiscard]] Status
   read(uint8_t addr7, uint8_t reg, uint16_t len, ReadCallback cb);
 
   /**
    * @brief Asynchronous write of len bytes to I2C address addr7.
-   * @param cb  Invoked in loop context with 0 on success, negative on error.
+   * @param cb Invoked in loop context with the write result after a successful
+   * start.
    */
-  int
-  write(uint8_t addr7, std::span<const uint8_t> data, Callback<int> cb);
+  [[nodiscard]] Status
+  write(uint8_t addr7, std::span<const uint8_t> data, WriteCallback cb);
 
   /**
    * @brief I2C event IRQ handler — call from I2Cx_EV_IRQHandler.
@@ -168,7 +172,7 @@ private:
   Base::Module *module = nullptr;
   uint32_t scl_hz = 0u;
   bool enabled = false;
-  Callback<int> cb;
+  WriteCallback cb;
   ReadCallback read_cb;
   uint8_t *rx_buffer;
   size_t rx_capacity;
