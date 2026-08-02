@@ -2,6 +2,7 @@
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/gpio/bus.hpp>
+#include <embys/stm32/gpio/hal.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/sim/sim.hpp>
 
@@ -115,14 +116,33 @@ TEST_SUITE("gpio")
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
+                    "Pin: invalid runtime configuration reports a scoped error")
+  {
+    const Gpio::Status result = Gpio::validate_pin_config(
+        GPIOA, 0, Gpio::PinCfg::IN | Gpio::PinCfg::PU | Gpio::PinCfg::PD,
+        nullptr);
+
+    CHECK_FALSE(result.has_value());
+    CHECK(result.error() == Gpio::Error::ConfigurationConflict);
+  }
+
+  TEST_CASE("Pin: invalid HAL read reports a scoped error")
+  {
+    const Gpio::ReadResult result = Gpio::read_pin(nullptr, 0);
+
+    CHECK_FALSE(result.has_value());
+    CHECK(result.error() == Gpio::Error::InvalidPort);
+  }
+
+  TEST_CASE_FIXTURE(GpioLoopFixture,
                     "ONLY Pin: enable accepts input pull-up via unified PinCfg")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     // Unified PinCfg allows input pull-up directly without CNF coupling.
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::PU> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
     CHECK(pin.is_enabled());
   }
 
@@ -132,11 +152,11 @@ TEST_SUITE("gpio")
       GpioLoopFixture,
       "Pin: enable configures GPIO clock and CRL for input floating")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     // Clock enabled
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
@@ -146,36 +166,36 @@ TEST_SUITE("gpio")
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: enable with PULL_UP sets ODR bit")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PU> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
     CHECK((GPIOA->ODR & (1u << 3)) != 0);
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Pin: enable with PULL_DOWN clears ODR bit")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     // Pre-set the ODR bit to make sure the test actually clears it
     SET_BIT_V(GPIOA->ODR, (1u << 3));
 
     Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN | Gpio::PinCfg::PD> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
     CHECK((GPIOA->ODR & (1u << 3)) == 0);
   }
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: enable with IRQ configures EXTI")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
         bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     // AFIO clock and EXTICR routing: EXTICR[0] bits [3:0] = 0 (GPIOA = port 0)
     CHECK((RCC->APB2ENR & RCC_APB2ENR_AFIOEN) != 0);
@@ -189,14 +209,14 @@ TEST_SUITE("gpio")
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: enable is idempotent")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
     uint32_t crl_after_first = GPIOA->CRL;
 
-    CHECK(pin.enable() == 0); // second call is no-op
+    CHECK(pin.enable().has_value()); // second call is no-op
     CHECK(GPIOA->CRL == crl_after_first);
   }
 
@@ -207,8 +227,23 @@ TEST_SUITE("gpio")
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
-    CHECK(pin.enable() == Gpio::BUS_NOT_ENABLED);
+    const Gpio::Status result = pin.enable();
+    CHECK_FALSE(result.has_value());
+    CHECK(result.error() == Gpio::Error::BusNotEnabled);
     CHECK(!pin.is_enabled());
+  }
+
+  TEST_CASE_FIXTURE(GpioLoopFixture,
+                    "Bus: module capacity failure leaves bus disabled")
+  {
+    REQUIRE(bus.enable().has_value());
+
+    Gpio::Bus<1> second_bus(loop);
+    const Gpio::Status result = second_bus.enable();
+
+    CHECK_FALSE(result.has_value());
+    CHECK(result.error() == Gpio::Error::ModuleCapacity);
+    CHECK_FALSE(second_bus.is_enabled());
   }
 
   // ── disable ───────────────────────────────────────────────────────────────
@@ -216,12 +251,12 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Pin: disable resets pin to floating input")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::OUT> pin(bus);
 
-    CHECK(pin.enable() == 0);
-    CHECK(pin.disable() == 0);
+    CHECK(pin.enable().has_value());
+    CHECK(pin.disable().has_value());
 
     // CRL nibble should be 0b0100 = IN_FL (reset state)
     CHECK(read_cr_nibble(GPIOA, 0) == 0b0100u);
@@ -230,13 +265,13 @@ TEST_SUITE("gpio")
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: disable clears EXTI configuration")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
         bus);
 
-    CHECK(pin.enable() == 0);
-    CHECK(pin.disable() == 0);
+    CHECK(pin.enable().has_value());
+    CHECK(pin.disable().has_value());
 
     uint32_t pin_bit = (1u << 0);
     CHECK((EXTI->IMR & pin_bit) == 0);
@@ -248,14 +283,14 @@ TEST_SUITE("gpio")
       GpioLoopFixture,
       "Pin: disable disables GPIO clock when last pin on port removed")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) != 0);
 
-    CHECK(pin.disable() == 0);
+    CHECK(pin.disable().has_value());
     CHECK((RCC->APB2ENR & RCC_APB2ENR_IOPAEN) == 0);
   }
 
@@ -263,38 +298,39 @@ TEST_SUITE("gpio")
 
   TEST_CASE_FIXTURE(GpioLoopFixture, "Pin: read returns current IDR state")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::IN> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     SET_BIT_V(GPIOA->IDR, (1u << 2));
-    uint8_t val = 0;
-    CHECK(pin.read(&val) == 0);
-    CHECK(val == 1);
+    const Gpio::ReadResult high = pin.read();
+    REQUIRE(high.has_value());
+    CHECK(high.value());
 
     CLEAR_BIT_V(GPIOA->IDR, (1u << 2));
-    CHECK(pin.read(&val) == 0);
-    CHECK(val == 0);
+    const Gpio::ReadResult low = pin.read();
+    REQUIRE(low.has_value());
+    CHECK_FALSE(low.value());
   }
 
   TEST_CASE_FIXTURE(
       GpioLoopFixture,
       "Pin: write high uses BSRR set bits, write low uses BSRR reset bits")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::OUT> pin(bus);
 
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     GPIOA->BSRR = 0;
-    CHECK(pin.write(1) == 0);
+    CHECK(pin.write(1).has_value());
     CHECK((GPIOA->BSRR & (1u << 2)) != 0); // set bit in lower half
 
     GPIOA->BSRR = 0;
-    CHECK(pin.write(0) == 0);
+    CHECK(pin.write(0).has_value());
     CHECK((GPIOA->BSRR & (1u << (2 + 16))) != 0); // reset bit in upper half
   }
 
@@ -303,21 +339,23 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Bus: returns BUS_FULL when all slots are taken")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     // Fill all 3 slots (GpioLoopFixture has pins_capacity = 3)
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN> pin0(bus);
     Gpio::Pin<Gpio::Port::A, 1, Gpio::PinCfg::IN> pin1(bus);
     Gpio::Pin<Gpio::Port::A, 2, Gpio::PinCfg::IN> pin2(bus);
 
-    CHECK(pin0.enable() == 0);
-    CHECK(pin1.enable() == 0);
-    CHECK(pin2.enable() == 0);
+    CHECK(pin0.enable().has_value());
+    CHECK(pin1.enable().has_value());
+    CHECK(pin2.enable().has_value());
 
     // Fourth pin exceeds capacity
     Gpio::Pin<Gpio::Port::A, 3, Gpio::PinCfg::IN> pin3(bus);
 
-    CHECK(pin3.enable() == Gpio::BUS_FULL);
+    const Gpio::Status full = pin3.enable();
+    CHECK_FALSE(full.has_value());
+    CHECK(full.error() == Gpio::Error::BusFull);
   }
 
   // ── IRQ → callback dispatch ───────────────────────────────────────────────
@@ -325,11 +363,11 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Pin: rising edge triggers callback with value=1")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
         bus);
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     CallbackValues calls;
     pin.set_callback({CallbackValues::record, &calls});
@@ -350,11 +388,11 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Pin: falling edge triggers callback with value=0")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
         bus);
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     CallbackValues calls;
     pin.set_callback({CallbackValues::record, &calls});
@@ -376,7 +414,7 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Two pins: only the triggered pin's callback fires")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     // PA0 → EXTI0, PA1 → EXTI1
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin0(
@@ -384,8 +422,8 @@ TEST_SUITE("gpio")
     Gpio::Pin<Gpio::Port::A, 1, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin1(
         bus);
 
-    CHECK(pin0.enable() == 0);
-    CHECK(pin1.enable() == 0);
+    CHECK(pin0.enable().has_value());
+    CHECK(pin1.enable().has_value());
 
     CallbackValues calls0;
     CallbackValues calls1;
@@ -408,11 +446,11 @@ TEST_SUITE("gpio")
   TEST_CASE_FIXTURE(GpioLoopFixture,
                     "Disabled pin does not trigger callback after disable")
   {
-    bus.enable();
+    REQUIRE(bus.enable().has_value());
 
     Gpio::Pin<Gpio::Port::A, 0, Gpio::PinCfg::IN | Gpio::PinCfg::LISTEN> pin(
         bus);
-    CHECK(pin.enable() == 0);
+    CHECK(pin.enable().has_value());
 
     int call_count = 0;
     pin.set_callback({[](void *ctx, uint8_t) noexcept
@@ -427,7 +465,7 @@ TEST_SUITE("gpio")
 
     CHECK(call_count == 1);
 
-    CHECK(pin.disable() == 0);
+    CHECK(pin.disable().has_value());
 
     // Second trigger — pin is disabled, no callback
     Sim::Gpio::trigger_pin(GPIOA, 0, 0);

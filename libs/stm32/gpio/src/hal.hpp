@@ -19,9 +19,9 @@ namespace Embys::Stm32::Gpio
 /**
  * @brief Enable the clock for a GPIO port.
  * @param port GPIO port (GPIOA, GPIOB, …).
- * @return 0 on success, negative error code on failure.
+ * @return Success or the reason the port could not be enabled.
  */
-int
+Status
 enable_gpio(GPIO_TypeDef *port);
 
 /**
@@ -29,7 +29,7 @@ enable_gpio(GPIO_TypeDef *port);
  * @param port GPIO port (GPIOA, GPIOB, …).
  * @return 0 on success, negative error code on failure.
  */
-int
+Status
 disable_gpio(GPIO_TypeDef *port);
 
 /**
@@ -37,14 +37,14 @@ disable_gpio(GPIO_TypeDef *port);
  * Must be called before configuring any pin IRQs.
  * @return 0 on success, negative error code on failure.
  */
-int
+Status
 enable_exti();
 
 /**
  * @brief Disable the clock for the EXTI source routing peripheral (AFIO on F1).
  * @return 0 on success, negative error code on failure.
  */
-int
+Status
 disable_exti();
 
 /**
@@ -55,15 +55,15 @@ disable_exti();
  * @param pwm PWM binding information.
  * @return 0 on success, negative error code on failure.
  */
-int
+Status
 validate_pin_config(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
                     const PwmBinding *pwm);
 
-int
+Status
 configure_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg,
               const PwmBinding *pwm);
 
-int
+Status
 reset_pin(GPIO_TypeDef *port, uint8_t index, PinCfg cfg, const PwmBinding *pwm);
 
 /**
@@ -78,11 +78,10 @@ exti_get_and_clear_pending(uint8_t pin_index);
  * @brief Read the current input value of a pin.
  * @param port GPIO port (GPIOA, GPIOB, …).
  * @param index Pin number (0–15).
- * @param value Output parameter for the pin value (0 or 1).
- * @return 0 on success, negative error code on failure.
+ * @return Current pin state or a hardware error.
  */
-int
-read_pin(GPIO_TypeDef *port, uint8_t index, uint8_t *value);
+ReadResult
+read_pin(GPIO_TypeDef *port, uint8_t index);
 
 /**
  * @brief Set the output value of a pin.
@@ -91,7 +90,7 @@ read_pin(GPIO_TypeDef *port, uint8_t index, uint8_t *value);
  * @param value Value to set (0 for low, non-zero for high).
  * @return 0 on success, negative error code on failure.
  */
-int
+Status
 write_pin(GPIO_TypeDef *port, uint8_t index, uint8_t value);
 
 PinCfg

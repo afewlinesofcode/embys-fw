@@ -101,7 +101,7 @@ BusCore::write(std::span<const uint8_t> data)
 
   if (rede_pin)
   {
-    rede_pin->write(1);
+    (void)rede_pin->write(1);
     clear_tc(usart);
   }
 
@@ -168,7 +168,7 @@ BusCore::handle_irq()
     clear_tc(usart);
 
     if (rede_pin)
-      rede_pin->write(0);
+      (void)rede_pin->write(0);
 
     tx_complete(0);
   }

@@ -18,7 +18,7 @@ PinCore::~PinCore()
 {
   if (enabled)
   {
-    disable();
+    (void)disable();
   }
 }
 
@@ -48,39 +48,57 @@ PinCore::clear_callback()
   cb.clear();
 }
 
-int
+Status
 PinCore::enable()
 {
   if (enabled)
   {
     // Already enabled
-    return 0;
+    return Status::success();
   }
 
-  TRY(validate_pin_config(port, index, cfg, &pwm));
+  const Status validation = validate_pin_config(port, index, cfg, &pwm);
+  if (!validation)
+    return validation;
 
-  TRY(configure_pin(port, index, cfg, &pwm));
+  const Status configuration = configure_pin(port, index, cfg, &pwm);
+  if (!configuration)
+    return configuration;
 
   if (has_init_value)
-    TRY(write(init_value));
+  {
+    const Status write_result = write(init_value);
+    if (!write_result)
+    {
+      (void)reset_pin(port, index, cfg, &pwm);
+      return write_result;
+    }
+  }
 
-  TRY(bus->add(this));
+  const Status add_result = bus->add(this);
+  if (!add_result)
+  {
+    (void)reset_pin(port, index, cfg, &pwm);
+    return add_result;
+  }
 
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 PinCore::disable()
 {
   if (!enabled)
   {
     // Already disabled
-    return 0;
+    return Status::success();
   }
 
-  TRY(bus->remove(this));
+  const Status remove_result = bus->remove(this);
+  if (!remove_result)
+    return remove_result;
 
   enabled = false;
 
@@ -88,18 +106,20 @@ PinCore::disable()
   clear_callback();
 
   // Reset pin to safe state (input floating)
-  reset_pin(port, index, cfg, &pwm);
+  const Status reset_result = reset_pin(port, index, cfg, &pwm);
+  if (!reset_result)
+    return reset_result;
 
-  return 0;
+  return Status::success();
 }
 
-int
-PinCore::read(uint8_t *value)
+ReadResult
+PinCore::read()
 {
-  return read_pin(port, index, value);
+  return read_pin(port, index);
 }
 
-int
+Status
 PinCore::write(uint8_t value)
 {
   return write_pin(port, index, value);
@@ -108,12 +128,11 @@ PinCore::write(uint8_t value)
 void
 PinCore::trigger()
 {
-  uint8_t value;
-
-  if (read(&value) < 0)
+  const ReadResult value = read();
+  if (!value)
     return; // Failed to read pin state, can't trigger callback
 
-  cb(value);
+  cb(value.value() ? 1U : 0U);
 }
 
 }; // namespace Embys::Stm32::Gpio

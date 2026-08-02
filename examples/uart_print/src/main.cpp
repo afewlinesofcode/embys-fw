@@ -116,9 +116,8 @@ main()
   uart_ptr = &uart;
 
   // Enable peripherals
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
+  if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable())
+    return 1;
   uart.enable(UART_BAUD);
   (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 

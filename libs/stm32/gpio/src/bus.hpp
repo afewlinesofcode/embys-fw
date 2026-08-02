@@ -68,16 +68,16 @@ public:
 
   /**
    * @brief Enable the GPIO bus and prepare for pin management
-   * @return int Status code indicating success or failure
+   * @return Success or the module-registration failure.
    */
-  int
+  [[nodiscard]] Status
   enable();
 
   /**
    * @brief Disable the GPIO bus and clean up resources
-   * @return int Status code indicating success or failure
+   * @return Success.
    */
-  int
+  [[nodiscard]] Status
   disable();
 
   /**
@@ -128,17 +128,17 @@ private:
   /**
    * @brief Add and initialize GPIO pin
    * @param pin GPIO pin to add
-   * @return int Status code
+   * @return Success or the capacity/enable-state failure.
    */
-  int
+  [[nodiscard]] Status
   add(PinCore *pin);
 
   /**
    * @brief Remove GPIO pin and clean up resources
    * @param pin GPIO pin to remove
-   * @return int Status code
+   * @return Success or the enable-state failure.
    */
-  int
+  [[nodiscard]] Status
   remove(PinCore *pin);
 
   /**
@@ -154,16 +154,16 @@ private:
    * @brief Process all activated EXTI lines and trigger corresponding pin
    * callbacks. This should be called from the main loop context to ensure that
    * pin callbacks are executed outside of the interrupt context.
-   * @return int Status code
+   * @return Success.
    */
-  int
+  [[nodiscard]] Status
   trigger_activated_pins();
 
   /**
    * @brief Check if the GPIO bus is enabled before performing operations
-   * @return int Status code indicating success or failure
+   * @return Success or Error::BusNotEnabled.
    */
-  int
+  [[nodiscard]] Status
   check_enabled();
 
   /**
@@ -190,7 +190,7 @@ private:
   module_callback(void *context) noexcept
   {
     BusCore *gpio = static_cast<BusCore *>(context);
-    gpio->trigger_activated_pins();
+    (void)gpio->trigger_activated_pins();
   }
 };
 

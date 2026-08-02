@@ -79,7 +79,7 @@ struct AppContext
 static void
 blink(AppContext *ctx)
 {
-  ctx->led_pin->write(0); // active-low: 0 = on
+  (void)ctx->led_pin->write(0); // active-low: 0 = on
   (void)ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 }
 
@@ -87,7 +87,7 @@ static void
 on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
-  context->led_pin->write(1); // active-low: 1 = off
+  (void)context->led_pin->write(1); // active-low: 1 = off
 }
 
 static void
@@ -171,11 +171,9 @@ main()
   app_ctx.led_pin = &led_pin;
 
   // Enable peripherals
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
-  uart_rede.enable();
-  led_pin.enable();
+  if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable() ||
+      !uart_rede.enable() || !led_pin.enable())
+    return 1;
   uart.enable(UART_BAUD);
   (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 

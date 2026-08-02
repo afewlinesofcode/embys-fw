@@ -92,7 +92,7 @@ toggle_led(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
   ctx->led_on = !ctx->led_on;
-  ctx->led->write(ctx->led_on ? 0 : 1);
+  (void)ctx->led->write(ctx->led_on ? 0 : 1);
 
   if (ctx->led_on)
   {
@@ -133,7 +133,7 @@ toggle_btn(void *context, uint8_t value) noexcept
     {
       ctx->blink_event->disable();
       ctx->led_on = false;
-      ctx->led->write(1);
+      (void)ctx->led->write(1);
       ctx->blink_count = 0;
       SIM_LOG("Blinking OFF");
     }
@@ -217,11 +217,9 @@ main()
   Embys::Stm32::Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
-  TRY(gpio_bus.enable());
-  TRY(button_pin.enable());
-  TRY(led_pin.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
+  if (!gpio_bus.enable() || !button_pin.enable() || !led_pin.enable() ||
+      !i2c_scl.enable() || !i2c_sda.enable())
+    return 1;
   TRY(i2c_bus.enable(100000));
 
   // Enable interrupts

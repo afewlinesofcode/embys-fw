@@ -59,7 +59,7 @@ static void
 led_off(void *context) noexcept
 {
   auto *ctx = static_cast<AppContext *>(context);
-  ctx->led->write(1); // active-low: write 1 = LED off
+  (void)ctx->led->write(1); // active-low: write 1 = LED off
 }
 
 /**
@@ -72,7 +72,7 @@ on_query(void *context, int rc,
   auto *ctx = static_cast<AppContext *>(context);
 
   // Blink LED: turn on, schedule a short off event
-  ctx->led->write(0); // active-low: write 0 = LED on
+  (void)ctx->led->write(0); // active-low: write 0 = LED on
   (void)ctx->led_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 
   if (rc != 0)
@@ -224,10 +224,9 @@ main()
 
   Embys::Stm32::Base::reset<Embys::Stm32::Family>();
 
-  TRY(gpio_bus.enable());
-  TRY(led_pin.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
+  if (!gpio_bus.enable() || !led_pin.enable() || !i2c_scl.enable() ||
+      !i2c_sda.enable())
+    return 1;
   TRY(i2c_bus.enable(100000));
 
   __NVIC_EnableIRQ(TIM2_IRQn);

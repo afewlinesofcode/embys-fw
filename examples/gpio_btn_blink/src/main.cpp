@@ -89,12 +89,12 @@ toggle_led(void *context) noexcept
   if (ctx->led_on)
   {
     // Reset pin to turn on LED (active low)
-    ctx->led->write(0);
+    (void)ctx->led->write(0);
     SIM_LOG("LED ON");
   }
   else
   {
-    ctx->led->write(1);
+    (void)ctx->led->write(1);
     SIM_LOG("LED OFF");
   }
 }
@@ -118,7 +118,8 @@ toggle_btn(void *context, uint8_t value) noexcept
 
     if (ctx->blink_on)
     {
-      ctx->led->write(0); // Ensure LED is on immediately when blinking starts
+      (void)ctx->led->write(
+          0); // Ensure LED is on immediately when blinking starts
       ctx->led_on = true;
       (void)ctx->blink_event->enable(
           std::chrono::microseconds{LED_BLINK_INTERVAL_US});
@@ -127,7 +128,7 @@ toggle_btn(void *context, uint8_t value) noexcept
     else
     {
       ctx->blink_event->disable();
-      ctx->led->write(1); // Ensure LED is off when blinking stops
+      (void)ctx->led->write(1); // Ensure LED is off when blinking stops
       SIM_LOG("Blinking OFF");
     }
   }
@@ -190,9 +191,8 @@ main()
       std::chrono::microseconds{LED_BLINK_INTERVAL_US});
 
   // Enable peripherals before starting main loop
-  TRY(gpio_bus.enable());
-  TRY(button_pin.enable());
-  TRY(led_pin.enable());
+  if (!gpio_bus.enable() || !button_pin.enable() || !led_pin.enable())
+    return 1;
 
   // Enable interrupts
   __NVIC_EnableIRQ(TIM2_IRQn);

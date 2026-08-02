@@ -87,7 +87,7 @@ extern "C"
 static void
 blink(AppContext *ctx)
 {
-  ctx->led->write(0); // active-low: 0 = on
+  (void)ctx->led->write(0); // active-low: 0 = on
   (void)ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
 }
 
@@ -95,7 +95,7 @@ static void
 on_blink_off(void *ctx) noexcept
 {
   auto *context = static_cast<AppContext *>(ctx);
-  context->led->write(1); // active-low: 1 = off
+  (void)context->led->write(1); // active-low: 1 = off
 }
 
 // Modbus
@@ -255,13 +255,10 @@ main()
   Base::reset<Embys::Stm32::Family>();
 
   // Enable peripherals
-  TRY(gpio_bus.enable());
-  TRY(led_pin.enable());
-  TRY(uart_rede.enable());
-  TRY(uart_tx.enable());
-  TRY(uart_rx.enable());
-  TRY(i2c_scl.enable());
-  TRY(i2c_sda.enable());
+  if (!gpio_bus.enable() || !led_pin.enable() || !uart_rede.enable() ||
+      !uart_tx.enable() || !uart_rx.enable() || !i2c_scl.enable() ||
+      !i2c_sda.enable())
+    return 1;
   TRY(uart_bus.enable(UART_BAUD));
   TRY(i2c_bus.enable(100000));
 

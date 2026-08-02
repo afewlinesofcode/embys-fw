@@ -115,29 +115,28 @@ public:
   /**
    * @brief Initializes the pin hardware configuration
    */
-  int
+  [[nodiscard]] Status
   enable();
 
   /**
    * @brief Deinitializes the pin and releases resources
    */
-  int
+  [[nodiscard]] Status
   disable();
 
   /**
    * @brief Reads the digital state of the pin
-   * @param value Pointer to store the read value (0 or 1)
-   * @return 0 on success, error code on failure
+   * @return Current pin state or a hardware error.
    */
-  int
-  read(uint8_t *value);
+  [[nodiscard]] ReadResult
+  read();
 
   /**
    * @brief Writes the digital state of the pin
    * @param value Digital value to write (0 for low, non-zero for high)
    * @return 0 on success, error code on failure
    */
-  int
+  [[nodiscard]] Status
   write(uint8_t value);
 
 private:

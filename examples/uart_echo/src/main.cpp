@@ -161,9 +161,8 @@ main()
   ctx.line_len = 0;
   ctx.tx_busy = false;
 
-  gpio_bus.enable();
-  pin_tx.enable();
-  pin_rx.enable();
+  if (!gpio_bus.enable() || !pin_tx.enable() || !pin_rx.enable())
+    return 1;
   uart.enable(UART_BAUD);
 
   __NVIC_EnableIRQ(TIM2_IRQn);

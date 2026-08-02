@@ -23,38 +23,38 @@ BusCore::~BusCore()
 {
 }
 
-int
+Status
 BusCore::enable()
 {
   if (enabled)
   {
     // Already enabled
-    return 0;
+    return Status::success();
   }
 
-  // TRY(enable_exti_source_clock());
   module = base->add_module({BusCore::module_callback, this});
+  if (module == nullptr)
+    return Status::failure(Error::ModuleCapacity);
 
   enabled = true;
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::disable()
 {
   if (!enabled)
   {
     // Already disabled
-    return 0;
+    return Status::success();
   }
 
-  // TRY(disable_exti_source_clock());
   base->remove_module(module);
   module = nullptr;
 
   enabled = false;
-  return 0;
+  return Status::success();
 }
 
 void
@@ -69,10 +69,12 @@ BusCore::handle_irq(uint8_t start, uint8_t end)
   set_module_pending();
 }
 
-int
+Status
 BusCore::add(PinCore *pin)
 {
-  TRY(check_enabled());
+  const Status enabled_result = check_enabled();
+  if (!enabled_result)
+    return enabled_result;
 
   // Find available slot in registry
   for (size_t i = 0; i < pins_capacity; ++i)
@@ -80,18 +82,20 @@ BusCore::add(PinCore *pin)
     if (!pins[i])
     {
       pins[i] = pin;
-      return 0;
+      return Status::success();
     }
   }
 
   // No available slots
-  return BUS_FULL;
+  return Status::failure(Error::BusFull);
 }
 
-int
+Status
 BusCore::remove(PinCore *pin)
 {
-  TRY(check_enabled());
+  const Status enabled_result = check_enabled();
+  if (!enabled_result)
+    return enabled_result;
 
   auto port = pin->get_port();
   bool port_in_use = false;
@@ -106,9 +110,13 @@ BusCore::remove(PinCore *pin)
   }
 
   if (!port_in_use)
-    TRY(disable_gpio(port));
+  {
+    const Status disable_result = disable_gpio(port);
+    if (!disable_result)
+      return disable_result;
+  }
 
-  return 0;
+  return Status::success();
 }
 
 void
@@ -117,7 +125,7 @@ BusCore::activate_pin(uint32_t pin_bit)
   SET_BIT_V(activated_exti_lines, pin_bit);
 }
 
-int
+Status
 BusCore::trigger_activated_pins()
 {
   // Process all pins with pending interrupts
@@ -143,16 +151,16 @@ BusCore::trigger_activated_pins()
     }
   }
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 BusCore::check_enabled()
 {
   if (!enabled)
-    return BUS_NOT_ENABLED; // GPIO bus is not enabled
+    return Status::failure(Error::BusNotEnabled);
 
-  return 0;
+  return Status::success();
 }
 
 }; // namespace Embys::Stm32::Gpio

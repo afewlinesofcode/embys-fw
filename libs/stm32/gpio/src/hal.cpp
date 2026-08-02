@@ -16,47 +16,57 @@ namespace Embys::Stm32::Gpio
 extern bool
 is_valid_pwm_binding(const PwmBinding *binding);
 
-int
-read_pin(GPIO_TypeDef *port, uint8_t index, uint8_t *value)
+ReadResult
+read_pin(GPIO_TypeDef *port, uint8_t index)
 {
-  *value = (port->IDR & (1U << index)) ? 1 : 0;
-  return 0;
+  if (port == nullptr)
+    return ReadResult::failure(Error::InvalidPort);
+
+  if (index >= 16U)
+    return ReadResult::failure(Error::PinConfigurationFailed);
+
+  return ReadResult::success((port->IDR & (1U << index)) != 0);
 }
 
-int
+Status
 write_pin(GPIO_TypeDef *port, uint8_t index, uint8_t value)
 {
+  if (port == nullptr)
+    return Status::failure(Error::InvalidPort);
+
+  if (index >= 16U)
+    return Status::failure(Error::PinConfigurationFailed);
+
   if (value)
     port->BSRR = (1U << index);
   else
     port->BSRR = (1U << (index + 16));
 
-  return 0;
+  return Status::success();
 }
 
-int
+Status
 validate_pin_config([[maybe_unused]] GPIO_TypeDef *port,
                     [[maybe_unused]] uint8_t index, PinCfg cfg,
                     const PwmBinding *pwm)
 {
   if (has_many_roles(cfg))
-    return PIN_CONFIG_CONFLICT;
+    return Status::failure(Error::ConfigurationConflict);
 
   if (has_many_speeds(cfg))
-    return PIN_CONFIG_CONFLICT;
+    return Status::failure(Error::ConfigurationConflict);
 
   if (has_cfg(cfg, PinCfg::PU) && has_cfg(cfg, PinCfg::PD))
-    return PIN_CONFIG_CONFLICT;
+    return Status::failure(Error::ConfigurationConflict);
 
   if (!has_any_role(cfg) && !has_cfg(cfg, PinCfg::IN) &&
       !has_cfg(cfg, PinCfg::OUT) && !has_cfg(cfg, PinCfg::AF))
-    return PIN_CONFIG_CONFLICT;
+    return Status::failure(Error::ConfigurationConflict);
 
   if (has_cfg(cfg, PinCfg::PWM) && !is_valid_pwm_binding(pwm))
-    return PIN_CONFIG_CONFLICT;
+    return Status::failure(Error::ConfigurationConflict);
 
-
-  return 0;
+  return Status::success();
 }
 
 PinCfg
