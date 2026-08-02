@@ -88,7 +88,8 @@ static void
 blink(AppContext *ctx)
 {
   ctx->led->write(0); // active-low: 0 = on
-  ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
+  (void)ctx->blink_off_event->enable(
+      std::chrono::microseconds{LED_BLINK_US});
 }
 
 static void
@@ -280,7 +281,7 @@ main()
   __NVIC_EnableIRQ(I2C1_ER_IRQn);
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
-  startup_event.enable(std::chrono::seconds{1});
+  (void)startup_event.enable(std::chrono::seconds{1});
 
   loop.run();
 

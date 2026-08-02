@@ -120,7 +120,7 @@ main()
   pin_tx.enable();
   pin_rx.enable();
   uart.enable(UART_BAUD);
-  print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
+  (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 
   // Enable IRQs
   __NVIC_EnableIRQ(TIM2_IRQn);

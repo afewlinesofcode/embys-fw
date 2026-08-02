@@ -12,10 +12,8 @@ void
 Delay::exec(std::chrono::microseconds delay, Cb cb)
 {
   this->cb = cb;
-  int rc = ev.enable(delay);
-
-  if (rc != 0)
-    cb(rc);
+  if (!ev.enable(delay))
+    cb(-1);
 }
 
 void

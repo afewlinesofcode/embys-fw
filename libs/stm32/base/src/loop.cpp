@@ -78,7 +78,7 @@ LoopCore::run()
   run_modules();
 }
 
-int
+EventResult
 LoopCore::stop(std::chrono::microseconds delay)
 {
   if (stop_scheduled)
@@ -87,8 +87,8 @@ LoopCore::stop(std::chrono::microseconds delay)
   }
 
   // Schedule loop termination callback
-  const int result = stop_event.enable(delay);
-  stop_scheduled = (result == 0);
+  const EventResult result = stop_event.enable(delay);
+  stop_scheduled = result.has_value();
   return result;
 }
 
@@ -100,7 +100,7 @@ LoopCore::terminate(int code, void *error_context)
   active = false;
 }
 
-int
+EventResult
 LoopCore::add(Event *event)
 {
   /*
@@ -116,7 +116,7 @@ LoopCore::add(Event *event)
     {
       // Event already in the loop, reschedule it
       schedule_event(event, event->interval_us);
-      return 0;
+      return EventResult::success();
     }
   }
 
@@ -127,14 +127,14 @@ LoopCore::add(Event *event)
       events[i] = event;
       event->pending = true;
       schedule_event(event, event->interval_us);
-      return 0;
+      return EventResult::success();
     }
   }
 
-  return -1;
+  return EventResult::failure(EventError::CapacityExceeded);
 }
 
-int
+void
 LoopCore::remove(Event *event)
 {
   for (size_t i = 0; i < events_capacity; ++i)
@@ -143,12 +143,11 @@ LoopCore::remove(Event *event)
     {
       events[i] = nullptr;
       event->pending = false;
-      return 0;
+      return;
     }
   }
 
   // Event not found, don't care
-  return 0;
 }
 
 Module *

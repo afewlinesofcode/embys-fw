@@ -125,7 +125,7 @@ toggle_btn(void *context, uint8_t value)
 
     if (ctx->blink_on)
     {
-      ctx->blink_event->enable(
+      (void)ctx->blink_event->enable(
           std::chrono::microseconds{LED_BLINK_INTERVAL_US});
       SIM_LOG("Blinking ON");
     }
@@ -235,7 +235,7 @@ main()
   __NVIC_SetPriority(I2C1_ER_IRQn, 0x01);
 
   // Schedule startup event
-  startup_event.enable(std::chrono::seconds{1});
+  (void)startup_event.enable(std::chrono::seconds{1});
 
   // Run main loop
   loop.run();

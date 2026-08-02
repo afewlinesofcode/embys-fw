@@ -47,7 +47,7 @@ inject_frame(std::vector<uint8_t> frame)
 static std::vector<uint8_t>
 run_and_capture(Base::LoopCore &loop, uint32_t timeout_us = 500U)
 {
-  loop.stop(std::chrono::microseconds{timeout_us});
+  (void)loop.stop(std::chrono::microseconds{timeout_us});
   loop.run();
   if (Sim::Uart::tx_buffers.empty())
     return {};
@@ -160,7 +160,7 @@ TEST_SUITE("modbus_rtu_server")
 
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x02});
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Response: device=01 FC=03 byte_count=04 [0x12 0x34 0x56 0x78] + CRC
@@ -180,7 +180,7 @@ TEST_SUITE("modbus_rtu_server")
                                   0x00, 0x01, 0xFF, 0xFF}; // wrong CRC
     Embys::Stm32::Sim::Uart::simulate_rx(frame);
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
@@ -192,7 +192,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device=2, not 1
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -204,7 +204,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // write coil 0 ON
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(Embys::Stm32::Sim::Uart::tx_buffers.empty());
@@ -227,7 +227,7 @@ TEST_SUITE("modbus_rtu_server")
 
     inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     REQUIRE(sent.size() >= 3U);
@@ -241,7 +241,7 @@ TEST_SUITE("modbus_rtu_server")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
 
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
@@ -417,7 +417,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "bus_message_count increments for every addressed frame")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
@@ -427,7 +427,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "bus_message_count increments even for non-addressed frame")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2, not 1
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count == 1U);
@@ -440,7 +440,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
     std::vector<uint8_t> frame = {0x01, 0x03, 0x00, 0x00,
                                   0x00, 0x01, 0xFF, 0xFF};
     Sim::Uart::simulate_rx(frame);
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_comm_error_count == 1U);
@@ -450,7 +450,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "slave_message_count increments for valid addressed frame")
   {
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 1U);
@@ -461,7 +461,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "frame")
   {
     inject_frame({0x02, 0x03, 0x00, 0x00, 0x00, 0x01}); // device 2
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_message_count == 0U);
@@ -471,7 +471,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "slave_no_response_count increments on broadcast")
   {
     inject_frame({0x00, 0x05, 0x00, 0x00, 0xFF, 0x00}); // broadcast write coil
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().slave_no_response_count == 1U);
@@ -483,7 +483,7 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
                     "sent")
   {
     inject_frame({0x01, 0x42, 0x00, 0x00, 0x00, 0x01}); // unsupported FC
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_exception_error_count == 1U);
@@ -510,10 +510,10 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
   {
     // First, generate two slave messages
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Now query slave message count via FC 0x08
@@ -535,14 +535,14 @@ TEST_SUITE("modbus_rtu_server_diagnostics")
   {
     // Generate some traffic
     inject_frame({0x01, 0x03, 0x00, 0x00, 0x00, 0x01});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     CHECK(server.get_diagnostics_counters().bus_message_count >= 1U);
 
     // Clear
     inject_frame({0x01, 0x08, 0x00, 0x0A, 0x00, 0x00});
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     // Counters should be reset (ClearCounters itself increments them by 1

@@ -25,7 +25,7 @@ WaitBus::start()
     return 0;
   }
 
-  return event.enable(std::chrono::microseconds{WaitBus::check_us});
+  return event.enable(std::chrono::microseconds{WaitBus::check_us}) ? 0 : -1;
 }
 
 void

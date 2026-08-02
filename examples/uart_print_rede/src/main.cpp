@@ -80,7 +80,8 @@ static void
 blink(AppContext *ctx)
 {
   ctx->led_pin->write(0); // active-low: 0 = on
-  ctx->blink_off_event->enable(std::chrono::microseconds{LED_BLINK_US});
+  (void)ctx->blink_off_event->enable(
+      std::chrono::microseconds{LED_BLINK_US});
 }
 
 static void
@@ -177,7 +178,7 @@ main()
   uart_rede.enable();
   led_pin.enable();
   uart.enable(UART_BAUD);
-  print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
+  (void)print_event.enable(std::chrono::microseconds{PRINT_INTERVAL_US});
 
   // Enable IRQs
   __NVIC_EnableIRQ(TIM2_IRQn);

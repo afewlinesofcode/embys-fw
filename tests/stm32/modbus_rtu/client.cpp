@@ -152,11 +152,11 @@ TEST_SUITE("modbus_rtu_client")
 
     Base::Event response_event(loop, Base::EventMode::Deferred,
                                {response_handler, nullptr});
-    response_event.enable(std::chrono::microseconds{100});
+    (void)response_event.enable(std::chrono::microseconds{100});
 
     // Run long enough for both events to execute and for the client to process
     // the response after frame delay
-    loop.stop(std::chrono::microseconds{500});
+    (void)loop.stop(std::chrono::microseconds{500});
     loop.run();
 
     REQUIRE(response_received);
@@ -218,7 +218,7 @@ TEST_SUITE("modbus_rtu_client")
          &ctx});
 
     // Run long enough for the timeout to fire
-    loop.stop(std::chrono::microseconds{Modbus::Rtu::Client::kRequestTimeoutUs +
+    (void)loop.stop(std::chrono::microseconds{Modbus::Rtu::Client::kRequestTimeoutUs +
                                         100U});
     loop.run();
 

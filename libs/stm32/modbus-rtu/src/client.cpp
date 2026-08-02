@@ -178,7 +178,8 @@ Client::send_request()
   if (current_device_id != 0U)
   {
     expecting_response = true;
-    response_timeout_event.enable(std::chrono::microseconds{kRequestTimeoutUs});
+    (void)response_timeout_event.enable(
+        std::chrono::microseconds{kRequestTimeoutUs});
   }
 
   return 0;

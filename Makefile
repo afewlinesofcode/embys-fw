@@ -54,7 +54,7 @@ all-local:
 	cd libs/stm32/modbus && $(MAKE) TC=$(TC) MCU=$(MCU) all
 	cd libs/stm32/modbus-rtu && $(MAKE) TC=$(TC) MCU=$(MCU) all
 
-examples-local:
+examples-local: all-local
 	cd examples && $(MAKE) TC=$(TC) MCU=$(MCU) clean all
 
 firmware-check-local:

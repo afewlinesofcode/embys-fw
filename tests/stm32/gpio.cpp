@@ -329,7 +329,7 @@ TEST_SUITE("gpio")
       __NOP();
 
     // Run loop for 1 us to process the deferred module
-    loop.stop(std::chrono::microseconds{1});
+    (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
     REQUIRE(calls.size() == 1);
@@ -357,7 +357,7 @@ TEST_SUITE("gpio")
     for (int i = 0; i < 10; ++i)
       __NOP();
 
-    loop.stop(std::chrono::microseconds{1});
+    (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
     REQUIRE(calls.size() == 1);
@@ -393,7 +393,7 @@ TEST_SUITE("gpio")
     for (int i = 0; i < 10; ++i)
       __NOP();
 
-    loop.stop(std::chrono::microseconds{1});
+    (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
     REQUIRE(calls0.size() == 1);
@@ -417,7 +417,7 @@ TEST_SUITE("gpio")
     Sim::Gpio::trigger_pin(GPIOA, 0, 1);
     for (int i = 0; i < 10; ++i)
       __NOP();
-    loop.stop(std::chrono::microseconds{1});
+    (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
     CHECK(call_count == 1);
@@ -428,7 +428,7 @@ TEST_SUITE("gpio")
     Sim::Gpio::trigger_pin(GPIOA, 0, 0);
     for (int i = 0; i < 10; ++i)
       __NOP();
-    loop.stop(std::chrono::microseconds{1});
+    (void)loop.stop(std::chrono::microseconds{1});
     loop.run();
 
     CHECK(call_count == 1); // unchanged

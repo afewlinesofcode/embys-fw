@@ -71,22 +71,27 @@ TEST_SUITE("base")
     Embys::Stm32::Base::Event event(
         loop, Embys::Stm32::Base::EventMode::Deferred, {});
 
-    CHECK(event.enable(std::chrono::microseconds{-1}) != 0);
+    const auto negative = event.enable(std::chrono::microseconds{-1});
+    CHECK(negative.error() == Embys::Stm32::Base::EventError::InvalidDuration);
     CHECK_FALSE(event.pending);
 
     constexpr auto too_large =
         static_cast<std::chrono::microseconds::rep>(
             std::numeric_limits<uint32_t>::max()) +
         1;
-    CHECK(event.enable(std::chrono::microseconds{too_large}) != 0);
+    const auto out_of_range =
+        event.enable(std::chrono::microseconds{too_large});
+    CHECK(out_of_range.error() ==
+          Embys::Stm32::Base::EventError::InvalidDuration);
     CHECK_FALSE(event.pending);
   }
 
   TEST_CASE_FIXTURE(Stm32BaseLoopFixture,
                     "Loop remains stoppable after invalid stop duration")
   {
-    CHECK(loop.stop(std::chrono::microseconds{-1}) != 0);
-    CHECK(loop.stop(std::chrono::microseconds{1}) == 0);
+    const auto invalid = loop.stop(std::chrono::microseconds{-1});
+    CHECK(invalid.error() == Embys::Stm32::Base::EventError::InvalidDuration);
+    CHECK(loop.stop(std::chrono::microseconds{1}).has_value());
     loop.run();
     CHECK(DWT->CYCCNT == 72);
   }
@@ -100,12 +105,27 @@ TEST_SUITE("base")
     {
       Embys::Stm32::Base::Event first(
           loop, Embys::Stm32::Base::EventMode::Deferred, {});
-      CHECK(first.enable(std::chrono::microseconds{1}) == 0);
+      CHECK(first.enable(std::chrono::microseconds{1}).has_value());
     }
 
     Embys::Stm32::Base::Event second(
         loop, Embys::Stm32::Base::EventMode::Deferred, {});
-    CHECK(second.enable(std::chrono::microseconds{1}) == 0);
+    CHECK(second.enable(std::chrono::microseconds{1}).has_value());
+  }
+
+  TEST_CASE_FIXTURE(Stm32BaseFixture,
+                    "A full scheduler reports its typed capacity error")
+  {
+    Embys::Stm32::Base::Timer timer(TIM2);
+    Embys::Stm32::Base::Loop<1, 1> loop(timer);
+    Embys::Stm32::Base::Event first(
+        loop, Embys::Stm32::Base::EventMode::Deferred, {});
+    Embys::Stm32::Base::Event second(
+        loop, Embys::Stm32::Base::EventMode::Deferred, {});
+
+    CHECK(first.enable(std::chrono::microseconds{1}).has_value());
+    const auto result = second.enable(std::chrono::microseconds{1});
+    CHECK(result.error() == Embys::Stm32::Base::EventError::CapacityExceeded);
   }
 
   TEST_CASE_FIXTURE(Stm32BaseFixture,
@@ -122,7 +142,7 @@ TEST_SUITE("base")
     // Verify that DWT cycle counter is initialized to 0
     CHECK(DWT->CYCCNT == 0);
     // Schedule loop to stop after 10 microseconds
-    loop.stop(std::chrono::microseconds{10});
+    (void)loop.stop(std::chrono::microseconds{10});
     // Run the loop, it should stop after 10 microseconds
     loop.run();
     // Verify that 720 cycles have elapsed (10 us at 72 MHz)
@@ -145,10 +165,10 @@ TEST_SUITE("base")
     Embys::Stm32::Base::Event event(
         loop, Embys::Stm32::Base::EventMode::Deferred,
         {callback, &event_calls});
-    event.enable(std::chrono::microseconds{5});
+    (void)event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 10 microseconds
-    loop.stop(std::chrono::microseconds{10});
+    (void)loop.stop(std::chrono::microseconds{10});
     // Run the loop, it should process the event and then stop
     loop.run();
 
@@ -176,10 +196,10 @@ TEST_SUITE("base")
     Embys::Stm32::Base::Event event(
         loop, Embys::Stm32::Base::EventMode::Persistent,
         {callback, &event_calls});
-    event.enable(std::chrono::microseconds{5});
+    (void)event.enable(std::chrono::microseconds{5});
 
     // Schedule loop to stop after 16 microseconds
-    loop.stop(std::chrono::microseconds{16});
+    (void)loop.stop(std::chrono::microseconds{16});
     // Run the loop, it should process the event multiple times and then stop
     loop.run();
 
@@ -221,11 +241,11 @@ TEST_SUITE("base")
     Embys::Stm32::Base::Event event2(
         loop, Embys::Stm32::Base::EventMode::Persistent,
         {callback2, &event2_calls});
-    event1.enable(std::chrono::microseconds{5});  // Every 5 us
-    event2.enable(std::chrono::microseconds{10}); // Every 10 us
+    (void)event1.enable(std::chrono::microseconds{5});  // Every 5 us
+    (void)event2.enable(std::chrono::microseconds{10}); // Every 10 us
 
     // Schedule loop to stop after 20 microseconds
-    loop.stop(std::chrono::microseconds{20});
+    (void)loop.stop(std::chrono::microseconds{20});
     // Run the loop, it should process both events and then stop
     loop.run();
 

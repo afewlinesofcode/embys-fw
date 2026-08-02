@@ -86,9 +86,9 @@ public:
    *
    * @param delay Time to wait before stopping the loop. A zero duration stops
    * after the current iteration.
-   * @return int
+   * @return Scheduling result for the internal stop event.
    */
-  int
+  [[nodiscard]] EventResult
   stop(std::chrono::microseconds delay = std::chrono::microseconds::zero());
 
   /**
@@ -107,18 +107,17 @@ public:
    * @brief Add event to scheduler and initialize it.
    *
    * @param event Pointer to the event to be added.
-   * @return int Status code indicating success or failure.
+   * @return Success or CapacityExceeded.
    */
-  int
+  [[nodiscard]] EventResult
   add(Event *event);
 
   /**
    * @brief Remove event from scheduler.
    *
    * @param event Pointer to the event to be removed.
-   * @return int Status code indicating success or failure.
    */
-  int
+  void
   remove(Event *event);
 
   /**

@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cstdint>
 
+#include <embys/stm32/result.hpp>
 #include <embys/stm32/types.hpp>
 
 namespace Embys::Stm32::Base
@@ -34,6 +35,14 @@ enum class EventMode : uint8_t
   Persistent = 1U << 0,
   Realtime = 1U << 1,
 };
+
+enum class EventError : uint8_t
+{
+  InvalidDuration,
+  CapacityExceeded,
+};
+
+using EventResult = Result<void, EventError>;
 
 [[nodiscard]] constexpr EventMode
 operator|(EventMode lhs, EventMode rhs) noexcept
@@ -92,7 +101,7 @@ struct Event
 
   /**
    * @brief Initialize a new Event object
-   * @param loop Pointer to the Base system loop managing this event
+   * @param loop Base system loop managing this event; it must outlive the event.
    * @param mode Scheduling and callback execution mode.
    * @param cb Event callback function
    */
@@ -106,16 +115,15 @@ struct Event
   /**
    * @brief Enable the event with a specified interval.
    * @param interval Interval represented at microsecond precision.
-   * @return 0 on success, negative error code on failure
+   * @return Success, InvalidDuration, or CapacityExceeded.
    */
-  int
+  [[nodiscard]] EventResult
   enable(std::chrono::microseconds interval);
 
   /**
    * @brief Disable the event, removing it from the scheduler
-   * @return 0 on success, negative error code on failure
    */
-  int
+  void
   disable();
 
   /**

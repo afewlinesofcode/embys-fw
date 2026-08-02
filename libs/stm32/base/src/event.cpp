@@ -16,18 +16,18 @@ Event::~Event()
 {
   if (pending)
   {
-    (void)loop.remove(this);
+    loop.remove(this);
   }
 }
 
-int
+EventResult
 Event::enable(std::chrono::microseconds interval)
 {
   const auto count = interval.count();
   if (count < 0 || static_cast<uint64_t>(count) >
                        std::numeric_limits<uint32_t>::max())
   {
-    return -1;
+    return EventResult::failure(EventError::InvalidDuration);
   }
 
   interval_us = static_cast<uint32_t>(count);
@@ -35,10 +35,10 @@ Event::enable(std::chrono::microseconds interval)
   return loop.add(this);
 }
 
-int
+void
 Event::disable()
 {
-  return loop.remove(this);
+  loop.remove(this);
 }
 
 bool
