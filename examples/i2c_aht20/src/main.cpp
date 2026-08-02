@@ -1,10 +1,10 @@
 #include <stddef.h>
-#include <stm32f1xx.h>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c-aht20/device.hpp>

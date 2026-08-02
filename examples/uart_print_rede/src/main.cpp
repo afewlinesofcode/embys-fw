@@ -13,22 +13,10 @@
  * Open a terminal at 9600 8N1 to see the output.
  */
 
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/uart/bus.hpp>

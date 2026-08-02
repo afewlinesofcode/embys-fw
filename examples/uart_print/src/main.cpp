@@ -11,13 +11,10 @@
  * Open a terminal at 115200 8N1 to see the output.
  */
 
-#ifndef STM32_SIM
-#include <stm32f1xx.h>
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/uart/bus.hpp>

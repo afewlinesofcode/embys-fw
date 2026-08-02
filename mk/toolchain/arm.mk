@@ -47,16 +47,16 @@ INCLUDES     += -I$(PROJECT_ROOT)/third_party/CMSIS_6/CMSIS/Core/Include \
 CPPFLAGS     += $(MCUFLAGS) $(INCLUDES) $(DEFINES) $(MCU_DEFINES)
 CFLAGS       += -Wall -Wextra -Werror \
 			          -Os -flto \
-			          -ffunction-sections -fdata-sections -fno-builtin \
+			          -ffunction-sections -fdata-sections \
 			          -std=c11 -MMD -MP
 CXXFLAGS     += -Wall -Wextra -Werror -Wundef \
 			          -Os -g3 -flto -ffunction-sections -fdata-sections \
 			          -std=c++20 -fno-rtti -fno-exceptions -fno-threadsafe-statics \
 			          -fno-unwind-tables -fno-asynchronous-unwind-tables \
-			          -ffreestanding -fno-builtin -fstack-usage \
+			          -ffreestanding -fstack-usage \
 			          -fno-use-cxa-atexit -MMD -MP
 LDFLAGS      += $(MCUFLAGS) -flto -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-Map,$(MAP) -T $(LINKER_LD) -Wl,--print-memory-usage -L$(PROJECT_ROOT)/build/arm/$(ARCH_NAME)
-LDLIBS       += -lgcc
+LDLIBS       += -lc -lgcc
 
 $(APP_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)

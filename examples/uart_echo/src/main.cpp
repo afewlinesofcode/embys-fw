@@ -20,13 +20,10 @@
  *     must be at least 2 (timeout event + loop stop event).
  */
 
-#ifndef STM32_SIM
-#include <stm32f1xx.h>
-#endif
-
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/uart/bus.hpp>

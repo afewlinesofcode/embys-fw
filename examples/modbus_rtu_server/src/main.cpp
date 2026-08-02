@@ -17,27 +17,13 @@
  * LCD line 1 : "R CO 0x1000"     (last processed operation)
  */
 
-#ifndef STM32_SIM
-#ifdef STM32F1xx
-#include <stm32f1xx.h>
-#elif defined(STM32F4xx)
-#include <stm32f4xx.h>
-#elif defined(STM32F7xx)
-#include <stm32f7xx.h>
-#elif defined(STM32H7xx)
-#include <stm32h7xx.h>
-#else
-#error                                                                         \
-    "No STM32 family defined. Define STM32F1xx, STM32F4xx, STM32F7xx, or STM32H7xx."
-#endif
-#endif
-
 #include <span>
 
 #include <embys/stm32/base/loop.hpp>
 #include <embys/stm32/base/system.hpp>
 #include <embys/stm32/base/timer.hpp>
 #include <embys/stm32/def.hpp>
+#include <embys/stm32/device.hpp>
 #include <embys/stm32/gpio/bus.hpp>
 #include <embys/stm32/gpio/pin.hpp>
 #include <embys/stm32/i2c/bus.hpp>
@@ -50,10 +36,6 @@
 #include "def.hpp"
 #include "lcd.hpp"
 #include "sim.hpp"
-
-#ifndef STM32_SIM
-#include "memory.hpp"
-#endif
 
 namespace Gpio = Embys::Stm32::Gpio;
 namespace Base = Embys::Stm32::Base;
