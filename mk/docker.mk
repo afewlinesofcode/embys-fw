@@ -41,6 +41,10 @@ in-docker: $(PROJECT_ROOT)/.docker
 
 MCU ?= stm32f103xb
 
+ifeq ($(INSIDE_DOCKER),true)
+%-in-docker:
+	@$(MAKE) TC=$(TC) MCU=$(MCU) $*
+else
 %-in-docker: $(PROJECT_ROOT)/.docker
 	@echo "Running 'make $*' in Docker container"
 	@echo "Project root: $(PROJECT_ROOT)"
@@ -52,6 +56,7 @@ MCU ?= stm32f103xb
 		-w $(WORK_DIR) \
 		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
 		make TC=$(TC) MCU=$(MCU) $*
+endif
 
 docker-shell:
 	@echo "Starting interactive shell in Docker container"
